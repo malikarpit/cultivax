@@ -1,0 +1,74 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.venv/
+*.egg-info/
+dist/
+build/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node
+node_modules/
+.next/
+out/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Docker
+*.log
+
+# Database
+*.db
+*.sqlite3
+
+# Alembic
+alembic/versions/__pycache__/
+
+# Coverage
+htmlcov/
+.coverage
+.coverage.*
+
+# Testing
+.pytest_cache/
+
+# Documentation build artifacts
+docs/important documentation/extracted/
+docs/important documentation/extracted_pdfkit/
+*.resolved
+
+# Misc
+*.pyc
+.mypy_cache/
+
+# Large Media Files
+*.mp4
+*.mov
+*.avi
+*.mkv
+
+# Helper Scripts (Local Only)
+build_history.sh
+
+.docs
