@@ -1,0 +1,119 @@
+"""
+CTIS Schemas
+
+Pydantic schemas for Crop Instance, Action Log, and Yield Record.
+"""
+
+from pydantic import BaseModel, Field
+from typing import Optional, Dict, Any, List
+from uuid import UUID
+from datetime import date, datetime
+
+
+# === Crop Instance Schemas ===
+
+class CropInstanceCreate(BaseModel):
+    crop_type: str = Field(..., min_length=1, max_length=100)
+    variety: Optional[str] = None
+    sowing_date: date
+    region: str = Field(..., min_length=1, max_length=100)
+    sub_region: Optional[str] = None
+    land_area: Optional[float] = Field(None, gt=0)
+    rule_template_id: Optional[UUID] = None
+    metadata_extra: Optional[Dict[str, Any]] = {}
+
+
+class CropInstanceUpdate(BaseModel):
+    variety: Optional[str] = None
+    land_area: Optional[float] = Field(None, gt=0)
+    sub_region: Optional[str] = None
+    metadata_extra: Optional[Dict[str, Any]] = None
+
+
+class SowingDateUpdate(BaseModel):
+    new_sowing_date: date
+
+
+class CropInstanceResponse(BaseModel):
+    id: UUID
+    farmer_id: UUID
+    crop_type: str
+    variety: Optional[str]
+    sowing_date: date
+    state: str
+    stage: Optional[str]
+    current_day_number: int
+    stress_score: float
+    risk_index: float
+    seasonal_window_category: Optional[str]
+    land_area: Optional[float]
+    region: str
+    sub_region: Optional[str]
+    stage_offset_days: int
+    max_allowed_drift: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class CropListFilter(BaseModel):
+    state: Optional[str] = None
+    crop_type: Optional[str] = None
+    region: Optional[str] = None
+    include_archived: bool = False
+
+
+# === Action Log Schemas ===
+
+class ActionLogCreate(BaseModel):
+    action_type: str = Field(..., min_length=1, max_length=100)
+    effective_date: date
+    category: str = "Operational"
+    metadata_json: Optional[Dict[str, Any]] = {}
+    notes: Optional[str] = None
+    local_seq_no: Optional[int] = None
+    device_timestamp: Optional[datetime] = None
+    idempotency_key: Optional[str] = None
+
+
+class ActionLogResponse(BaseModel):
+    id: UUID
+    crop_instance_id: UUID
+    action_type: str
+    effective_date: date
+    category: str
+    metadata_json: Dict[str, Any]
+    notes: Optional[str]
+    local_seq_no: Optional[int]
+    server_timestamp: datetime
+    applied_in_replay: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# === Yield Record Schemas ===
+
+class YieldSubmission(BaseModel):
+    reported_yield: float = Field(..., gt=0)
+    yield_unit: str = "kg/acre"
+    harvest_date: Optional[date] = None
+
+
+class YieldResponse(BaseModel):
+    id: UUID
+    crop_instance_id: UUID
+    reported_yield: float
+    yield_unit: str
+    harvest_date: Optional[date]
+    ml_yield_value: Optional[float]
+    biological_cap: Optional[float]
+    bio_cap_applied: bool
+    yield_verification_score: Optional[float]
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
