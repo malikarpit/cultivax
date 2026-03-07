@@ -1,0 +1,23 @@
+# Backend .dockerignore
+# Optimizes Docker build context (Day 7 — Arpit)
+
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.git/
+.gitignore
+.env
+.env.local
+*.md
+docs/
+tests/
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+*.log
+.DS_Store
