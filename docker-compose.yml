@@ -1,0 +1,58 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:15
+    container_name: cultivax-db
+    environment:
+      POSTGRES_USER: cultivax_user
+      POSTGRES_PASSWORD: cultivax_pass
+      POSTGRES_DB: cultivax_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cultivax_user -d cultivax_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cultivax-backend
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://cultivax_user:cultivax_pass@db:5432/cultivax_db
+      SECRET_KEY: dev-secret-key-change-in-prod
+      APP_ENV: development
+      DEBUG: "true"
+      CORS_ORIGINS: "http://localhost:3000,http://localhost:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: cultivax-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: npm run dev
+
+volumes:
+  postgres_data:
