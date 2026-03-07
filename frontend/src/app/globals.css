@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --cultivax-primary: #10B981;
+  --cultivax-bg: #0F172A;
+  --cultivax-surface: #1E293B;
+  --cultivax-card: #334155;
+  --cultivax-text: #F1F5F9;
+  --cultivax-muted: #94A3B8;
+}
+
+body {
+  background-color: var(--cultivax-bg);
+  color: var(--cultivax-text);
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--cultivax-bg); }
+::-webkit-scrollbar-thumb { background: var(--cultivax-card); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--cultivax-muted); }
+
+/* Input styling */
+input, select, textarea {
+  @apply bg-cultivax-surface border border-cultivax-card rounded-lg px-4 py-2.5
+    text-white placeholder-gray-500 focus:outline-none focus:ring-2
+    focus:ring-cultivax-primary focus:border-transparent transition-all;
+}
+
+/* Button base */
+.btn-primary {
+  @apply bg-cultivax-primary hover:bg-cultivax-secondary text-white font-medium
+    px-6 py-2.5 rounded-lg transition-all duration-200 active:scale-95;
+}
+
+.btn-secondary {
+  @apply bg-cultivax-card hover:bg-cultivax-surface text-white font-medium
+    px-6 py-2.5 rounded-lg border border-cultivax-card transition-all duration-200;
+}
+
+/* Card styling */
+.card {
+  @apply bg-cultivax-surface rounded-xl border border-cultivax-card p-6
+    transition-all duration-200 hover:border-cultivax-primary/30;
+}
