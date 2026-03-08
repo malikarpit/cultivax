@@ -1,0 +1,62 @@
+{
+  "crop_type": "wheat",
+  "display_name": "Wheat (Triticum aestivum)",
+  "season": "rabi",
+  "total_duration_days": 120,
+  "stages": [
+    {
+      "name": "Germination",
+      "start_day": 1,
+      "end_day": 10,
+      "expected_actions": ["irrigation", "observation"],
+      "critical": false,
+      "drift_limit_days": 3
+    },
+    {
+      "name": "Tillering",
+      "start_day": 11,
+      "end_day": 35,
+      "expected_actions": ["irrigation", "fertilizer", "observation"],
+      "critical": true,
+      "drift_limit_days": 5
+    },
+    {
+      "name": "Jointing",
+      "start_day": 36,
+      "end_day": 55,
+      "expected_actions": ["irrigation", "fertilizer", "pesticide"],
+      "critical": true,
+      "drift_limit_days": 5
+    },
+    {
+      "name": "Heading",
+      "start_day": 56,
+      "end_day": 70,
+      "expected_actions": ["irrigation", "observation"],
+      "critical": true,
+      "drift_limit_days": 3
+    },
+    {
+      "name": "Grain Filling",
+      "start_day": 71,
+      "end_day": 100,
+      "expected_actions": ["irrigation", "observation"],
+      "critical": true,
+      "drift_limit_days": 5
+    },
+    {
+      "name": "Maturation",
+      "start_day": 101,
+      "end_day": 120,
+      "expected_actions": ["observation", "harvest"],
+      "critical": false,
+      "drift_limit_days": 7
+    }
+  ],
+  "risk_parameters": {
+    "biological_yield_cap_kg_per_acre": 2200,
+    "stress_threshold_warning": 0.4,
+    "stress_threshold_critical": 0.7,
+    "max_consecutive_deviation_before_alert": 3
+  }
+}
