@@ -1,0 +1,70 @@
+{
+  "crop_type": "rice",
+  "display_name": "Rice (Oryza sativa)",
+  "season": "kharif",
+  "total_duration_days": 130,
+  "stages": [
+    {
+      "name": "Nursery",
+      "start_day": 1,
+      "end_day": 25,
+      "expected_actions": ["irrigation", "fertilizer"],
+      "critical": true,
+      "drift_limit_days": 5
+    },
+    {
+      "name": "Transplanting",
+      "start_day": 26,
+      "end_day": 35,
+      "expected_actions": ["irrigation", "observation"],
+      "critical": true,
+      "drift_limit_days": 3
+    },
+    {
+      "name": "Tillering",
+      "start_day": 36,
+      "end_day": 65,
+      "expected_actions": ["irrigation", "fertilizer", "weeding"],
+      "critical": true,
+      "drift_limit_days": 5
+    },
+    {
+      "name": "Panicle Initiation",
+      "start_day": 66,
+      "end_day": 85,
+      "expected_actions": ["irrigation", "fertilizer", "pesticide"],
+      "critical": true,
+      "drift_limit_days": 3
+    },
+    {
+      "name": "Flowering",
+      "start_day": 86,
+      "end_day": 100,
+      "expected_actions": ["irrigation", "observation"],
+      "critical": true,
+      "drift_limit_days": 3
+    },
+    {
+      "name": "Grain Filling",
+      "start_day": 101,
+      "end_day": 120,
+      "expected_actions": ["irrigation", "observation"],
+      "critical": false,
+      "drift_limit_days": 5
+    },
+    {
+      "name": "Maturation",
+      "start_day": 121,
+      "end_day": 130,
+      "expected_actions": ["observation", "harvest"],
+      "critical": false,
+      "drift_limit_days": 7
+    }
+  ],
+  "risk_parameters": {
+    "biological_yield_cap_kg_per_acre": 3000,
+    "stress_threshold_warning": 0.35,
+    "stress_threshold_critical": 0.65,
+    "max_consecutive_deviation_before_alert": 2
+  }
+}
