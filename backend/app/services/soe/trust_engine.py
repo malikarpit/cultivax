@@ -7,17 +7,17 @@ using a weighted multi-factor formula with temporal decay.
 TDD Section 5.5 | SOE Enhancements 2 (Temporal Decay), 5 (Consistency Score)
 """
 
-from sqlalchemy.orm import Session
-from sqlalchemy import func, case
+from sqlalchemy.orm import Session  # type: ignore
+from sqlalchemy import func, case  # type: ignore
 from uuid import UUID
 from datetime import datetime, timezone
 from typing import Optional
 import math
 import logging
 
-from app.models.service_provider import ServiceProvider
-from app.models.service_request import ServiceRequest
-from app.models.service_review import ServiceReview
+from app.models.service_provider import ServiceProvider  # type: ignore
+from app.models.service_request import ServiceRequest  # type: ignore
+from app.models.service_review import ServiceReview  # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -118,7 +118,7 @@ class TrustEngine:
             trust *= math.pow(DECAY_FACTOR_PER_MONTH, months_inactive)
 
         # Clamp to [0, 1]
-        trust = max(0.0, min(1.0, round(trust, 4)))
+        trust = max(0.0, min(1.0, float(round(trust, 4))))  # type: ignore
 
         # Persist the new trust score
         provider.trust_score = trust
@@ -133,15 +133,15 @@ class TrustEngine:
         return {
             "trust_score": trust,
             "components": {
-                "completion_ratio": round(cr, 4),
-                "complaint_ratio": round(cpr, 4),
-                "normalized_rating": round(norm_rating, 4),
+                "completion_ratio": float(round(cr, 4)),  # type: ignore
+                "complaint_ratio": float(round(cpr, 4)),  # type: ignore
+                "normalized_rating": float(round(norm_rating, 4)),  # type: ignore
                 "verification_bonus": vb,
-                "consistency_score": round(consistency, 4),
-                "escalation_penalty": round(ep, 4),
+                "consistency_score": float(round(consistency, 4)),  # type: ignore
+                "escalation_penalty": float(round(ep, 4)),  # type: ignore
             },
             "total_requests": stats["total_requests"],
-            "months_inactive": round(months_inactive, 1),
+            "months_inactive": float(round(months_inactive, 1)),  # type: ignore
             "is_new_provider": False,
         }
 

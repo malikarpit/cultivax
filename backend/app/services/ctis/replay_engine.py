@@ -7,18 +7,18 @@ from its ordered action logs, with incremental snapshot support.
 TDD Section 4.4 | MSDD 1.18 (Failure Recovery)
 """
 
-from sqlalchemy.orm import Session
-from sqlalchemy import asc
+from sqlalchemy.orm import Session  # type: ignore
+from sqlalchemy import asc  # type: ignore
 from uuid import UUID
 from datetime import datetime, timezone
 from typing import Optional
 import logging
 
-from app.models.crop_instance import CropInstance
-from app.models.action_log import ActionLog
-from app.models.snapshot import CropInstanceSnapshot
-from app.models.deviation import DeviationProfile
-from app.models.event_log import EventLog
+from app.models.crop_instance import CropInstance  # type: ignore
+from app.models.action_log import ActionLog  # type: ignore
+from app.models.snapshot import CropInstanceSnapshot  # type: ignore
+from app.models.deviation import DeviationProfile  # type: ignore
+from app.models.event_log import EventLog  # type: ignore
 
 logger = logging.getLogger(__name__)
 
