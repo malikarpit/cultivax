@@ -2,15 +2,21 @@
 Action Service
 
 Business logic for action logging with chronological validation.
+Publishes ActionLogged event after successful insert (Day 13 integration).
 """
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session  # type: ignore
 from uuid import UUID
 from datetime import date
+import logging
 
-from app.models.action_log import ActionLog
-from app.models.crop_instance import CropInstance
-from app.schemas.crop_instance import ActionLogCreate
+from app.models.action_log import ActionLog  # type: ignore
+from app.models.crop_instance import CropInstance  # type: ignore
+from app.models.event_log import EventLog  # type: ignore
+from app.schemas.crop_instance import ActionLogCreate  # type: ignore
+from app.services.ctis.state_machine import CropStateMachine, BLOCKED_STATES  # type: ignore
+
+logger = logging.getLogger(__name__)
 
 
 class ActionService:
@@ -27,6 +33,9 @@ class ActionService:
         1. effective_date >= crop.sowing_date
         2. effective_date >= last_action.effective_date (same crop)
         3. Idempotency key must be unique if provided
+        
+        After insert, publishes an ActionLogged event for the
+        Event Dispatcher → Replay Engine pipeline (Day 13).
         """
 
         # Get crop and verify ownership
@@ -39,9 +48,12 @@ class ActionService:
         if not crop:
             raise PermissionError("Crop not found or not owned by you")
 
-        # Check crop is in an actionable state
-        if crop.state in ("Closed", "Archived"):
-            raise ValueError(f"Cannot log actions on crop in '{crop.state}' state")
+        # Check crop is in an actionable state (uses State Machine)
+        if crop.state in BLOCKED_STATES:
+            raise ValueError(
+                f"Cannot log actions on crop in '{crop.state}' state. "
+                f"{'Admin must resolve RecoveryRequired state.' if crop.state == 'RecoveryRequired' else ''}"
+            )
 
         # Rule 1: effective_date >= sowing_date
         if data.effective_date < crop.sowing_date:
@@ -90,6 +102,26 @@ class ActionService:
         # Activate crop if still in Created state
         if crop.state == "Created":
             crop.state = "Active"
+
+        # Publish ActionLogged event for Replay Engine pipeline (Day 13)
+        event = EventLog(
+            event_type="ActionLogged",
+            source="ActionService",
+            entity_type="CropInstance",
+            entity_id=str(crop_id),
+            payload={
+                "crop_instance_id": str(crop_id),
+                "action_type": data.action_type,
+                "effective_date": str(data.effective_date),
+                "category": data.category,
+            },
+        )
+        self.db.add(event)
+
+        logger.info(
+            f"Action logged: {data.action_type} on crop {crop_id}, "
+            f"ActionLogged event published"
+        )
 
         self.db.commit()
         self.db.refresh(action)
