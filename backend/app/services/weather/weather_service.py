@@ -101,7 +101,7 @@ class WeatherService:
         risk_score = self._compute_risk_score(weather)
 
         result = {
-            "weather_risk_score": round(risk_score, 4),
+            "weather_risk_score": float(round(risk_score, 4)),  # type: ignore
             "weather_data": weather.to_dict(),
             "alerts": self._generate_alerts(weather),
         }
