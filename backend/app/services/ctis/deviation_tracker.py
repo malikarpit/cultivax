@@ -37,7 +37,7 @@ class DeviationUpdate:
         last_days: int,
     ):
         self.consecutive_count = consecutive_count
-        self.trend_slope = round(trend_slope, 4)
+        self.trend_slope = float(round(trend_slope, 4))  # type: ignore
         self.is_recurring = is_recurring
         self.cumulative_days = cumulative_days
         self.last_type = last_type

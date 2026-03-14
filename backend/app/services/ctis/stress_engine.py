@@ -107,20 +107,20 @@ class StressEngine:
         new_stress = max(STRESS_MIN, min(STRESS_MAX, new_stress))
 
         result = {
-            "new_stress": round(new_stress, 4),
-            "previous_stress": round(previous_stress, 4),
-            "raw_signal": round(raw_signal, 4),
-            "effective_signal": round(effective_signal, 4),
-            "confidence_applied": round(confidence, 4),
-            "delta": round(new_stress - previous_stress, 4),
+            "new_stress": float(round(new_stress, 4)),  # type: ignore
+            "previous_stress": float(round(previous_stress, 4)),  # type: ignore
+            "raw_signal": float(round(raw_signal, 4)),  # type: ignore
+            "effective_signal": float(round(effective_signal, 4)),  # type: ignore
+            "confidence_applied": float(round(confidence, 4)),  # type: ignore
+            "delta": float(round(new_stress - previous_stress, 4)),  # type: ignore
             "was_clamped": was_clamped,
             "signal_breakdown": {
-                "backend_ml": round(backend_ml * SIGNAL_WEIGHTS["backend_ml"], 4),
-                "weather_risk": round(weather_risk * SIGNAL_WEIGHTS["weather_risk"], 4),
-                "deviation_penalty": round(
+                "backend_ml": float(round(backend_ml * SIGNAL_WEIGHTS["backend_ml"], 4)),  # type: ignore
+                "weather_risk": float(round(weather_risk * SIGNAL_WEIGHTS["weather_risk"], 4)),  # type: ignore
+                "deviation_penalty": float(round(  # type: ignore
                     deviation_penalty * SIGNAL_WEIGHTS["deviation_penalty"], 4
-                ),
-                "edge_signal": round(edge_signal * SIGNAL_WEIGHTS["edge_signal"], 4),
+                )),
+                "edge_signal": float(round(edge_signal * SIGNAL_WEIGHTS["edge_signal"], 4)),  # type: ignore
             },
         }
 
@@ -144,4 +144,4 @@ class StressEngine:
         risk_index = weather_weight * weather_risk + farmer_weight * stress_score
         """
         risk = weather_weight * weather_risk + farmer_weight * stress_score
-        return max(0.0, min(1.0, round(risk, 4)))
+        return max(0.0, min(1.0, float(round(risk, 4))))  # type: ignore

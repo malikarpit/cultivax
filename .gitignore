@@ -72,3 +72,6 @@ docs/important documentation/extracted_pdfkit/
 build_history.sh
 
 .docs
+# Workflow PDF
+workflow.pdf
+docs/important documentation/workflow.pdf
