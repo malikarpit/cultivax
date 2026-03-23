@@ -30,6 +30,16 @@ from app.models.labor import Labor
 from app.models.service_request_event import ServiceRequestEvent
 from app.models.pest_alert_history import PestAlertHistory
 from app.models.crop_rule_template import CropRuleTemplate
+from app.models.alert import Alert
+from app.models.recommendation import Recommendation
+from app.models.ml_feedback import MLFeedback
+from app.models.system_health import SystemHealth
+from app.models.market_price import MarketPrice
+from app.models.deviation_archive import DeviationArchive
+from app.models.backup_log import BackupLog
+from app.models.land_parcel import LandParcel
+from app.models.whatsapp_session import WhatsAppSession
+from app.models.farmer_audit import FarmerAudit
 
 __all__ = [
     "Base",
@@ -59,4 +69,14 @@ __all__ = [
     "RegionalCluster",
     "PestAlertHistory",
     "CropRuleTemplate",
+    "Alert",
+    "Recommendation",
+    "MLFeedback",
+    "SystemHealth",
+    "MarketPrice",
+    "DeviationArchive",
+    "BackupLog",
+    "LandParcel",
+    "WhatsAppSession",
+    "FarmerAudit",
 ]
