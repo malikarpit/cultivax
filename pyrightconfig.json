@@ -1,0 +1,15 @@
+{
+  "executionEnvironments": [
+    {
+      "root": "backend",
+      "extraPaths": ["backend"]
+    }
+  ],
+  "include": ["backend/**/*.py"],
+  "venvPath": "backend",
+  "venv": "venv",
+  "pythonVersion": "3.11",
+  "reportMissingImports": "none",
+  "reportMissingModuleSource": "none",
+  "reportGeneralTypeIssues": "warning"
+}
