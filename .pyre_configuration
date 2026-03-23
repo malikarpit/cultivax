@@ -1,0 +1,17 @@
+{
+    "source_directories": [
+        {"root": "backend", "subdirectory": ""}
+    ],
+    "search_path": [
+        "backend/venv/lib/python3.11/site-packages"
+    ],
+    "strict": false,
+    "exclude": [
+        ".*/\\.git/.*",
+        ".*/node_modules/.*",
+        ".*/alembic/.*",
+        ".*/__pycache__/.*",
+        ".*/frontend/.*"
+    ],
+    "workers": 4
+}
