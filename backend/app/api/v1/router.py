@@ -25,6 +25,7 @@ from app.api.v1.alerts import router as alerts_router
 from app.api.v1.recommendations import router as recommendations_router
 from app.api.v1.sync import router as sync_router
 from app.api.v1.reviews import router as reviews_router
+from app.api.v1.labor import router as labor_router
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -45,3 +46,4 @@ api_router.include_router(alerts_router)
 api_router.include_router(recommendations_router)
 api_router.include_router(sync_router)
 api_router.include_router(reviews_router)
+api_router.include_router(labor_router)

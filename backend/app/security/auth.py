@@ -62,3 +62,39 @@ def verify_token(token: str) -> Optional[Dict]:
         return payload
     except JWTError:
         return None
+
+
+def create_refresh_token(data: Dict) -> str:
+    """
+    Create a long-lived JWT refresh token (MSDD 11.4.1).
+
+    Args:
+        data: Payload dict. Must include 'sub' (user_id).
+
+    Returns:
+        Encoded JWT refresh token string.
+    """
+    to_encode = data.copy()
+    expire = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    to_encode.update({
+        "exp": expire,
+        "iat": datetime.now(timezone.utc),
+        "token_type": "refresh",
+    })
+    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+
+def verify_refresh_token(token: str) -> Optional[Dict]:
+    """
+    Verify a refresh token — must have token_type='refresh'.
+
+    Returns:
+        Decoded payload dict, or None if invalid/expired/wrong type.
+    """
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        if payload.get("token_type") != "refresh":
+            return None
+        return payload
+    except JWTError:
+        return None
