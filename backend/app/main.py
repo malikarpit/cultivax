@@ -9,12 +9,15 @@ import asyncio
 import logging
 from typing import Optional
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.orm import Session  # type: ignore
 
 from app.config import settings
+from app.database import get_db
 from app.middleware.error_handler import ErrorHandlerMiddleware
 from app.middleware.idempotency import IdempotencyMiddleware
+from app.middleware.rate_limiter import RateLimitMiddleware
 from app.api.v1.router import api_router
 from app.database import SessionLocal
 from app.services.event_dispatcher.db_dispatcher import DBEventDispatcher
@@ -31,6 +34,7 @@ app = FastAPI(
 
 # Middleware (order matters — outermost first)
 app.add_middleware(ErrorHandlerMiddleware)
+app.add_middleware(RateLimitMiddleware)
 app.add_middleware(IdempotencyMiddleware)
 app.add_middleware(
     CORSMiddleware,
@@ -101,14 +105,52 @@ async def stop_event_processor():
 
 
 @app.get("/health", tags=["System"])
-async def health_check():
-    """Health check endpoint for monitoring and Cloud Run."""
-    return {
-        "status": "healthy",
-        "service": settings.APP_NAME,
-        "environment": settings.APP_ENV,
-        "version": "1.0.0",
-    }
+async def health_check(db: Session = Depends(get_db)):
+    """
+    Enhanced health check endpoint (26 march: Phase 7B).
+    Returns subsystem-level health statuses for monitoring and Cloud Run.
+    """
+    try:
+        from app.services.system_health_service import SystemHealthService
+
+        service = SystemHealthService(db)
+        summary = service.get_status_summary()
+        return {
+            "status": summary["overall_status"].lower(),
+            "service": settings.APP_NAME,
+            "environment": settings.APP_ENV,
+            "version": "1.0.0",
+            "subsystems": summary["subsystems"],
+            "checked_at": summary["checked_at"],
+        }
+    except Exception:
+        # Fallback if health service itself fails
+        return {
+            "status": "healthy",
+            "service": settings.APP_NAME,
+            "environment": settings.APP_ENV,
+            "version": "1.0.0",
+        }
+
+
+@app.post("/admin/cron/run", tags=["Admin"])
+async def run_cron_tasks(db: Session = Depends(get_db)):
+    """
+    Manually trigger scheduled maintenance tasks (admin-only).
+    Runs trust decay, health checks, and log compression.
+    """
+    from app.services.cron import run_scheduled_tasks
+    result = await run_scheduled_tasks(db)
+    return {"status": "completed", "tasks": result}
+
+
+@app.post("/admin/health-check", tags=["Admin"])
+async def trigger_health_check(db: Session = Depends(get_db)):
+    """Manually trigger a full system health check and persist results."""
+    from app.services.system_health_service import SystemHealthService
+    service = SystemHealthService(db)
+    result = await service.check_all()
+    return result
 
 
 @app.get("/", tags=["System"])

@@ -1,10 +1,17 @@
 """
-DB-Backed Event Dispatcher
+DB-Backed Event Dispatcher v2
 
 Concrete event dispatcher using PostgreSQL event_log table.
 Implements idempotent publish, partition-keyed FIFO processing,
 SELECT FOR UPDATE SKIP LOCKED concurrency, and background
 polling loop with crash recovery.
+
+Hardening:
+  - Priority-based processing (MSDD 3.8)
+  - Schema versioning (Patch 1.1)
+  - Correlation ID propagation (Patch 1.2)
+  - Event expiry policy (MSDD Enh Sec 3)
+  - Circuit breaker per handler (Ed Enh 7)
 """
 
 import asyncio
@@ -24,9 +31,24 @@ from app.services.event_dispatcher.handlers import get_handler
 
 logger = logging.getLogger(__name__)
 
+# Event expiry config (MSDD Enh Sec 3)
+DEFAULT_MAX_AGE_MINUTES = 60  # Default max processing age
+EVENT_MAX_AGE_OVERRIDES = {
+    "AlertCreated": 30,
+    "WeatherUpdated": 15,
+    "MediaAnalyzed": 120,
+}
+
+# Circuit breaker config (Ed Enh 7)
+CIRCUIT_BREAKER_THRESHOLD = 5  # Consecutive failures to trip
+CIRCUIT_BREAKER_RESET_SECONDS = 300  # 5 minutes
+
 
 class DBEventDispatcher(EventDispatcherInterface):
     """DB-backed event dispatcher with idempotency and partitioned FIFO."""
+
+    # Class-level circuit breaker state (per handler)
+    _circuit_state: Dict[str, Dict[str, Any]] = {}
 
     def __init__(self, db: Session):
         self.db = db
@@ -48,10 +70,13 @@ class DBEventDispatcher(EventDispatcherInterface):
         entity_id: UUID,
         payload: Dict[str, Any],
         partition_key: Optional[UUID] = None,
+        correlation_id: Optional[str] = None,
+        schema_version: int = 1,
     ) -> UUID:
         """
         Publish an event to the event_log table.
         Idempotent: duplicate event_hash is silently skipped.
+        Supports correlation ID propagation (Patch 1.2) and schema versioning (Patch 1.1).
         """
         event_hash = self._compute_event_hash(event_type, entity_id, payload)
 
@@ -71,7 +96,14 @@ class DBEventDispatcher(EventDispatcherInterface):
             partition_key=partition_key or entity_id,
             event_hash=event_hash,
             status="Created",
+            # Phase 4B: schema versioning (Patch 1.1)
+            schema_version=schema_version,
         )
+
+        # Correlation ID propagation (Patch 1.2)
+        if correlation_id:
+            event.payload = {**payload, "_correlation_id": correlation_id}
+
         self.db.add(event)
         self.db.commit()
         self.db.refresh(event)
@@ -85,16 +117,32 @@ class DBEventDispatcher(EventDispatcherInterface):
         Processes in FIFO order per partition_key.
         """
         # Get oldest pending events, locking rows
+        # Phase 4B: Priority-based processing (MSDD 3.8)
         events = self.db.query(EventLog).filter(
             EventLog.status == "Created",
         ).order_by(
-            EventLog.partition_key,
-            EventLog.created_at,
+            EventLog.priority.desc(),     # Higher priority first
+            EventLog.created_at.asc(),    # Then oldest first (FIFO)
         ).limit(batch_size).with_for_update(skip_locked=True).all()
 
         processed_count = 0
         for event in events:
             try:
+                # Event expiry check (MSDD Enh Sec 3)
+                if self._is_expired(event):
+                    event.status = "DeadLetter"
+                    event.failure_reason = "Event expired (exceeded max processing age)"
+                    logger.warning(f"Event {event.id} expired, moved to DeadLetter")
+                    continue
+
+                # Circuit breaker check (Ed Enh 7)
+                if self._is_circuit_open(event.event_type):
+                    event.status = "Created"  # Leave for later retry
+                    logger.warning(
+                        f"Circuit breaker OPEN for {event.event_type}, skipping event {event.id}"
+                    )
+                    continue
+
                 event.status = "Processing"
                 self.db.flush()
 
@@ -109,8 +157,14 @@ class DBEventDispatcher(EventDispatcherInterface):
                 event.processed_at = datetime.now(timezone.utc)
                 processed_count += 1
 
+                # Reset circuit breaker on success
+                self._record_success(event.event_type)
+
             except Exception as e:
                 event.retry_count += 1
+                # Record failure for circuit breaker
+                self._record_failure(event.event_type)
+
                 if event.retry_count >= event.max_retries:
                     event.status = "DeadLetter"
                     event.failure_reason = str(e)
@@ -201,3 +255,67 @@ class DBEventDispatcher(EventDispatcherInterface):
                 break
 
         logger.info("Background event processor stopped")
+
+    # --- Phase 4B: Event Expiry (MSDD Enh Sec 3) ---
+
+    def _is_expired(self, event: EventLog) -> bool:
+        """Check if an event has exceeded its max processing age."""
+        if not event.created_at:
+            return False
+        max_age = EVENT_MAX_AGE_OVERRIDES.get(
+            event.event_type, DEFAULT_MAX_AGE_MINUTES
+        )
+        age_minutes = (
+            datetime.now(timezone.utc) - event.created_at.replace(tzinfo=timezone.utc)
+        ).total_seconds() / 60
+        return age_minutes > max_age
+
+    # --- Phase 4B: Circuit Breaker (Ed Enh 7) ---
+
+    @classmethod
+    def _is_circuit_open(cls, event_type: str) -> bool:
+        """Check if the circuit breaker is tripped for a given handler."""
+        state = cls._circuit_state.get(event_type)
+        if not state:
+            return False
+        if state.get("open", False):
+            # Check if cooldown has elapsed
+            tripped_at = state.get("tripped_at")
+            if tripped_at:
+                elapsed = (datetime.now(timezone.utc) - tripped_at).total_seconds()
+                if elapsed >= CIRCUIT_BREAKER_RESET_SECONDS:
+                    # Reset the breaker (half-open → allow retry)
+                    state["open"] = False
+                    state["consecutive_failures"] = 0
+                    logger.info(f"Circuit breaker RESET for {event_type}")
+                    return False
+            return True
+        return False
+
+    @classmethod
+    def _record_failure(cls, event_type: str):
+        """Record a handler failure for circuit breaker tracking."""
+        if event_type not in cls._circuit_state:
+            cls._circuit_state[event_type] = {
+                "consecutive_failures": 0,
+                "open": False,
+                "tripped_at": None,
+            }
+        state = cls._circuit_state[event_type]
+        state["consecutive_failures"] = state.get("consecutive_failures", 0) + 1
+
+        if state["consecutive_failures"] >= CIRCUIT_BREAKER_THRESHOLD:
+            state["open"] = True
+            state["tripped_at"] = datetime.now(timezone.utc)
+            logger.error(
+                f"Circuit breaker TRIPPED for {event_type} "
+                f"after {state['consecutive_failures']} consecutive failures"
+            )
+
+    @classmethod
+    def _record_success(cls, event_type: str):
+        """Record a handler success — resets consecutive failure count."""
+        if event_type in cls._circuit_state:
+            cls._circuit_state[event_type]["consecutive_failures"] = 0
+            cls._circuit_state[event_type]["open"] = False
+
