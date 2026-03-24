@@ -5,7 +5,7 @@ Service providers in the SOE marketplace.
 TDD Section 2.5.1 + crop_specializations (Patch Sec 2 Enhancement).
 """
 
-from sqlalchemy import Column, String, Float, Boolean, ForeignKey, Text
+from sqlalchemy import Column, String, Float, Integer, Boolean, ForeignKey, Text
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 
@@ -36,6 +36,18 @@ class ServiceProvider(BaseModel):
     trust_score = Column(Float, default=0.5, nullable=False)
     is_verified = Column(Boolean, default=False, nullable=False)
     verified_by = Column(UUID(as_uuid=True), nullable=True)
+
+    # Trust formula inputs (MSDD 2.4.1, 5.5.1)
+    complaint_count = Column(Integer, default=0, nullable=False)
+    completion_count = Column(Integer, default=0, nullable=False)
+    resolution_score = Column(Float, default=0.0, nullable=False)
+
+    # Contact info (MSDD 2.4.1)
+    contact_name = Column(String(255), nullable=True)
+    contact_phone = Column(String(50), nullable=True)
+
+    # Flags
+    is_flagged = Column(Boolean, default=False, nullable=False)
 
     # Status
     is_suspended = Column(Boolean, default=False, nullable=False)

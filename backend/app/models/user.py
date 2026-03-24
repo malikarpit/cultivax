@@ -6,7 +6,7 @@ Fields from TDD Section 2.3.1 + soft delete (MSDD 5.10)
 + accessibility_settings (MSDD 7.14) + is_onboarded (Patch Sec 10).
 """
 
-from sqlalchemy import Column, String, Boolean, Text
+from sqlalchemy import Column, String, Boolean, DateTime, Text
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 
@@ -35,6 +35,9 @@ class User(BaseModel):
 
     # Account status
     is_active = Column(Boolean, default=True, nullable=False)
+
+    # Soft delete timestamp (MSDD 5.10, TDD 2.2.1)
+    deleted_at = Column(DateTime, nullable=True)
 
     # Relationships
     crop_instances = relationship("CropInstance", back_populates="farmer", lazy="dynamic")
