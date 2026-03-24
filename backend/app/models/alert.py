@@ -20,10 +20,20 @@ class Alert(BaseModel):
     user_id = Column(UUID(as_uuid=True), nullable=True, index=True)
     alert_type = Column(String(50), nullable=False, index=True)
     severity = Column(String(20), nullable=False, default="info")  # info/warning/critical
+
+    # Urgency level (MSDD Enh 14.2)
+    urgency_level = Column(String(20), default="Medium")  # Low | Medium | High | Critical
+
     message = Column(Text, nullable=False)
     details = Column(JSONB, nullable=True)
+
+    # Source event tracking (MSDD Enh 14.2)
+    source_event_id = Column(UUID(as_uuid=True), nullable=True)
+
+    # Alert lifecycle
     is_acknowledged = Column(Boolean, default=False, nullable=False)
     acknowledged_at = Column(DateTime(timezone=True), nullable=True)
+    expires_at = Column(DateTime(timezone=True), nullable=True)  # Staleness prevention
 
     def __repr__(self):
         return f"<Alert(type={self.alert_type}, severity={self.severity})>"

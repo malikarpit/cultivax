@@ -5,7 +5,7 @@ Stores uploaded media file metadata.
 TDD Section 2.7.1. Scheduled deletion after 3 months (MSDD 11.12).
 """
 
-from sqlalchemy import Column, String, Float, Integer, DateTime, ForeignKey
+from sqlalchemy import Column, String, Float, Integer, Boolean, DateTime, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 
 from app.models.base import BaseModel
@@ -39,6 +39,12 @@ class MediaFile(BaseModel):
     extracted_features = Column(JSONB, default=dict)
     stress_probability = Column(Float, nullable=True)
     confidence_score = Column(Float, nullable=True)
+
+    # Additional media intelligence fields (TDD 2.7.1, Media Enh 2/6/7)
+    image_quality_score = Column(Float, nullable=True)  # Blur/brightness validated
+    pest_probability = Column(Float, nullable=True)  # Separate pest detection
+    analysis_source = Column(String(20), nullable=True)  # backend | edge
+    geo_verified = Column(Boolean, default=False, nullable=False)  # EXIF spatial validation
 
     # Video-specific
     frame_count = Column(Integer, nullable=True)

@@ -30,6 +30,18 @@ class EventLog(BaseModel):
     # Partition key for FIFO ordering per crop
     partition_key = Column(UUID(as_uuid=True), nullable=False, index=True)
 
+    # Module routing (MSDD 3.3.1) — which module processes this event
+    module_target = Column(String(50), nullable=True)  # ctis | soe | ml | media
+
+    # Priority (MSDD 3.8) — higher = processed first
+    priority = Column(Integer, default=5, nullable=False)  # 1=Low, 5=Normal, 10=High, 99=Emergency
+
+    # Chain integrity (MSDD Enh 2)
+    chain_hash = Column(String(255), nullable=True)
+
+    # Schema versioning (Patch Sec 1.1) — for upcaster compatibility
+    schema_version = Column(Integer, default=1, nullable=False)
+
     # Idempotency — UNIQUE hash prevents duplicate event processing
     event_hash = Column(String(255), unique=True, nullable=False)
 

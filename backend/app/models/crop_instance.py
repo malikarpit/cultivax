@@ -5,7 +5,7 @@ Core CTIS table. Represents one farmer's one crop lifecycle.
 Fields from TDD Section 2.3.1.
 """
 
-from sqlalchemy import Column, String, Float, Date, Integer, ForeignKey
+from sqlalchemy import Column, String, Float, Date, Integer, Boolean, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 
@@ -35,6 +35,10 @@ class CropInstance(BaseModel):
     stage = Column(String(100), nullable=True)
     current_day_number = Column(Integer, default=0)
 
+    # Baseline tracking (MSDD 1.3.1) — tracks expected progress independently
+    baseline_day_number = Column(Integer, default=0)
+    baseline_growth_stage = Column(String(100), nullable=True)
+
     # Risk & stress
     stress_score = Column(Float, default=0.0, nullable=False)
     risk_index = Column(Float, default=0.0, nullable=False)
@@ -61,6 +65,15 @@ class CropInstance(BaseModel):
     # ML cache (Patch Sec 4 Enhancement)
     last_risk_probability = Column(Float, nullable=True)
     last_inference_at = Column(String(50), nullable=True)
+
+    # Archive flag (MSDD 1.16, 5.10) — separate from soft delete
+    is_archived = Column(Boolean, default=False, nullable=False)
+
+    # Tamper detection (TDD 2.3.1)
+    event_chain_hash = Column(String(255), nullable=True)
+
+    # Projected harvest (MSDD 1.10) — computed and cached
+    projected_harvest_date = Column(Date, nullable=True)
 
     # Metadata
     metadata_extra = Column(JSONB, default=dict)

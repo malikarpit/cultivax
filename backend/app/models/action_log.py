@@ -6,7 +6,7 @@ Fields from TDD Section 2.3.2.
 Chronological integrity enforced at service layer.
 """
 
-from sqlalchemy import Column, String, Date, Integer, Float, ForeignKey, DateTime
+from sqlalchemy import Column, String, Date, Integer, Float, Boolean, ForeignKey, DateTime
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
@@ -29,6 +29,9 @@ class ActionLog(BaseModel):
     action_type = Column(String(100), nullable=False, index=True)
     # irrigation | fertilizer | pesticide | weeding | harvest | observation | media_upload
 
+    # Subtype (MSDD 1.6.1) — e.g. fertilizer → urea/DAP/organic
+    action_subtype = Column(String(100), nullable=True)
+
     effective_date = Column(Date, nullable=False)
 
     # Category (MSDD 1.6.3)
@@ -37,6 +40,23 @@ class ActionLog(BaseModel):
         nullable=False,
         default="Operational",
     )  # Timeline-Critical | Operational | Informational
+
+    # Impact type (MSDD 1.6.3, TDD 2.3.2)
+    action_impact_type = Column(
+        String(50), nullable=False, default="Operational"
+    )  # Structural | Stage-Affecting | Stress-Affecting | Operational | Informational
+
+    # Source channel (MSDD 1.6.1)
+    source = Column(String(50), nullable=False, default="web")  # web | whatsapp | offline | voice
+
+    # Admin override (MSDD 1.6.1)
+    is_override = Column(Boolean, default=False, nullable=False)
+
+    # Rule version at action time (MSDD 1.6.1)
+    rule_version_at_action = Column(String(100), nullable=True)
+
+    # Orphan action policy (Patch Sec 1.7) — set True if action predates sowing date
+    is_orphaned = Column(Boolean, default=False, nullable=False)
 
     # Metadata
     metadata_json = Column(JSONB, default=dict)
