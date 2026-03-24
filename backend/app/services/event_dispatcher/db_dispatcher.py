@@ -3,10 +3,11 @@ DB-Backed Event Dispatcher
 
 Concrete event dispatcher using PostgreSQL event_log table.
 Implements idempotent publish, partition-keyed FIFO processing,
-and SELECT FOR UPDATE SKIP LOCKED concurrency.
-TDD Section 3.3–3.12.
+SELECT FOR UPDATE SKIP LOCKED concurrency, and background
+polling loop with crash recovery.
 """
 
+import asyncio
 import hashlib
 import json
 import logging
@@ -121,3 +122,82 @@ class DBEventDispatcher(EventDispatcherInterface):
 
         self.db.commit()
         return processed_count
+
+    @classmethod
+    def reset_stale_processing(cls, db: Session) -> int:
+        """
+        Crash recovery: reset events stuck in 'Processing' back to 'Created'.
+
+        On startup, any events left in 'Processing' status indicate the server
+        crashed mid-processing. These are safely reset for re-processing.
+        """
+        stale_events = db.query(EventLog).filter(
+            EventLog.status == "Processing",
+        ).all()
+
+        reset_count = 0
+        for event in stale_events:
+            event.status = "Created"
+            event.failure_reason = "Reset after server restart (crash recovery)"
+            reset_count += 1
+
+        if reset_count > 0:
+            db.commit()
+            logger.warning(
+                f"Crash recovery: reset {reset_count} stale Processing events to Created"
+            )
+
+        return reset_count
+
+    async def run_processing_loop(
+        self,
+        interval_seconds: float = 5.0,
+        shutdown_event: Optional[asyncio.Event] = None,
+    ) -> None:
+        """
+        Long-running async loop that polls for pending events.
+
+        Runs process_pending() at a configurable interval. Handles exceptions
+        gracefully to prevent the loop from crashing. Supports cancellation
+        via shutdown_event or asyncio.CancelledError.
+
+        Args:
+            interval_seconds: Polling interval in seconds (default 5.0).
+            shutdown_event: Optional asyncio.Event to signal graceful shutdown.
+        """
+        logger.info(
+            f"Background event processor started (interval={interval_seconds}s)"
+        )
+
+        while True:
+            # Check for shutdown signal
+            if shutdown_event and shutdown_event.is_set():
+                logger.info("Shutdown signal received, stopping event processor")
+                break
+
+            try:
+                processed = self.process_pending(batch_size=10)
+                if processed > 0:
+                    logger.info(f"Event processor cycle: processed {processed} events")
+            except Exception as e:
+                logger.error(f"Event processor cycle error: {e}", exc_info=True)
+
+            try:
+                if shutdown_event:
+                    # Wait with shutdown awareness
+                    try:
+                        await asyncio.wait_for(
+                            shutdown_event.wait(), timeout=interval_seconds
+                        )
+                        # If we get here, shutdown was signaled
+                        logger.info("Shutdown signal received during wait")
+                        break
+                    except asyncio.TimeoutError:
+                        pass  # Normal timeout, continue loop
+                else:
+                    await asyncio.sleep(interval_seconds)
+            except asyncio.CancelledError:
+                logger.info("Event processor task cancelled")
+                break
+
+        logger.info("Background event processor stopped")
