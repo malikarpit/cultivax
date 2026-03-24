@@ -1,12 +1,21 @@
 """
-Replay Engine v1 — Deterministic Crop Instance Replay
+Replay Engine v2 — Deterministic Crop Instance Replay
 
 The core CTIS algorithm. Recomputes a crop instance's entire state
 from its ordered action logs, with incremental snapshot support.
 
+Hardening:
+  - Orphan action handling (Patch 1.7)
+  - Baseline tracking (MSDD 1.3.1)
+  - Event chain hash (TDD 2.3.1)
+  - Replay timeout protection (CTIS Enh 8)
+
 TDD Section 4.4 | MSDD 1.18 (Failure Recovery)
 """
 
+import asyncio
+import hashlib
+import json
 from sqlalchemy.orm import Session  # type: ignore
 from sqlalchemy import asc  # type: ignore
 from uuid import UUID
@@ -29,6 +38,7 @@ logger = logging.getLogger(__name__)
 SNAPSHOT_INTERVAL = 10  # Create a snapshot every N applied actions
 STRESS_DECAY_FACTOR = 0.95  # Per-action stress decay (EMA smoothing)
 MAX_STRESS = 100.0
+REPLAY_TIMEOUT_SECONDS = 120  # Max time for a single replay (CTIS Enh 8)
 MAX_RISK = 1.0
 
 # Stage definitions mapped from rule templates (simplified for v1)
@@ -69,14 +79,18 @@ class ReplayEngine:
     def __init__(self, db: Session):
         self.db = db
 
-    async def replay_crop_instance(self, crop_instance_id: UUID) -> CropInstance:
+    async def replay_crop_instance(
+        self,
+        crop_instance_id: UUID,
+        timeout_seconds: float = REPLAY_TIMEOUT_SECONDS,
+    ) -> CropInstance:
         """
-        Full replay pipeline:
+        Full replay pipeline with timeout protection (CTIS Enh 8):
 
         1. Acquire row lock (SELECT FOR UPDATE) to prevent concurrent replay
         2. Load latest snapshot (if exists)
         3. Load ordered action_logs (after snapshot point)
-        4. For each action: validate → apply → update stress → compute risk → enforce drift
+        4. For each action: validate → skip orphans → apply → baseline → chain hash
         5. Update crop_instance row
         6. Create snapshot if threshold met
         7. Commit transaction
@@ -87,6 +101,22 @@ class ReplayEngine:
           - Log error, notify admin
           - Prevent further action logging until resolved
         """
+        try:
+            return await asyncio.wait_for(
+                self._do_replay(crop_instance_id),
+                timeout=timeout_seconds,
+            )
+        except asyncio.TimeoutError:
+            logger.error(
+                f"Replay TIMEOUT for crop {crop_instance_id} "
+                f"(exceeded {timeout_seconds}s)"
+            )
+            raise ReplayError(
+                f"Replay timed out after {timeout_seconds}s for crop {crop_instance_id}"
+            )
+
+    async def _do_replay(self, crop_instance_id: UUID) -> CropInstance:
+        """Internal replay implementation (wrapped by timeout)."""
 
         logger.info(f"Starting replay for crop_instance_id={crop_instance_id}")
 
@@ -125,12 +155,29 @@ class ReplayEngine:
                 self.db.commit()
                 return crop
 
-            # 4. Apply each action sequentially
+            # 4. Apply each action sequentially (with orphan detection)
             applied_count = 0
+            orphaned_count = 0
             for action in actions:
+                # Orphan detection (Patch 1.7): skip actions before sowing date
+                if self._is_orphaned_action(crop, action):
+                    action.is_orphaned = True
+                    action.applied_in_replay = "skipped"
+                    orphaned_count += 1
+                    continue
+
                 self._apply_action(crop, action, state)
                 action.applied_in_replay = "applied"
                 applied_count += 1
+
+                # Baseline tracking (MSDD 1.3.1)
+                self._update_baseline(crop, action, state)
+
+                # Event chain hash (TDD 2.3.1)
+                self._update_chain_hash(crop, action, state)
+
+            if orphaned_count > 0:
+                logger.info(f"Orphaned {orphaned_count} actions before sowing date")
 
             # 5. Write computed state back to crop_instance
             self._write_state_to_crop(crop, state)
@@ -208,6 +255,11 @@ class ReplayEngine:
             "consecutive_deviations": 0,
             "deviation_trend_slope": 0.0,
             "cumulative_deviation_days": 0,
+            # Baseline tracking (MSDD 1.3.1)
+            "baseline_day_number": 0,
+            "baseline_growth_stage": None,
+            # Chain hash (TDD 2.3.1)
+            "chain_hash": None,
         }
 
     def _load_actions(self, crop_instance_id: UUID, offset: int) -> list[ActionLog]:
@@ -313,6 +365,40 @@ class ReplayEngine:
             # Action is on-track, reset consecutive deviation counter
             state["consecutive_deviations"] = 0
 
+    def _is_orphaned_action(self, crop: CropInstance, action: ActionLog) -> bool:
+        """
+        Orphan action detection (Patch 1.7).
+        An action is orphaned if its effective_date is before the sowing date.
+        """
+        if not crop.sowing_date or not action.effective_date:
+            return False
+        return action.effective_date < crop.sowing_date
+
+    def _update_baseline(self, crop: CropInstance, action: ActionLog, state: dict):
+        """
+        Baseline tracking (MSDD 1.3.1).
+        Maintains expected (baseline) day number and growth stage
+        independently from actuals, for progress comparison.
+        """
+        if not crop.sowing_date or not action.effective_date:
+            return
+
+        # Baseline progresses linearly from sowing date
+        baseline_day = (action.effective_date - crop.sowing_date).days
+        state["baseline_day_number"] = max(state["baseline_day_number"], baseline_day)
+        state["baseline_growth_stage"] = self._compute_stage(baseline_day)
+
+    def _update_chain_hash(self, crop: CropInstance, action: ActionLog, state: dict):
+        """
+        Event chain hash computation (TDD 2.3.1).
+        Creates a tamper-detection chain: hash(prev_hash + action_data).
+        """
+        prev_hash = state.get("chain_hash") or ""
+        action_data = f"{action.id}:{action.action_type}:{action.effective_date}:{action.server_timestamp}"
+        raw = f"{prev_hash}:{action_data}"
+        new_hash = hashlib.sha256(raw.encode()).hexdigest()
+        state["chain_hash"] = new_hash
+
     def _write_state_to_crop(self, crop: CropInstance, state: dict):
         """Write the computed replay state back to the crop instance."""
         crop.stress_score = round(state["stress_score"], 4)
@@ -320,6 +406,13 @@ class ReplayEngine:
         crop.current_day_number = state["current_day_number"]
         crop.stage = state["stage"]
         crop.stage_offset_days = state["stage_offset_days"]
+
+        # Baseline tracking (MSDD 1.3.1)
+        crop.baseline_day_number = state.get("baseline_day_number", 0)
+        crop.baseline_growth_stage = state.get("baseline_growth_stage")
+
+        # Chain hash (TDD 2.3.1)
+        crop.event_chain_hash = state.get("chain_hash")
 
         # Auto-transition state based on risk
         if crop.state == "Created":
