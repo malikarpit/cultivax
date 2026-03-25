@@ -120,8 +120,11 @@ class TrustEngine:
         # Clamp to [0, 1]
         trust = max(0.0, min(1.0, float(round(trust, 4))))  # type: ignore
 
-        # Persist the new trust score
+        # Persist the new trust score and counter fields (MSDD 2.4.1)
         provider.trust_score = trust
+        provider.completion_count = stats["completed_requests"]
+        provider.complaint_count = len(stats["complaints"])
+        provider.resolution_score = round(cr * (1.0 - cpr), 4)
         self.db.commit()
 
         logger.info(
