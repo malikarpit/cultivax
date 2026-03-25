@@ -130,18 +130,85 @@ class MediaAnalysisService:
 
         # Update DB record
         media.analysis_status = "Analyzed"
-        media.analysis_result = result.to_dict()
+        media.extracted_features = result.to_dict()
+
+        # 26 march: Phase 4E: Image quality validation (Media Enh 2)
+        quality_score = self._compute_image_quality(media)
+        media.image_quality_score = quality_score
+
+        # 26 march: Phase 4E: Pest probability extraction
+        pest_labels = [lbl for lbl in labels if "pest" in lbl.get("label", "")]
+        if pest_labels:
+            media.pest_probability = float(pest_labels[0]["score"])
+
+        # Phase 4E: Analysis source tracking
+        media.analysis_source = "backend"
+
         self.db.commit()
 
         logger.info(
             f"Media analyzed: {media_id} — type={analysis_type}, "
-            f"top_label={labels[0]['label']}, confidence={top_confidence:.2f}"
+            f"top_label={labels[0]['label']}, confidence={top_confidence:.2f}, "
+            f"quality={quality_score:.2f}"
         )
 
         # --- Emit event (MediaAnalyzed) ---
         self._emit_event(media, result)
 
         return result
+
+    def _compute_image_quality(self, media: MediaFile) -> float:
+        """
+        Image quality validation (Media Enh 2).
+        Computes a quality score based on blur and brightness estimation.
+        In production: Laplacian variance for blur, histogram analysis for brightness.
+        Current: stub returning estimated quality based on file metadata.
+        """
+        quality = 0.85  # Default good quality
+
+        # File size heuristic: very small images likely low quality
+        if media.file_size_bytes and media.file_size_bytes < 50000:  # < 50KB
+            quality -= 0.3
+
+        # Video files get slightly lower quality score (frame extraction needed)
+        if media.file_type == "video":
+            quality -= 0.1
+
+        return max(0.0, min(1.0, quality))
+
+    @staticmethod
+    def stress_escalation_guardrail(
+        current_stress: float,
+        new_stress: float,
+        confidence: float = 1.0,
+        max_daily_increase: float = 15.0,
+    ) -> float:
+        """
+        Stress escalation guardrail (Media Enh 5).
+        Caps maximum daily stress increase and applies confidence-weighted smoothing.
+
+        Formula: smoothed = current + min(delta, max_daily_increase) × confidence
+
+        Args:
+            current_stress: Current stress score
+            new_stress: Proposed new stress score
+            confidence: Confidence in the analysis (0-1)
+            max_daily_increase: Maximum allowed daily stress increase
+
+        Returns:
+            Guardrail-applied stress score
+        """
+        delta = new_stress - current_stress
+
+        if delta > 0:
+            # Cap the increase
+            capped_delta = min(delta, max_daily_increase)
+            # Apply confidence weighting
+            smoothed_delta = capped_delta * confidence
+            return round(current_stress + smoothed_delta, 4)
+
+        # Stress decreases are allowed without guardrail
+        return round(new_stress, 4)
 
     def _emit_event(self, media: MediaFile, result: AnalysisResult):
         """

@@ -99,13 +99,64 @@ class RiskPrediction:
 
 class RiskPredictor:
     """
-    Rule-based risk predictor (v1 stub).
+    Rule-based risk predictor (v1 stub) with ML safety guards.
 
     Uses stress_score, deviation metrics, and stage progression
     to compute risk probability. No trained model — pure heuristics.
 
+    26 march: Phase 4D Safety Guards:
+      - Small dataset safeguard (Patch 3.4): fallback if < 200 samples
+      - ML kill switch (ML Enh 8): respects feature flag
+      - Yield biological cap (ML 4.9): cap yield predictions at crop-specific ceiling
+
     Will be swapped with a real ML model when training data is available.
     """
+
+    # Minimum training samples for ML model activation (Patch 3.4)
+    MIN_TRAINING_SAMPLES = 200
+
+    # Biological yield caps per crop type (quintals/acre) (ML 4.9)
+    YIELD_BIO_CAPS = {
+        "wheat": 25.0,
+        "rice": 30.0,
+        "cotton": 12.0,
+        "sugarcane": 400.0,
+        "maize": 35.0,
+        "soybean": 15.0,
+        "default": 50.0,
+    }
+
+    def is_ml_safe(self, training_samples: int = 0, ml_enabled: bool = True) -> bool:
+        """
+        Check if ML prediction is safe to use (Patch 3.4 + ML Enh 8).
+        Returns False if kill switch is off or insufficient training data.
+        """
+        if not ml_enabled:
+            logger.info("ML kill switch is OFF — using rule-based fallback")
+            return False
+        if training_samples < self.MIN_TRAINING_SAMPLES:
+            logger.info(
+                f"Insufficient training data ({training_samples} < {self.MIN_TRAINING_SAMPLES}) "
+                "— using rule-based fallback"
+            )
+            return False
+        return True
+
+    def cap_yield_prediction(
+        self, predicted_yield: float, crop_type: str = "default"
+    ) -> float:
+        """
+        Apply biological yield cap (ML 4.9).
+        Prevents unrealistic yield predictions beyond crop-specific ceilings.
+        """
+        cap = self.YIELD_BIO_CAPS.get(crop_type.lower(), self.YIELD_BIO_CAPS["default"])
+        if predicted_yield > cap:
+            logger.warning(
+                f"Yield prediction {predicted_yield:.2f} exceeds bio cap {cap:.2f} "
+                f"for {crop_type} — capping"
+            )
+            return cap
+        return predicted_yield
 
     def predict_risk(
         self,
