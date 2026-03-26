@@ -11,12 +11,21 @@ import { useAuth } from '@/context/AuthContext';
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: '📊' },
   { href: '/crops', label: 'My Crops', icon: '🌾' },
-  { href: '/marketplace', label: 'Services', icon: '🏪' },
+  { href: '/services', label: 'Services', icon: '🏪' },
   { href: '/alerts', label: 'Alerts', icon: '🔔' },
+];
+
+const providerItems = [
+  { href: '/provider', label: 'Provider Home', icon: '📋' },
+  { href: '/provider/equipment', label: 'Equipment', icon: '🚜' },
+  { href: '/provider/reviews', label: 'My Reviews', icon: '⭐' },
 ];
 
 const adminItems = [
   { href: '/admin', label: 'Admin Panel', icon: '⚙️' },
+  { href: '/admin/health', label: 'System Health', icon: '💚' },
+  { href: '/admin/dead-letters', label: 'Dead Letters', icon: '📭' },
+  { href: '/admin/templates', label: 'Templates', icon: '📐' },
 ];
 
 export default function Sidebar() {
@@ -27,7 +36,9 @@ export default function Sidebar() {
   if (pathname === '/login' || pathname === '/register') return null;
   if (!isAuthenticated) return null;
 
-  const items = user?.role === 'admin' ? [...navItems, ...adminItems] : navItems;
+  let items = [...navItems];
+  if (user?.role === 'provider') items = [...providerItems, ...navItems];
+  if (user?.role === 'admin') items = [...navItems, ...adminItems];
 
   return (
     <aside className="w-64 bg-cultivax-surface border-r border-cultivax-card flex flex-col">
