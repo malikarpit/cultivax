@@ -2,10 +2,13 @@
 
 /**
  * Header
+ *
+ * Top bar with page title, accessibility toggle, user region, and logout.
  */
 
 import { useAuth } from '@/context/AuthContext';
 import { usePathname } from 'next/navigation';
+import AccessibilityToggle from '@/components/AccessibilityToggle';
 
 const pageTitles: Record<string, string> = {
   '/dashboard': 'Dashboard',
@@ -32,6 +35,7 @@ export default function Header() {
         <span className="text-sm text-gray-400">
           {user?.region && `📍 ${user.region}`}
         </span>
+        <AccessibilityToggle />
         <button
           onClick={logout}
           className="text-sm text-gray-400 hover:text-red-400 transition-colors"
