@@ -1,0 +1,58 @@
+# .gcloudignore — Files excluded from gcloud app deploy / builds submit
+# This file works like .gitignore but for GCP deployments.
+
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+*.egg
+dist/
+build/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+tests/
+
+# IDE & OS
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Docker (not needed in Cloud Build context)
+docker-compose.yml
+.dockerignore
+
+# Environment files (secrets managed via Secret Manager)
+.env
+.env.*
+
+# Documentation
+docs/
+*.md
+LICENSE
+
+# Git
+.git/
+.gitignore
+
+# Frontend (deployed separately)
+frontend/
+
+# Local uploads
+uploads/
+
+# Build history script
+build_history.sh
