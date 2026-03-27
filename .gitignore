@@ -70,6 +70,7 @@ docs/important documentation/extracted_pdfkit/
 
 # Helper Scripts (Local Only)
 build_history.sh
+build_history_random.sh
 
 .docs
 # Workflow PDF

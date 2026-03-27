@@ -17,8 +17,15 @@ class Settings(BaseSettings):
     APP_ENV: str = "development"
     DEBUG: bool = True
 
-    # Database
+    # Database — local development default
     DATABASE_URL: str = "postgresql://cultivax_user:cultivax_pass@localhost:5432/cultivax_db"
+
+    # Cloud SQL — used when deployed to Cloud Run
+    CLOUD_SQL_CONNECTION_NAME: str = ""   # e.g. "project:region:instance"
+    CLOUD_SQL_DB_NAME: str = "cultivax_db"
+    CLOUD_SQL_DB_USER: str = "cultivax_user"
+    CLOUD_SQL_DB_PASSWORD: str = ""
+    CLOUD_SQL_UNIX_SOCKET: str = "/cloudsql"  # Cloud Run auto-mounts here
 
     # JWT Authentication
     SECRET_KEY: str = "your-secret-key-change-in-production"
@@ -37,6 +44,23 @@ class Settings(BaseSettings):
 
     # CORS
     CORS_ORIGINS: str = "http://localhost:3000,http://localhost:8000"
+
+    @property
+    def effective_database_url(self) -> str:
+        """
+        Build the correct database URL based on environment.
+
+        - If CLOUD_SQL_CONNECTION_NAME is set, construct a unix socket URL
+          for Cloud Run (e.g. postgresql://user:pass@/db?host=/cloudsql/conn).
+        - Otherwise, fall back to DATABASE_URL (for local dev / docker-compose).
+        """
+        if self.CLOUD_SQL_CONNECTION_NAME:
+            socket_path = f"{self.CLOUD_SQL_UNIX_SOCKET}/{self.CLOUD_SQL_CONNECTION_NAME}"
+            return (
+                f"postgresql://{self.CLOUD_SQL_DB_USER}:{self.CLOUD_SQL_DB_PASSWORD}"
+                f"@/{self.CLOUD_SQL_DB_NAME}?host={socket_path}"
+            )
+        return self.DATABASE_URL
 
     @property
     def cors_origins_list(self) -> List[str]:
