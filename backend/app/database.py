@@ -13,8 +13,10 @@ from app.config import settings
 
 
 # Create SQLAlchemy engine
+# Uses effective_database_url which auto-resolves Cloud SQL (unix socket)
+# vs local development (standard connection string).
 engine = create_engine(
-    settings.DATABASE_URL,
+    settings.effective_database_url,
     pool_size=5,
     max_overflow=10,
     pool_pre_ping=True,
