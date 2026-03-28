@@ -72,7 +72,6 @@ docs/important documentation/extracted_pdfkit/
 build_history.sh
 build_history_random.sh
 
-.docs
 # Workflow PDF
 workflow.pdf
 docs/important documentation/workflow.pdf
@@ -85,3 +84,4 @@ docs/gap_analysis.md
 docs/md files/
 docs/user_perspective_report.md
 docs/deep_audit_report.md
+docs/important documentation/UI_SPEC.md
