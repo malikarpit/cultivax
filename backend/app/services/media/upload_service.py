@@ -1,8 +1,9 @@
 """
-Media Upload Service
+Media Upload Service — Google Cloud Storage Integration
 
-Handles file uploads for crop instance media (images, videos).
-Stores locally for now, will integrate with Google Cloud Storage later (Day 28).
+Day 28: Upgraded from local-only to GCS + local fallback.
+Uses google-cloud-storage SDK for cloud uploads with signed URLs.
+Falls back to local file storage when GCS_BUCKET_NAME is not set.
 
 MSDD 4.6 — 3-month retention policy with scheduled deletion.
 """
@@ -17,6 +18,7 @@ from sqlalchemy.orm import Session  # type: ignore
 
 from app.models.media_file import MediaFile  # type: ignore
 from app.models.crop_instance import CropInstance  # type: ignore
+from app.config import settings  # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +26,6 @@ logger = logging.getLogger(__name__)
 # Configuration
 # ---------------------------------------------------------------------------
 
-UPLOAD_DIR = os.environ.get("MEDIA_UPLOAD_DIR", "uploads/media")
 MAX_FILE_SIZE_MB = 50
 ALLOWED_EXTENSIONS = {
     "image": {"jpg", "jpeg", "png", "webp", "gif"},
@@ -43,21 +44,108 @@ class UploadResult:
         file_type: str,
         file_size: int,
         scheduled_deletion_at: datetime,
+        signed_url: Optional[str] = None,
+        storage_backend: str = "local",
     ):
         self.media_id = media_id
         self.file_path = file_path
         self.file_type = file_type
         self.file_size = file_size
         self.scheduled_deletion_at = scheduled_deletion_at
+        self.signed_url = signed_url
+        self.storage_backend = storage_backend
 
     def to_dict(self) -> dict:
-        return {
+        result = {
             "media_id": self.media_id,
             "file_path": self.file_path,
             "file_type": self.file_type,
             "file_size": self.file_size,
             "scheduled_deletion_at": self.scheduled_deletion_at.isoformat(),
+            "storage_backend": self.storage_backend,
         }
+        if self.signed_url:
+            result["download_url"] = self.signed_url
+        return result
+
+
+class CloudStorageClient:
+    """
+    Google Cloud Storage client wrapper.
+
+    Provides upload and signed URL generation.
+    Lazily initializes the GCS client only when needed.
+    """
+
+    _client = None
+    _bucket = None
+
+    @classmethod
+    def _init_client(cls):
+        """Lazily initialize GCS client and bucket reference."""
+        if cls._client is None:
+            try:
+                from google.cloud import storage  # type: ignore
+                cls._client = storage.Client()
+                cls._bucket = cls._client.bucket(settings.GCS_BUCKET_NAME)
+                logger.info(f"GCS client initialized for bucket: {settings.GCS_BUCKET_NAME}")
+            except Exception as e:
+                logger.error(f"Failed to initialize GCS client: {e}")
+                raise
+
+    @classmethod
+    def upload_blob(cls, destination_path: str, content: bytes, content_type: str) -> str:
+        """
+        Upload content to GCS bucket.
+
+        Args:
+            destination_path: Path within the bucket (e.g., "crops/{id}/{filename}")
+            content: File content bytes
+            content_type: MIME type
+
+        Returns:
+            The GCS URI (gs://bucket/path)
+        """
+        cls._init_client()
+        blob = cls._bucket.blob(destination_path)
+        blob.upload_from_string(content, content_type=content_type)
+
+        gcs_uri = f"gs://{settings.GCS_BUCKET_NAME}/{destination_path}"
+        logger.info(f"Uploaded to GCS: {gcs_uri} ({len(content)} bytes)")
+        return gcs_uri
+
+    @classmethod
+    def generate_signed_url(cls, blob_path: str, expiry_minutes: Optional[int] = None) -> str:
+        """
+        Generate a signed URL for downloading a blob.
+
+        Args:
+            blob_path: Path within the bucket
+            expiry_minutes: URL expiry in minutes (default from config)
+
+        Returns:
+            Signed download URL
+        """
+        cls._init_client()
+        expiry = expiry_minutes or settings.GCS_SIGNED_URL_EXPIRY_MINUTES
+        blob = cls._bucket.blob(blob_path)
+        url = blob.generate_signed_url(
+            version="v4",
+            expiration=timedelta(minutes=expiry),
+            method="GET",
+        )
+        return url
+
+    @classmethod
+    def delete_blob(cls, blob_path: str) -> bool:
+        """Delete a blob from GCS. Returns True if deleted."""
+        cls._init_client()
+        blob = cls._bucket.blob(blob_path)
+        if blob.exists():
+            blob.delete()
+            logger.info(f"Deleted GCS blob: {blob_path}")
+            return True
+        return False
 
 
 class UploadService:
@@ -67,13 +155,15 @@ class UploadService:
     Features:
     - File type validation (image/video)
     - Size limit enforcement
-    - Local storage (Cloud Storage integration in Day 28)
+    - Google Cloud Storage with signed URLs (when configured)
+    - Local storage fallback (when GCS not configured)
     - Scheduled deletion tracking (MSDD 4.6)
     - Analysis status initialization
     """
 
     def __init__(self, db: Session):
         self.db = db
+        self.use_gcs = bool(settings.GCS_BUCKET_NAME)
 
     def upload_media(
         self,
@@ -94,7 +184,7 @@ class UploadService:
             content_type: MIME type (auto-detected from extension if not provided)
 
         Returns:
-            UploadResult with upload details
+            UploadResult with upload details and optional signed URL
 
         Raises:
             ValueError: If file type not allowed or size exceeded
@@ -123,14 +213,17 @@ class UploadService:
         # Generate unique filename
         media_id = str(uuid.uuid4())
         stored_filename = f"{media_id}.{ext}"
-        file_path = os.path.join(UPLOAD_DIR, str(crop_instance_id), stored_filename)
+        mime = content_type or f"{file_type}/{ext}"
 
-        # Ensure directory exists
-        os.makedirs(os.path.dirname(file_path), exist_ok=True)
-
-        # Write file to local storage
-        with open(file_path, "wb") as f:
-            f.write(content)
+        # Choose storage backend
+        if self.use_gcs:
+            storage_path, signed_url, backend = self._upload_to_gcs(
+                crop_instance_id, stored_filename, content, mime
+            )
+        else:
+            storage_path, signed_url, backend = self._upload_to_local(
+                crop_instance_id, stored_filename, content
+            )
 
         # Scheduled deletion (MSDD 4.6 — 3-month retention)
         scheduled_deletion = datetime.now(timezone.utc) + timedelta(days=RETENTION_DAYS)
@@ -139,11 +232,12 @@ class UploadService:
         media_record = MediaFile(
             id=uuid.UUID(media_id),
             crop_instance_id=crop_instance_id,
+            uploaded_by=farmer_id,
             file_type=file_type,
-            file_path=file_path,
-            file_size=len(content),
+            storage_path=storage_path,
+            file_size_bytes=len(content),
             original_filename=filename,
-            mime_type=content_type or f"{file_type}/{ext}",
+            mime_type=mime,
             analysis_status="Pending",
             scheduled_deletion_at=scheduled_deletion,
         )
@@ -152,16 +246,65 @@ class UploadService:
 
         logger.info(
             f"Media uploaded: {media_id} ({file_type}/{ext}, "
-            f"{len(content)} bytes) for crop {crop_instance_id}"
+            f"{len(content)} bytes, backend={backend}) for crop {crop_instance_id}"
         )
 
         return UploadResult(
             media_id=media_id,
-            file_path=file_path,
+            file_path=storage_path,
             file_type=file_type,
             file_size=len(content),
             scheduled_deletion_at=scheduled_deletion,
+            signed_url=signed_url,
+            storage_backend=backend,
         )
+
+    def get_download_url(self, media_id: str) -> Optional[str]:
+        """
+        Get a signed download URL for a media file.
+
+        Returns signed URL for GCS files, or local path for local files.
+        """
+        media = (
+            self.db.query(MediaFile)
+            .filter(MediaFile.id == media_id, MediaFile.is_deleted == False)
+            .first()
+        )
+        if not media:
+            return None
+
+        if self.use_gcs and media.storage_path.startswith("gs://"):
+            # Extract blob path from gs://bucket/path
+            blob_path = media.storage_path.split(f"gs://{settings.GCS_BUCKET_NAME}/", 1)[-1]
+            return CloudStorageClient.generate_signed_url(blob_path)
+        else:
+            return media.storage_path
+
+    # -----------------------------------------------------------------------
+    # Private helpers
+    # -----------------------------------------------------------------------
+
+    def _upload_to_gcs(
+        self, crop_instance_id: str, filename: str, content: bytes, mime: str
+    ) -> tuple:
+        """Upload to Google Cloud Storage. Returns (path, signed_url, backend)."""
+        blob_path = f"crops/{crop_instance_id}/media/{filename}"
+        gcs_uri = CloudStorageClient.upload_blob(blob_path, content, mime)
+        signed_url = CloudStorageClient.generate_signed_url(blob_path)
+        return gcs_uri, signed_url, "gcs"
+
+    def _upload_to_local(
+        self, crop_instance_id: str, filename: str, content: bytes
+    ) -> tuple:
+        """Upload to local filesystem. Returns (path, None, backend)."""
+        upload_dir = settings.MEDIA_UPLOAD_DIR
+        file_path = os.path.join(upload_dir, str(crop_instance_id), filename)
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+
+        with open(file_path, "wb") as f:
+            f.write(content)
+
+        return file_path, None, "local"
 
     def _get_extension(self, filename: str) -> str:
         """Extract and validate file extension."""

@@ -39,6 +39,11 @@ class Settings(BaseSettings):
     RATE_LIMIT_ADMIN: int = 200
     RATE_LIMIT_DEFAULT: int = 30
 
+    # Cloud Storage (Day 28)
+    GCS_BUCKET_NAME: str = ""  # Set to enable GCS uploads, empty = local fallback
+    GCS_SIGNED_URL_EXPIRY_MINUTES: int = 60
+    MEDIA_UPLOAD_DIR: str = "uploads/media"  # Local fallback directory
+
     # Security
     PROD_DB_HOST_ALLOWLIST: str = ""  # Comma-separated prod DB hosts
 
