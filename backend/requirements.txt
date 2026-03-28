@@ -22,8 +22,8 @@ httpx==0.26.0
 # CORS
 python-multipart==0.0.6
 
-# Cloud (for later phases)
-# google-cloud-storage==2.14.0
+# Cloud
+google-cloud-storage==2.14.0
 # google-cloud-logging==3.9.0
 
 # Testing
