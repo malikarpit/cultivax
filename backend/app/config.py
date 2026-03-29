@@ -39,6 +39,12 @@ class Settings(BaseSettings):
     RATE_LIMIT_ADMIN: int = 200
     RATE_LIMIT_DEFAULT: int = 30
 
+    # Redis for distributed rate limiting
+    REDIS_URL: str = ""  # e.g., redis://localhost:6379/0
+
+    # Admin API Key
+    ADMIN_API_KEY: str = ""  # Set to secure key in production
+
     # Cloud Storage (Day 28)
     GCS_BUCKET_NAME: str = ""  # Set to enable GCS uploads, empty = local fallback
     GCS_SIGNED_URL_EXPIRY_MINUTES: int = 60

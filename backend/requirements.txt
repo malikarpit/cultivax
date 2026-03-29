@@ -33,3 +33,9 @@ httpx==0.26.0
 
 # Utilities
 python-dotenv==1.0.1
+
+# Optional: Redis for distributed rate limiting
+# redis==5.0.1
+
+# Optional: NumPy for AI anomaly detection
+# numpy==1.26.3
