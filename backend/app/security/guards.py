@@ -198,6 +198,29 @@ class DataPoisoningGuard:
             else:
                 clean.append(v)
 
+        # Fallback for highly skewed small samples where mean/stdev can be pulled
+        # by an extreme value enough that the classic z-score misses it.
+        if not excluded_indices:
+            median = statistics.median(values)
+            abs_dev = [abs(v - median) for v in values]
+            mad = statistics.median(abs_dev)
+            if mad > 0:
+                robust_threshold = 3.5
+                robust_excluded = []
+                for i, v in enumerate(values):
+                    modified_z = 0.6745 * abs(v - median) / mad
+                    if modified_z > robust_threshold:
+                        robust_excluded.append(i)
+                        logger.info(
+                            f"ML poisoning guard: excluded sample {i} "
+                            f"(modified_z={modified_z:.2f})"
+                        )
+
+                if robust_excluded:
+                    excluded_set = set(robust_excluded)
+                    clean = [v for i, v in enumerate(values) if i not in excluded_set]
+                    excluded_indices = robust_excluded
+
         return clean, excluded_indices, len(excluded_indices)
 
 
