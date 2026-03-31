@@ -19,6 +19,7 @@ class CropInstanceCreate(BaseModel):
     region: str = Field(..., min_length=1, max_length=100)
     sub_region: Optional[str] = None
     land_area: Optional[float] = Field(None, gt=0)
+    land_parcel_id: Optional[UUID] = None
     rule_template_id: Optional[UUID] = None
     metadata_extra: Optional[Dict[str, Any]] = {}
 
@@ -26,6 +27,7 @@ class CropInstanceCreate(BaseModel):
 class CropInstanceUpdate(BaseModel):
     variety: Optional[str] = None
     land_area: Optional[float] = Field(None, gt=0)
+    land_parcel_id: Optional[UUID] = None
     sub_region: Optional[str] = None
     metadata_extra: Optional[Dict[str, Any]] = None
 
@@ -47,6 +49,7 @@ class CropInstanceResponse(BaseModel):
     risk_index: float
     seasonal_window_category: Optional[str]
     land_area: Optional[float]
+    land_parcel_id: Optional[UUID]
     region: str
     sub_region: Optional[str]
     stage_offset_days: int
@@ -82,6 +85,12 @@ class ActionLogResponse(BaseModel):
     id: UUID
     crop_instance_id: UUID
     action_type: str
+    action_subtype: Optional[str] = None
+    action_impact_type: Optional[str] = None
+    source: Optional[str] = None
+    is_override: bool = False
+    rule_version_at_action: Optional[str] = None
+    is_orphaned: bool = False
     effective_date: date
     category: str
     metadata_json: Dict[str, Any]
@@ -93,6 +102,37 @@ class ActionLogResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+    @classmethod
+    def from_action(cls, action: Any) -> "ActionLogResponse":
+        metadata = action.metadata_json or {}
+        return cls(
+            id=action.id,
+            crop_instance_id=action.crop_instance_id,
+            action_type=action.action_type,
+            action_subtype=action.action_subtype,
+            action_impact_type=action.action_impact_type,
+            source=action.source,
+            is_override=action.is_override,
+            rule_version_at_action=action.rule_version_at_action,
+            is_orphaned=action.is_orphaned,
+            effective_date=action.effective_date,
+            category=action.category,
+            metadata_json=metadata,
+            notes=action.notes,
+            local_seq_no=action.local_seq_no,
+            server_timestamp=action.server_timestamp,
+            applied_in_replay=action.applied_in_replay,
+            created_at=action.created_at,
+        )
+
+
+class ActionLogListResponse(BaseModel):
+    total: int
+    page: int
+    page_size: int
+    has_more: bool
+    actions: List[ActionLogResponse]
 
 
 # === Yield Record Schemas ===

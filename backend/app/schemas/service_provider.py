@@ -21,6 +21,15 @@ class ProviderCreate(BaseModel):
     crop_specializations: List[str] = []
     description: Optional[str] = None
 
+class ProviderUpdate(BaseModel):
+    business_name: Optional[str] = None
+    service_type: Optional[str] = None
+    region: Optional[str] = None
+    sub_region: Optional[str] = None
+    service_radius_km: Optional[float] = None
+    crop_specializations: Optional[List[str]] = None
+    description: Optional[str] = None
+
 
 class ProviderResponse(BaseModel):
     id: UUID
@@ -41,38 +50,25 @@ class ProviderResponse(BaseModel):
         from_attributes = True
 
 
+class ProviderRankedResponse(ProviderResponse):
+    ranking_score: float
+    fairness_boosted: bool = False
+    ranking_flags: List[str] = []
+    distance_km: Optional[float] = None
+    ranking_meta: Dict[str, Any] = {}
+
+class PaginatedRankedResponse(BaseModel):
+    items: List[ProviderRankedResponse]
+    total: int
+    page: int
+    limit: int
+
 class ProviderFilter(BaseModel):
     region: Optional[str] = None
     crop_type: Optional[str] = None
     service_type: Optional[str] = None
     is_verified: Optional[bool] = None
 
-
-# === Equipment Schemas ===
-
-class EquipmentCreate(BaseModel):
-    equipment_type: str = Field(..., min_length=1)
-    name: str = Field(..., min_length=1)
-    description: Optional[str] = None
-    hourly_rate: Optional[float] = Field(None, ge=0)
-    daily_rate: Optional[float] = Field(None, ge=0)
-    condition: str = "good"
-
-
-class EquipmentResponse(BaseModel):
-    id: UUID
-    provider_id: UUID
-    equipment_type: str
-    name: str
-    description: Optional[str]
-    is_available: bool
-    hourly_rate: Optional[float]
-    daily_rate: Optional[float]
-    condition: str
-    created_at: datetime
-
-    class Config:
-        from_attributes = True
 
 
 # === Service Request Schemas ===
