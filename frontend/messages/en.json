@@ -1,0 +1,546 @@
+{
+  "common": {
+    "appName": "CultivaX",
+    "tagline": "Intelligent Crop Management",
+    "login": "Sign In",
+    "register": "Create Account",
+    "logout": "Logout",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "search": "Search",
+    "loading": "Loading...",
+    "currency": "₹",
+    "submit": "Submit",
+    "confirm": "Confirm",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "viewAll": "View All",
+    "noData": "No data available",
+    "error": "Something went wrong",
+    "retry": "Retry",
+    "close": "Close",
+    "yes": "Yes",
+    "no": "No",
+    "or": "or",
+    "showing": "Showing",
+    "of": "of",
+    "page": "Page",
+    "filters": "Filters",
+    "sortBy": "Sort by",
+    "all": "All",
+    "active": "Active",
+    "pending": "Pending",
+    "completed": "Completed",
+    "language": "Language",
+    "settings": "Settings",
+    "help": "Help",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service",
+    "support": "Support",
+    "documentation": "Documentation",
+    "copyright": "© 2026 CultivaX Agricultural Intelligence. All rights reserved."
+  },
+  "landing": {
+    "nav": {
+      "features": "Features",
+      "howItWorks": "How It Works",
+      "forFarmers": "For Farmers",
+      "forProviders": "For Providers",
+      "getStarted": "Get Started"
+    },
+    "hero": {
+      "title": "Track Crops. Get Alerts. Book Services.",
+      "subtitle": "CultivaX helps Indian farmers manage crop lifecycles with smart alerts, what-if simulations, and a trusted service marketplace.",
+      "cta": "Start Your First Crop",
+      "ctaSecondary": "See How It Works"
+    },
+    "features": {
+      "title": "Everything You Need to Grow Smarter",
+      "cropTimeline": {
+        "title": "Crop Timeline",
+        "desc": "Track every stage from sowing to harvest with day-by-day progress"
+      },
+      "smartAlerts": {
+        "title": "Smart Alerts",
+        "desc": "Get notified when your crop needs attention — stress, weather, or missed actions"
+      },
+      "whatIf": {
+        "title": "What-If Simulation",
+        "desc": "Test actions before committing — see how irrigation or fertilizer changes outcomes"
+      },
+      "offlineSync": {
+        "title": "Offline Sync",
+        "desc": "Works without internet, syncs when connected — designed for field use"
+      },
+      "localLanguage": {
+        "title": "Local Language",
+        "desc": "Interface available in Hindi and English with more languages coming soon"
+      },
+      "trustedProviders": {
+        "title": "Trusted Providers",
+        "desc": "Find verified service providers with transparent trust scores and reviews"
+      }
+    },
+    "process": {
+      "title": "How CultivaX Works",
+      "step1": { "title": "Create Crop", "desc": "Add your crop details and map your field" },
+      "step2": { "title": "Log Actions", "desc": "Record irrigation, fertilizer, and more" },
+      "step3": { "title": "Get Alerts", "desc": "Receive smart notifications and recommendations" },
+      "step4": { "title": "Book Services", "desc": "Find and hire trusted agricultural services" }
+    },
+    "cta": {
+      "title": "Start your first crop — it takes 2 minutes",
+      "button": "Get Started Free"
+    }
+  },
+  "auth": {
+    "signIn": "Sign In",
+    "signInSubtitle": "Welcome back to CultivaX",
+    "phone": "Phone Number",
+    "phonePlaceholder": "Enter your phone number",
+    "password": "Password",
+    "passwordPlaceholder": "Enter your password",
+    "forgotPassword": "Forgot your password?",
+    "noAccount": "Don't have an account?",
+    "registerHere": "Register here",
+    "registerTitle": "Join CultivaX",
+    "registerSubtitle": "Create your account to get started",
+    "fullName": "Full Name",
+    "fullNamePlaceholder": "Enter your full name",
+    "email": "Email (Optional)",
+    "emailPlaceholder": "Enter email address",
+    "region": "Region",
+    "regionPlaceholder": "Select your region",
+    "preferredLanguage": "Preferred Language",
+    "role": "I am a...",
+    "roleFarmer": "Farmer",
+    "roleFarmerDesc": "I grow crops and need management tools",
+    "roleProvider": "Service Provider",
+    "roleProviderDesc": "I offer agricultural services",
+    "confirmPassword": "Confirm Password",
+    "confirmPasswordPlaceholder": "Re-enter your password",
+    "passwordRules": "Min 8 characters, 1 number, 1 uppercase letter",
+    "passwordMismatch": "Passwords do not match",
+    "agreeTerms": "I agree to the Terms of Service and Privacy Policy",
+    "alreadyHaveAccount": "Already have an account?",
+    "signInHere": "Sign in here",
+    "creatingAccount": "Creating account...",
+    "signingIn": "Signing in..."
+  },
+  "dashboard": {
+    "welcome": "Welcome back,",
+    "farmOverview": "Here's your farm overview",
+    "activeCrops": "Active Crops",
+    "cropsNeedingAction": "Needs Action",
+    "alertsDue": "Alerts Due",
+    "servicesBooked": "Services Booked",
+    "cropHealth": "Crop Health Trend",
+    "yourCrops": "Your Crops",
+    "viewAllCrops": "View all crops →",
+    "weather": "Weather",
+    "pendingActions": "Pending Actions",
+    "quickActions": "Quick Actions",
+    "addCrop": "Add Crop",
+    "logAction": "Log Action",
+    "runSimulation": "Run Simulation",
+    "bookService": "Book Service",
+    "onboarding": {
+      "title": "Welcome to CultivaX!",
+      "subtitle": "Start by adding your first crop to begin tracking",
+      "button": "Add Your First Crop"
+    },
+    "sevenDays": "7 Days",
+    "thirtyDays": "30 Days",
+    "updatedAgo": "Updated {time} ago"
+  },
+  "crops": {
+    "title": "My Crops",
+    "newCrop": "+ New Crop",
+    "noCrops": "No crops yet",
+    "noCropsDesc": "Create your first crop to get started",
+    "day": "Day",
+    "stressScore": "Stress Score",
+    "riskIndex": "Risk Index",
+    "season": "Season",
+    "stage": "Stage",
+    "sowingDate": "Sowing Date",
+    "variety": "Variety",
+    "cropType": "Crop Type",
+    "growthTimeline": "Growth Timeline",
+    "actionHistory": "Action History",
+    "overview": "Overview",
+    "actions": "Actions",
+    "map": "Map",
+    "analytics": "Analytics",
+    "commandPanel": "Actions",
+    "logAction": "Log Action",
+    "simulate": "Run Simulation",
+    "submitYield": "Submit Yield",
+    "yieldDisabled": "Available when crop reaches grain-filling stage",
+    "states": {
+      "Created": "Created",
+      "Active": "Active",
+      "Delayed": "Delayed",
+      "AtRisk": "At Risk",
+      "ReadyToHarvest": "Ready to Harvest",
+      "Harvested": "Harvested",
+      "Closed": "Closed"
+    },
+    "stages": {
+      "germination": "Germination",
+      "vegetative": "Vegetative",
+      "flowering": "Flowering",
+      "grain_filling": "Grain Filling",
+      "maturity": "Maturity"
+    },
+    "seasons": {
+      "rabi": "Rabi",
+      "kharif": "Kharif",
+      "zaid": "Zaid"
+    },
+    "filters": {
+      "allStates": "All States",
+      "allCrops": "All Crops",
+      "allSeasons": "All Seasons",
+      "allStages": "All Stages"
+    },
+    "create": {
+      "title": "Create New Crop",
+      "selectType": "Select crop type",
+      "selectVariety": "Select variety",
+      "fieldArea": "Field Area",
+      "notes": "Notes (optional)"
+    },
+    "detail": {
+      "lastSynced": "Last synced: {time}",
+      "recommendations": "Recommendations",
+      "weatherImpact": "Weather Impact"
+    }
+  },
+  "simulation": {
+    "title": "What-If Simulation",
+    "subtitle": "Test hypothetical actions without affecting your actual crop data.",
+    "current": "Current",
+    "projected": "Projected",
+    "stateLabel": "State",
+    "stressLabel": "Stress",
+    "riskLabel": "Risk",
+    "dayLabel": "Day",
+    "stageLabel": "Stage",
+    "dateLabel": "Date",
+    "detailsLabel": "Details",
+    "notAvailable": "N/A",
+    "notSpecified": "Not specified",
+    "currentState": "Current State",
+    "projectedState": "Projected State",
+    "addAction": "+ Add Action",
+    "runSimulation": "Run Simulation",
+    "running": "Running...",
+    "removeAction": "Remove action",
+    "actionType": "Action Type",
+    "quantity": "Quantity",
+    "unit": "Unit",
+    "onDate": "On Date",
+    "results": "Simulation Results",
+    "actionsApplied": "{{count}} hypothetical action(s) applied. Live crop data remains unchanged.",
+    "stressDelta": "Stress Delta",
+    "riskDelta": "Risk Delta",
+    "dayDelta": "Day Delta",
+    "stageChanged": "Stage Changed",
+    "stageTransitions": "Stage Transitions",
+    "transitionRow": "Day {{day}}: {{from}} -> {{to}} (action {{action}})",
+    "actionBreakdown": "Action Breakdown",
+    "warnings": "Warnings",
+    "actionTypes": {
+      "irrigation": "Irrigation",
+      "fertilizer": "Fertilizer",
+      "pesticide": "Pesticide",
+      "weeding": "Weeding",
+      "inspection": "Inspection",
+      "delayed_action": "Delayed Action"
+    },
+    "summary": "Summary",
+    "confidence": "Confidence",
+    "disclaimer": "⚠️ Simulation only — no changes are saved to your crop",
+    "assumptions": "Assumptions: current weather forecast, no additional stress events"
+  },
+  "yield": {
+    "title": "Submit Harvest Yield",
+    "subtitle": "Report your actual harvest for {cropName}. This finalizes your crop record.",
+    "reportedYield": "Reported Yield",
+    "harvestDate": "Harvest Date",
+    "qualityGrade": "Quality Grade",
+    "notes": "Notes",
+    "estimatedValue": "Estimated value at current mandi rate",
+    "aiVariance": "AI Prediction Comparison",
+    "aiPredicted": "AI Predicted",
+    "yourActual": "Your Actual",
+    "variance": "Variance",
+    "verification": "Verification Checks",
+    "submitFinalize": "Submit & Finalize Harvest",
+    "confirmTitle": "Confirm Harvest Submission",
+    "confirmMessage": "Once submitted, this crop will be marked as Harvested. Are you sure?",
+    "loadingCrop": "Loading crop details...",
+    "backToCrops": "Back to Crops",
+    "submittedTitle": "Yield Submitted!",
+    "submittedMessage": "Your harvest data for {{crop}} has been recorded successfully.",
+    "verificationSummary": "Verification Summary",
+    "reportedLabel": "Reported",
+    "mlYieldLabel": "ML Yield",
+    "biologicalCapLabel": "Biological Cap",
+    "capAppliedLabel": "Cap Applied",
+    "verificationScoreLabel": "Verification Score",
+    "notAvailable": "N/A",
+    "viewCrop": "View Crop",
+    "dashboard": "Dashboard",
+    "readyToHarvestRequired": "Yield submission is enabled only when crop state is ReadyToHarvest.",
+    "gradeA": "A — Excellent",
+    "gradeB": "B — Good",
+    "gradeC": "C — Average"
+  },
+  "services": {
+    "title": "Service Marketplace",
+    "searchPlaceholder": "Search for tractor hire, soil testing, drone survey...",
+    "categories": {
+      "soilTesting": "Soil Testing",
+      "droneSurvey": "Drone Survey",
+      "irrigation": "Irrigation",
+      "pestControl": "Pest Control",
+      "harvestLabor": "Harvest Labor",
+      "equipmentRental": "Equipment Rental"
+    },
+    "trustScore": "Trust Score",
+    "whyThisScore": "Why this score?",
+    "availableNow": "Available now",
+    "nextAvailable": "Next available: {date}",
+    "completedJobs": "Completed jobs",
+    "responseTime": "Responds in ~{time}",
+    "requestService": "Request Service →",
+    "estimatedRate": "Estimated rate"
+  },
+  "review": {
+    "title": "Leave a Review",
+    "rating": "Rating",
+    "bands": {
+      "1": "Poor",
+      "2": "Fair",
+      "3": "Good",
+      "4": "Very Good",
+      "5": "Excellent"
+    },
+    "reviewText": "Your Review",
+    "reviewPrompt": "How was the timeliness? Quality? Communication? Value for money?",
+    "highlights": {
+      "fastTurnaround": "Fast Turnaround",
+      "accurateWork": "Accurate Work",
+      "goodCommunication": "Good Communication",
+      "fairPrice": "Fair Price"
+    },
+    "submitReview": "Submit Review",
+    "escalate": "Escalate Issue"
+  },
+  "labor": {
+    "title": "Labor Management",
+    "availableCrews": "Available Crews Today",
+    "verifiedWorkers": "Verified Workers",
+    "avgRate": "Avg Rate (₹/day)",
+    "activeContracts": "Active Contracts",
+    "requestLabor": "Request Labor",
+    "viewDetails": "View Details",
+    "dailyRate": "Daily Rate",
+    "crewSize": "Crew Size",
+    "skills": "Skills"
+  },
+  "alerts": {
+    "title": "Alerts & Notifications",
+    "critical": "Critical",
+    "high": "High",
+    "medium": "Medium",
+    "low": "Low",
+    "today": "Today",
+    "earlier": "Earlier",
+    "read": "Read",
+    "markHandled": "Mark Handled",
+    "viewAction": "View Action",
+    "showHandled": "Show handled",
+    "affectedCrop": "Affected Crop",
+    "triggerReason": "Trigger Reason",
+    "recommendedAction": "Recommended Action"
+  },
+  "provider": {
+    "dashboard": "Provider Dashboard",
+    "pendingRequests": "Pending Requests",
+    "activeJobs": "Active Jobs",
+    "completedJobs": "Completed Jobs",
+    "trustScore": "Trust Score",
+    "incomingRequests": "Incoming Service Requests",
+    "accept": "Accept",
+    "counterOffer": "Counter-offer",
+    "markComplete": "Mark Complete",
+    "quarterlyRevenue": "Quarterly Revenue",
+    "equipmentStatus": "Equipment Status",
+    "regionalCoverage": "Regional Coverage",
+    "equipment": {
+      "title": "Equipment Management",
+      "addEquipment": "Add Equipment",
+      "status": "Status",
+      "lastMaintenance": "Last Maintenance",
+      "utilization": "Utilization"
+    },
+    "reviews": {
+      "title": "My Reviews",
+      "averageRating": "Average Rating",
+      "totalReviews": "Total Reviews"
+    }
+  },
+  "admin": {
+    "console": "CultivaX Obsidian — Admin Console",
+    "dashboard": "Admin Dashboard",
+    "totalUsers": "Total Users",
+    "activeCrops": "Active Crops",
+    "serviceProviders": "Service Providers",
+    "pendingIssues": "Pending Issues",
+    "systemHealth": "System Health",
+    "recentActions": "Recent Admin Actions",
+    "quickActions": "Quick Actions",
+    "runHealthCheck": "Run Health Check",
+    "reviewProviders": "Review Pending Providers",
+    "viewDeadLetters": "View Dead Letters",
+    "users": {
+      "title": "User Management",
+      "newRegistrations": "New Registrations",
+      "activeRegions": "Active Regions",
+      "adminAccess": "Admin Access",
+      "suspended": "Suspended",
+      "deactivate": "Deactivate",
+      "resetPassword": "Reset Password",
+      "changeRole": "Change Role",
+      "registerUser": "Register User"
+    },
+    "providers": {
+      "title": "Provider Management",
+      "totalProviders": "Total Providers",
+      "pendingVerification": "Pending Verification",
+      "highRisk": "High Risk",
+      "activeServices": "Active Services",
+      "verify": "Verify",
+      "viewDocs": "View Docs",
+      "flag": "Flag",
+      "suspend": "Suspend"
+    },
+    "templates": {
+      "title": "Rule Templates",
+      "activeRules": "Active Rules",
+      "validationRate": "Validation Rate",
+      "awaitingApproval": "Awaiting Approval",
+      "allTemplates": "All Templates",
+      "production": "Production",
+      "drafts": "Drafts",
+      "archive": "Archive",
+      "validate": "Validate",
+      "viewDiff": "View Diff"
+    },
+    "deadLetters": {
+      "title": "Dead Letter Queue",
+      "totalFailed": "Total Failed",
+      "criticalErrors": "Critical Errors",
+      "retrySuccessRate": "Retry Success Rate",
+      "avgTTL": "Avg TTL",
+      "retry": "Retry",
+      "inspect": "Inspect Payload",
+      "openEntity": "Open Related Entity",
+      "purge": "Purge",
+      "clearQueue": "Clear Queue"
+    },
+    "health": {
+      "title": "System Health",
+      "mlPredictor": "ML Risk Predictor",
+      "weatherApi": "Weather API",
+      "mediaStorage": "Media Storage",
+      "eventProcessor": "Event Processor",
+      "healthy": "Healthy",
+      "degraded": "Degraded",
+      "offline": "Offline",
+      "uptime": "Uptime",
+      "lastChecked": "Last Checked",
+      "manualRefresh": "Manual Refresh"
+    }
+  },
+  "tour": {
+    "title": "Product Tour",
+    "skip": "Skip Tour",
+    "step1": {
+      "title": "Create Your Crop",
+      "desc": "Start by adding your first crop — select type, variety, sowing date. We track everything from here."
+    },
+    "step2": {
+      "title": "Map Your Field",
+      "desc": "Draw your field boundary on the map. We use this for weather data, satellite analysis, and area calculation."
+    },
+    "step3": {
+      "title": "Log Actions & Get Alerts",
+      "desc": "Record irrigation, fertilizer, pesticide applications. CultivaX watches for stress and sends you alerts."
+    },
+    "step4": {
+      "title": "What-If Simulation",
+      "desc": "Test actions before committing. See how an irrigation change would affect your crop stress and yield."
+    },
+    "step5": {
+      "title": "Book Services",
+      "desc": "Find verified providers — soil testing, drone surveys, harvest labor. Trust scores help you choose wisely."
+    },
+    "getStarted": "Get Started",
+    "nextStep": "Next Step"
+  },
+  "map": {
+    "drawField": "Draw your field boundary",
+    "clickToAdd": "Click to add points, double-click to finish",
+    "areaCalc": "Calculated area",
+    "saveParcel": "Save Field",
+    "editBoundary": "Edit Boundary",
+    "myParcels": "My Fields",
+    "zoomToLocation": "Zoom to your location"
+  },
+  "sidebar": {
+    "farmer": {
+      "dashboard": "Dashboard",
+      "myCrops": "My Crops",
+      "marketplace": "Marketplace",
+      "labor": "Labor",
+      "alerts": "Alerts"
+    },
+    "provider": {
+      "dashboard": "Dashboard",
+      "equipment": "Equipment",
+      "reviews": "Reviews"
+    },
+    "admin": {
+      "dashboard": "Dashboard",
+      "users": "User Management",
+      "providers": "Provider Management",
+      "templates": "Rule Templates",
+      "health": "System Health",
+      "deadLetters": "Dead Letter Queue"
+    }
+  },
+  "offline": {
+    "offline_sync_status": "Offline Sync Status",
+    "offline_mode": "You are offline",
+    "in_offline_mode": "Your actions are being queued and will sync when you're back online.",
+    "pending_actions": "Pending Actions",
+    "waiting_to_sync": "waiting to sync",
+    "last_sync": "Last Sync",
+    "synced_successfully": "synced successfully",
+    "last_error": "Last Error",
+    "sync_now": "Sync Now",
+    "syncing": "Syncing...",
+    "sync_prompt": "You have {{count}} action(s) ready to sync. Click the button above to sync now.",
+    "sync_errors_present": "Some actions failed to sync. Review the list and try again.",
+    "action_queued": "Action queued! It will be synced when you're online.",
+    "queued_actions": "Queued Actions",
+    "no_queued_actions": "No queued actions"
+  }
+}

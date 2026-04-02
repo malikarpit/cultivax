@@ -1,0 +1,529 @@
+{
+  "common": {
+    "appName": "CultivaX",
+    "tagline": "बुद्धिमान फसल प्रबंधन",
+    "login": "साइन इन करें",
+    "register": "खाता बनाएं",
+    "logout": "लॉग आउट",
+    "save": "सहेजें",
+    "cancel": "रद्द करें",
+    "delete": "हटाएं",
+    "edit": "संपादित करें",
+    "search": "खोजें",
+    "loading": "लोड हो रहा है...",
+    "currency": "₹",
+    "submit": "जमा करें",
+    "confirm": "पुष्टि करें",
+    "back": "वापस",
+    "next": "अगला",
+    "previous": "पिछला",
+    "viewAll": "सभी देखें",
+    "noData": "कोई डेटा उपलब्ध नहीं",
+    "error": "कुछ गलत हो गया",
+    "retry": "पुनः प्रयास करें",
+    "close": "बंद करें",
+    "yes": "हाँ",
+    "no": "नहीं",
+    "or": "या",
+    "showing": "दिखा रहा है",
+    "of": "में से",
+    "page": "पृष्ठ",
+    "filters": "फ़िल्टर",
+    "sortBy": "क्रम",
+    "all": "सभी",
+    "active": "सक्रिय",
+    "pending": "लंबित",
+    "completed": "पूर्ण",
+    "language": "भाषा",
+    "settings": "सेटिंग्स",
+    "help": "मदद",
+    "privacy": "गोपनीयता नीति",
+    "terms": "सेवा की शर्तें",
+    "support": "सहायता",
+    "documentation": "दस्तावेज़",
+    "copyright": "© 2026 CultivaX कृषि बुद्धिमत्ता। सभी अधिकार सुरक्षित।"
+  },
+  "landing": {
+    "nav": {
+      "features": "सुविधाएं",
+      "howItWorks": "कैसे काम करता है",
+      "forFarmers": "किसानों के लिए",
+      "forProviders": "सेवा प्रदाताओं के लिए",
+      "getStarted": "शुरू करें"
+    },
+    "hero": {
+      "title": "फसल ट्रैक करें। अलर्ट पाएं। सेवाएं बुक करें।",
+      "subtitle": "CultivaX भारतीय किसानों को स्मार्ट अलर्ट, व्हाट-इफ सिमुलेशन और विश्वसनीय सेवा मार्केटप्लेस के साथ फसल जीवनचक्र प्रबंधन में मदद करता है।",
+      "cta": "अपनी पहली फसल शुरू करें",
+      "ctaSecondary": "देखें कैसे काम करता है"
+    },
+    "features": {
+      "title": "स्मार्ट खेती के लिए सब कुछ",
+      "cropTimeline": {
+        "title": "फसल टाइमलाइन",
+        "desc": "बुआई से कटाई तक हर चरण को दिन-प्रतिदिन ट्रैक करें"
+      },
+      "smartAlerts": {
+        "title": "स्मार्ट अलर्ट",
+        "desc": "जब आपकी फसल को ध्यान देने की जरूरत हो तो सूचना पाएं — तनाव, मौसम, या छूटी कार्रवाई"
+      },
+      "whatIf": {
+        "title": "व्हाट-इफ सिमुलेशन",
+        "desc": "कार्रवाई से पहले परीक्षण करें — देखें कैसे सिंचाई या उर्वरक परिणाम बदलता है"
+      },
+      "offlineSync": {
+        "title": "ऑफलाइन सिंक",
+        "desc": "बिना इंटरनेट के काम करता है, कनेक्ट होने पर सिंक होता है — खेत के उपयोग के लिए बनाया गया"
+      },
+      "localLanguage": {
+        "title": "स्थानीय भाषा",
+        "desc": "हिंदी और अंग्रेजी में उपलब्ध, और भाषाएं जल्द आ रही हैं"
+      },
+      "trustedProviders": {
+        "title": "विश्वसनीय प्रदाता",
+        "desc": "पारदर्शी ट्रस्ट स्कोर और समीक्षाओं के साथ सत्यापित सेवा प्रदाता खोजें"
+      }
+    },
+    "process": {
+      "title": "CultivaX कैसे काम करता है",
+      "step1": { "title": "फसल बनाएं", "desc": "फसल विवरण जोड़ें और अपना खेत मैप करें" },
+      "step2": { "title": "कार्रवाई दर्ज करें", "desc": "सिंचाई, उर्वरक और अन्य रिकॉर्ड करें" },
+      "step3": { "title": "अलर्ट पाएं", "desc": "स्मार्ट सूचनाएं और सिफारिशें प्राप्त करें" },
+      "step4": { "title": "सेवाएं बुक करें", "desc": "विश्वसनीय कृषि सेवाएं खोजें और बुक करें" }
+    },
+    "cta": {
+      "title": "अपनी पहली फसल शुरू करें — सिर्फ 2 मिनट लगते हैं",
+      "button": "मुफ्त शुरू करें"
+    }
+  },
+  "auth": {
+    "signIn": "साइन इन करें",
+    "signInSubtitle": "CultivaX में वापस स्वागत है",
+    "phone": "फोन नंबर",
+    "phonePlaceholder": "अपना फोन नंबर दर्ज करें",
+    "password": "पासवर्ड",
+    "passwordPlaceholder": "अपना पासवर्ड दर्ज करें",
+    "forgotPassword": "पासवर्ड भूल गए?",
+    "noAccount": "खाता नहीं है?",
+    "registerHere": "यहां रजिस्टर करें",
+    "registerTitle": "CultivaX से जुड़ें",
+    "registerSubtitle": "शुरू करने के लिए अपना खाता बनाएं",
+    "fullName": "पूरा नाम",
+    "fullNamePlaceholder": "अपना पूरा नाम दर्ज करें",
+    "email": "ईमेल (वैकल्पिक)",
+    "emailPlaceholder": "ईमेल पता दर्ज करें",
+    "region": "क्षेत्र",
+    "regionPlaceholder": "अपना क्षेत्र चुनें",
+    "preferredLanguage": "पसंदीदा भाषा",
+    "role": "मैं हूं...",
+    "roleFarmer": "किसान",
+    "roleFarmerDesc": "मैं फसल उगाता हूं और प्रबंधन उपकरणों की जरूरत है",
+    "roleProvider": "सेवा प्रदाता",
+    "roleProviderDesc": "मैं कृषि सेवाएं प्रदान करता हूं",
+    "confirmPassword": "पासवर्ड की पुष्टि करें",
+    "confirmPasswordPlaceholder": "अपना पासवर्ड दोबारा दर्ज करें",
+    "passwordRules": "न्यूनतम 8 अक्षर, 1 अंक, 1 बड़ा अक्षर",
+    "passwordMismatch": "पासवर्ड मेल नहीं खाते",
+    "agreeTerms": "मैं सेवा की शर्तों और गोपनीयता नीति से सहमत हूं",
+    "alreadyHaveAccount": "पहले से खाता है?",
+    "signInHere": "यहां साइन इन करें",
+    "creatingAccount": "खाता बना रहा है...",
+    "signingIn": "साइन इन हो रहा है..."
+  },
+  "dashboard": {
+    "welcome": "वापस स्वागत है,",
+    "farmOverview": "आपके खेत का अवलोकन",
+    "activeCrops": "सक्रिय फसलें",
+    "cropsNeedingAction": "कार्रवाई आवश्यक",
+    "alertsDue": "बकाया अलर्ट",
+    "servicesBooked": "बुक सेवाएं",
+    "cropHealth": "फसल स्वास्थ्य रुझान",
+    "yourCrops": "आपकी फसलें",
+    "viewAllCrops": "सभी फसलें देखें →",
+    "weather": "मौसम",
+    "pendingActions": "लंबित कार्रवाई",
+    "quickActions": "त्वरित कार्रवाई",
+    "addCrop": "फसल जोड़ें",
+    "logAction": "कार्रवाई दर्ज करें",
+    "runSimulation": "सिमुलेशन चलाएं",
+    "bookService": "सेवा बुक करें",
+    "onboarding": {
+      "title": "CultivaX में आपका स्वागत है!",
+      "subtitle": "ट्रैकिंग शुरू करने के लिए अपनी पहली फसल जोड़ें",
+      "button": "अपनी पहली फसल जोड़ें"
+    },
+    "sevenDays": "7 दिन",
+    "thirtyDays": "30 दिन",
+    "updatedAgo": "{time} पहले अपडेट किया"
+  },
+  "crops": {
+    "title": "मेरी फसलें",
+    "newCrop": "+ नई फसल",
+    "noCrops": "अभी कोई फसल नहीं",
+    "noCropsDesc": "शुरू करने के लिए अपनी पहली फसल बनाएं",
+    "day": "दिन",
+    "stressScore": "तनाव स्कोर",
+    "riskIndex": "जोखिम सूचकांक",
+    "season": "मौसम",
+    "stage": "चरण",
+    "sowingDate": "बुआई तिथि",
+    "variety": "किस्म",
+    "cropType": "फसल प्रकार",
+    "growthTimeline": "विकास टाइमलाइन",
+    "actionHistory": "कार्रवाई इतिहास",
+    "overview": "अवलोकन",
+    "actions": "कार्रवाई",
+    "map": "नक्शा",
+    "analytics": "विश्लेषण",
+    "commandPanel": "कार्रवाई",
+    "logAction": "कार्रवाई दर्ज करें",
+    "simulate": "सिमुलेशन चलाएं",
+    "submitYield": "उपज जमा करें",
+    "yieldDisabled": "फसल के दाना भरने के चरण में पहुंचने पर उपलब्ध",
+    "states": {
+      "Created": "बनाया गया",
+      "Active": "सक्रिय",
+      "Delayed": "देरी",
+      "AtRisk": "जोखिम में",
+      "ReadyToHarvest": "कटाई के लिए तैयार",
+      "Harvested": "कटाई पूर्ण",
+      "Closed": "बंद"
+    },
+    "stages": {
+      "germination": "अंकुरण",
+      "vegetative": "वनस्पति",
+      "flowering": "फूल आना",
+      "grain_filling": "दाना भरना",
+      "maturity": "परिपक्वता"
+    },
+    "seasons": {
+      "rabi": "रबी",
+      "kharif": "खरीफ",
+      "zaid": "जायद"
+    },
+    "filters": {
+      "allStates": "सभी स्थिति",
+      "allCrops": "सभी फसलें",
+      "allSeasons": "सभी मौसम",
+      "allStages": "सभी चरण"
+    },
+    "create": {
+      "title": "नई फसल बनाएं",
+      "selectType": "फसल प्रकार चुनें",
+      "selectVariety": "किस्म चुनें",
+      "fieldArea": "खेत का क्षेत्रफल",
+      "notes": "नोट्स (वैकल्पिक)"
+    },
+    "detail": {
+      "lastSynced": "आखिरी सिंक: {time}",
+      "recommendations": "सिफारिशें",
+      "weatherImpact": "मौसम प्रभाव"
+    }
+  },
+  "simulation": {
+    "title": "व्हाट-इफ सिमुलेशन",
+    "subtitle": "अपनी वास्तविक फसल डेटा को प्रभावित किए बिना काल्पनिक कार्रवाई का परीक्षण करें।",
+    "current": "वर्तमान",
+    "projected": "अनुमानित",
+    "stateLabel": "स्थिति",
+    "stressLabel": "तनाव",
+    "riskLabel": "जोखिम",
+    "dayLabel": "दिन",
+    "stageLabel": "चरण",
+    "dateLabel": "तारीख",
+    "detailsLabel": "विवरण",
+    "notAvailable": "उपलब्ध नहीं",
+    "notSpecified": "निर्दिष्ट नहीं",
+    "currentState": "वर्तमान स्थिति",
+    "projectedState": "अनुमानित स्थिति",
+    "addAction": "+ कार्रवाई जोड़ें",
+    "runSimulation": "सिमुलेशन चलाएं",
+    "running": "चल रहा है...",
+    "removeAction": "कार्रवाई हटाएं",
+    "actionType": "कार्रवाई प्रकार",
+    "quantity": "मात्रा",
+    "unit": "इकाई",
+    "onDate": "तारीख पर",
+    "results": "सिमुलेशन परिणाम",
+    "actionsApplied": "{{count}} काल्पनिक कार्रवाई लागू की गई। वास्तविक फसल डेटा अपरिवर्तित है।",
+    "stressDelta": "तनाव परिवर्तन",
+    "riskDelta": "जोखिम परिवर्तन",
+    "dayDelta": "दिन परिवर्तन",
+    "stageChanged": "चरण बदला",
+    "stageTransitions": "चरण संक्रमण",
+    "transitionRow": "दिन {{day}}: {{from}} -> {{to}} (कार्रवाई {{action}})",
+    "actionBreakdown": "कार्रवाई विवरण",
+    "warnings": "चेतावनियां",
+    "actionTypes": {
+      "irrigation": "सिंचाई",
+      "fertilizer": "उर्वरक",
+      "pesticide": "कीटनाशक",
+      "weeding": "निराई",
+      "inspection": "निरीक्षण",
+      "delayed_action": "विलंबित कार्रवाई"
+    },
+    "summary": "सारांश",
+    "confidence": "विश्वसनीयता",
+    "disclaimer": "⚠️ केवल सिमुलेशन — आपकी फसल में कोई बदलाव सहेजा नहीं जाता",
+    "assumptions": "धारणाएं: वर्तमान मौसम पूर्वानुमान, कोई अतिरिक्त तनाव घटनाएं नहीं"
+  },
+  "yield": {
+    "title": "कटाई उपज जमा करें",
+    "subtitle": "{cropName} के लिए अपनी वास्तविक कटाई रिपोर्ट करें। यह आपका फसल रिकॉर्ड अंतिम करता है।",
+    "reportedYield": "रिपोर्ट की गई उपज",
+    "harvestDate": "कटाई तिथि",
+    "qualityGrade": "गुणवत्ता ग्रेड",
+    "notes": "नोट्स",
+    "estimatedValue": "वर्तमान मंडी दर पर अनुमानित मूल्य",
+    "aiVariance": "AI पूर्वानुमान तुलना",
+    "aiPredicted": "AI पूर्वानुमान",
+    "yourActual": "आपका वास्तविक",
+    "variance": "अंतर",
+    "verification": "सत्यापन जांच",
+    "submitFinalize": "जमा करें और कटाई अंतिम करें",
+    "confirmTitle": "कटाई जमा की पुष्टि करें",
+    "confirmMessage": "जमा करने के बाद, इस फसल को कटाई पूर्ण के रूप में चिह्नित किया जाएगा। क्या आप सुनिश्चित हैं?",
+    "loadingCrop": "फसल विवरण लोड हो रहा है...",
+    "backToCrops": "फसलों पर वापस जाएं",
+    "submittedTitle": "उपज जमा हो गई!",
+    "submittedMessage": "{{crop}} के लिए आपकी कटाई जानकारी सफलतापूर्वक दर्ज कर दी गई है।",
+    "verificationSummary": "सत्यापन सारांश",
+    "reportedLabel": "रिपोर्टेड",
+    "mlYieldLabel": "एमएल उपज",
+    "biologicalCapLabel": "जैविक सीमा",
+    "capAppliedLabel": "सीमा लागू",
+    "verificationScoreLabel": "सत्यापन स्कोर",
+    "notAvailable": "उपलब्ध नहीं",
+    "viewCrop": "फसल देखें",
+    "dashboard": "डैशबोर्ड",
+    "readyToHarvestRequired": "उपज जमा केवल तब सक्षम है जब फसल स्थिति ReadyToHarvest हो।",
+    "gradeA": "A — उत्कृष्ट",
+    "gradeB": "B — अच्छा",
+    "gradeC": "C — औसत"
+  },
+  "services": {
+    "title": "सेवा मार्केटप्लेस",
+    "searchPlaceholder": "ट्रैक्टर किराया, मिट्टी परीक्षण, ड्रोन सर्वे खोजें...",
+    "categories": {
+      "soilTesting": "मिट्टी परीक्षण",
+      "droneSurvey": "ड्रोन सर्वे",
+      "irrigation": "सिंचाई",
+      "pestControl": "कीट नियंत्रण",
+      "harvestLabor": "कटाई श्रम",
+      "equipmentRental": "उपकरण किराया"
+    },
+    "trustScore": "ट्रस्ट स्कोर",
+    "whyThisScore": "यह स्कोर क्यों?",
+    "availableNow": "अभी उपलब्ध",
+    "nextAvailable": "अगली उपलब्धता: {date}",
+    "completedJobs": "पूर्ण कार्य",
+    "responseTime": "~{time} में जवाब",
+    "requestService": "सेवा अनुरोध करें →",
+    "estimatedRate": "अनुमानित दर"
+  },
+  "review": {
+    "title": "समीक्षा दें",
+    "rating": "रेटिंग",
+    "bands": {
+      "1": "खराब",
+      "2": "ठीक",
+      "3": "अच्छा",
+      "4": "बहुत अच्छा",
+      "5": "उत्कृष्ट"
+    },
+    "reviewText": "आपकी समीक्षा",
+    "reviewPrompt": "समयबद्धता, गुणवत्ता, संवाद और मूल्य कैसा था?",
+    "highlights": {
+      "fastTurnaround": "तेज़ सेवा",
+      "accurateWork": "सटीक कार्य",
+      "goodCommunication": "अच्छा संवाद",
+      "fairPrice": "उचित मूल्य"
+    },
+    "submitReview": "समीक्षा जमा करें",
+    "escalate": "शिकायत दर्ज करें"
+  },
+  "labor": {
+    "title": "श्रम प्रबंधन",
+    "availableCrews": "आज उपलब्ध दल",
+    "verifiedWorkers": "सत्यापित कर्मचारी",
+    "avgRate": "औसत दर (₹/दिन)",
+    "activeContracts": "सक्रिय अनुबंध",
+    "requestLabor": "श्रम अनुरोध करें",
+    "viewDetails": "विवरण देखें",
+    "dailyRate": "दैनिक दर",
+    "crewSize": "दल का आकार",
+    "skills": "कौशल"
+  },
+  "alerts": {
+    "title": "अलर्ट और सूचनाएं",
+    "critical": "गंभीर",
+    "high": "उच्च",
+    "medium": "मध्यम",
+    "low": "निम्न",
+    "today": "आज",
+    "earlier": "पहले",
+    "read": "पढ़ा हुआ",
+    "markHandled": "निपटा हुआ चिह्नित करें",
+    "viewAction": "कार्रवाई देखें",
+    "showHandled": "निपटे हुए दिखाएं",
+    "affectedCrop": "प्रभावित फसल",
+    "triggerReason": "कारण",
+    "recommendedAction": "अनुशंसित कार्रवाई"
+  },
+  "provider": {
+    "dashboard": "प्रदाता डैशबोर्ड",
+    "pendingRequests": "लंबित अनुरोध",
+    "activeJobs": "सक्रिय कार्य",
+    "completedJobs": "पूर्ण कार्य",
+    "trustScore": "ट्रस्ट स्कोर",
+    "incomingRequests": "आने वाले सेवा अनुरोध",
+    "accept": "स्वीकार करें",
+    "counterOffer": "काउंटर-ऑफर",
+    "markComplete": "पूर्ण चिह्नित करें",
+    "quarterlyRevenue": "तिमाही राजस्व",
+    "equipmentStatus": "उपकरण स्थिति",
+    "regionalCoverage": "क्षेत्रीय कवरेज",
+    "equipment": {
+      "title": "उपकरण प्रबंधन",
+      "addEquipment": "उपकरण जोड़ें",
+      "status": "स्थिति",
+      "lastMaintenance": "अंतिम रखरखाव",
+      "utilization": "उपयोग"
+    },
+    "reviews": {
+      "title": "मेरी समीक्षाएं",
+      "averageRating": "औसत रेटिंग",
+      "totalReviews": "कुल समीक्षाएं"
+    }
+  },
+  "admin": {
+    "console": "CultivaX ऑब्सीडियन — प्रशासक कंसोल",
+    "dashboard": "प्रशासक डैशबोर्ड",
+    "totalUsers": "कुल उपयोगकर्ता",
+    "activeCrops": "सक्रिय फसलें",
+    "serviceProviders": "सेवा प्रदाता",
+    "pendingIssues": "लंबित मुद्दे",
+    "systemHealth": "सिस्टम स्वास्थ्य",
+    "recentActions": "हाल की प्रशासक कार्रवाई",
+    "quickActions": "त्वरित कार्रवाई",
+    "runHealthCheck": "स्वास्थ्य जांच चलाएं",
+    "reviewProviders": "लंबित प्रदाता समीक्षा करें",
+    "viewDeadLetters": "डेड लेटर देखें",
+    "users": {
+      "title": "उपयोगकर्ता प्रबंधन",
+      "newRegistrations": "नई पंजीकरण",
+      "activeRegions": "सक्रिय क्षेत्र",
+      "adminAccess": "प्रशासक पहुंच",
+      "suspended": "निलंबित",
+      "deactivate": "निष्क्रिय करें",
+      "resetPassword": "पासवर्ड रीसेट करें",
+      "changeRole": "भूमिका बदलें",
+      "registerUser": "उपयोगकर्ता पंजीकृत करें"
+    },
+    "providers": {
+      "title": "प्रदाता प्रबंधन",
+      "totalProviders": "कुल प्रदाता",
+      "pendingVerification": "लंबित सत्यापन",
+      "highRisk": "उच्च जोखिम",
+      "activeServices": "सक्रिय सेवाएं",
+      "verify": "सत्यापित करें",
+      "viewDocs": "दस्तावेज़ देखें",
+      "flag": "फ्लैग करें",
+      "suspend": "निलंबित करें"
+    },
+    "templates": {
+      "title": "नियम टेम्पलेट",
+      "activeRules": "सक्रिय नियम",
+      "validationRate": "सत्यापन दर",
+      "awaitingApproval": "अनुमोदन की प्रतीक्षा",
+      "allTemplates": "सभी टेम्पलेट",
+      "production": "प्रोडक्शन",
+      "drafts": "ड्राफ्ट",
+      "archive": "संग्रह",
+      "validate": "सत्यापित करें",
+      "viewDiff": "अंतर देखें"
+    },
+    "deadLetters": {
+      "title": "डेड लेटर क्यू",
+      "totalFailed": "कुल विफल",
+      "criticalErrors": "गंभीर त्रुटियां",
+      "retrySuccessRate": "पुनः प्रयास सफलता दर",
+      "avgTTL": "औसत TTL",
+      "retry": "पुनः प्रयास",
+      "inspect": "पेलोड जांचें",
+      "openEntity": "संबंधित इकाई खोलें",
+      "purge": "शुद्ध करें",
+      "clearQueue": "क्यू साफ़ करें"
+    },
+    "health": {
+      "title": "सिस्टम स्वास्थ्य",
+      "mlPredictor": "ML जोखिम भविष्यवक्ता",
+      "weatherApi": "मौसम API",
+      "mediaStorage": "मीडिया स्टोरेज",
+      "eventProcessor": "इवेंट प्रोसेसर",
+      "healthy": "स्वस्थ",
+      "degraded": "ह्रासित",
+      "offline": "ऑफलाइन",
+      "uptime": "अपटाइम",
+      "lastChecked": "अंतिम जांच",
+      "manualRefresh": "मैनुअल रिफ्रेश"
+    }
+  },
+  "tour": {
+    "title": "उत्पाद टूर",
+    "skip": "टूर छोड़ें",
+    "step1": {
+      "title": "अपनी फसल बनाएं",
+      "desc": "अपनी पहली फसल जोड़कर शुरू करें — प्रकार, किस्म, बुआई तिथि चुनें। हम यहां से सब कुछ ट्रैक करते हैं।"
+    },
+    "step2": {
+      "title": "अपना खेत मैप करें",
+      "desc": "नक्शे पर अपने खेत की सीमा बनाएं। हम इसका उपयोग मौसम डेटा, उपग्रह विश्लेषण और क्षेत्रफल गणना के लिए करते हैं।"
+    },
+    "step3": {
+      "title": "कार्रवाई दर्ज करें और अलर्ट पाएं",
+      "desc": "सिंचाई, उर्वरक, कीटनाशक दर्ज करें। CultivaX तनाव पर नज़र रखता है और आपको अलर्ट भेजता है।"
+    },
+    "step4": {
+      "title": "व्हाट-इफ सिमुलेशन",
+      "desc": "कार्रवाई से पहले परीक्षण करें। देखें कि सिंचाई कैसे आपकी फसल के तनाव और उपज को प्रभावित करेगी।"
+    },
+    "step5": {
+      "title": "सेवाएं बुक करें",
+      "desc": "सत्यापित प्रदाता खोजें — मिट्टी परीक्षण, ड्रोन सर्वे, कटाई श्रम। ट्रस्ट स्कोर आपको सही चुनाव करने में मदद करता है।"
+    },
+    "getStarted": "शुरू करें",
+    "nextStep": "अगला कदम"
+  },
+  "map": {
+    "drawField": "अपने खेत की सीमा बनाएं",
+    "clickToAdd": "बिंदु जोड़ने के लिए क्लिक करें, समाप्त करने के लिए डबल-क्लिक करें",
+    "areaCalc": "गणना किया गया क्षेत्रफल",
+    "saveParcel": "खेत सहेजें",
+    "editBoundary": "सीमा संपादित करें",
+    "myParcels": "मेरे खेत",
+    "zoomToLocation": "अपने स्थान पर ज़ूम करें"
+  },
+  "sidebar": {
+    "farmer": {
+      "dashboard": "डैशबोर्ड",
+      "myCrops": "मेरी फसलें",
+      "marketplace": "मार्केटप्लेस",
+      "labor": "श्रम",
+      "alerts": "अलर्ट"
+    },
+    "provider": {
+      "dashboard": "डैशबोर्ड",
+      "equipment": "उपकरण",
+      "reviews": "समीक्षाएं"
+    },
+    "admin": {
+      "dashboard": "डैशबोर्ड",
+      "users": "उपयोगकर्ता प्रबंधन",
+      "providers": "प्रदाता प्रबंधन",
+      "templates": "नियम टेम्पलेट",
+      "health": "सिस्टम स्वास्थ्य",
+      "deadLetters": "डेड लेटर क्यू"
+    }
+  }
+}
