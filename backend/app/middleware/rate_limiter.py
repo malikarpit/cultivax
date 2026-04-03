@@ -13,6 +13,7 @@ Limits (per minute, configurable in Settings):
 
 import time
 import logging
+import os
 from collections import defaultdict
 from typing import Dict, Tuple
 
@@ -52,6 +53,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     """
 
     async def dispatch(self, request: Request, call_next):
+        # Skip rate limiting in test environment
+        if os.environ.get("TESTING") == "1":
+            return await call_next(request)
+
         # Skip rate limiting for health checks and docs
         if request.url.path in ("/health", "/", "/docs", "/redoc", "/openapi.json"):
             return await call_next(request)
