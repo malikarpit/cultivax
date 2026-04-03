@@ -23,11 +23,14 @@ logger = logging.getLogger(__name__)
 
 # Valid state transitions for service requests
 VALID_REQUEST_TRANSITIONS = {
-    "Pending": ["Accepted", "Cancelled"],
-    "Accepted": ["InProgress", "Cancelled"],
-    "InProgress": ["Completed", "Cancelled"],
+    "Pending": ["Accepted", "Declined", "Cancelled", "Expired"],
+    "Accepted": ["InProgress", "Cancelled", "Expired"],
+    "InProgress": ["Completed", "Failed", "Cancelled"],
     "Completed": [],
     "Cancelled": [],
+    "Declined": [],
+    "Failed": [],
+    "Expired": [],
 }
 
 
@@ -46,14 +49,39 @@ class RequestService:
         """
         Create a new service request and attempt matchmaking.
         """
+        provider = self.db.query(ServiceProvider).filter(
+            ServiceProvider.id == data.provider_id,
+            ServiceProvider.is_deleted == False,
+        ).first()
+        if not provider:
+            raise ValueError("Provider not found")
+        if provider.is_suspended:
+            raise ValueError("Provider is suspended")
+
+        existing = self.db.query(ServiceRequest).filter(
+            ServiceRequest.farmer_id == farmer_id,
+            ServiceRequest.provider_id == data.provider_id,
+            ServiceRequest.service_type == data.service_type,
+            ServiceRequest.status.in_(["Pending", "Accepted", "InProgress"]),
+            ServiceRequest.is_deleted == False
+        ).first()
+        
+        if existing:
+            raise ValueError(
+                f"You already have an active request ({existing.status}) "
+                f"for '{data.service_type}' with this provider."
+            )
+
         request = ServiceRequest(
             farmer_id=farmer_id,
+            provider_id=data.provider_id,
             service_type=data.service_type,
             description=data.description,
             preferred_date=data.preferred_date,
             region=data.region,
             crop_instance_id=data.crop_instance_id,
             urgency=data.urgency or "normal",
+            agreed_price=data.agreed_price,
             status="Pending",
         )
         self.db.add(request)
@@ -68,7 +96,7 @@ class RequestService:
         return request
 
     def accept_request(
-        self, request_id: UUID, provider_id: UUID
+        self, request_id: UUID, provider_id: UUID, actor_id: UUID
     ) -> ServiceRequest:
         """Provider accepts a service request."""
         request = self._get_request(request_id)
@@ -82,7 +110,7 @@ class RequestService:
         request.provider_id = provider_id
         request.provider_acknowledged_at = datetime.now(timezone.utc)
 
-        self._emit_event(request, old_status, "Accepted", provider_id, "provider")
+        self._emit_event(request, old_status, "Accepted", actor_id, "provider")
 
         self.db.commit()
         self.db.refresh(request)
@@ -112,6 +140,50 @@ class RequestService:
         self.db.refresh(request)
 
         logger.info(f"Service request {request_id} completed")
+        return request
+
+    def decline_request(self, request_id: UUID, actor_id: UUID) -> ServiceRequest:
+        request = self._get_request(request_id)
+        if not request: raise LookupError(f"Service request {request_id} not found")
+        self._validate_transition(request.status, "Declined")
+        old_status = request.status
+        request.status = "Declined"
+        self._emit_event(request, old_status, "Declined", actor_id, "provider")
+        self.db.commit()
+        self.db.refresh(request)
+        return request
+
+    def cancel_request(self, request_id: UUID, actor_id: UUID, role: str) -> ServiceRequest:
+        request = self._get_request(request_id)
+        if not request: raise LookupError(f"Service request {request_id} not found")
+        self._validate_transition(request.status, "Cancelled")
+        old_status = request.status
+        request.status = "Cancelled"
+        self._emit_event(request, old_status, "Cancelled", actor_id, role)
+        self.db.commit()
+        self.db.refresh(request)
+        return request
+
+    def start_request(self, request_id: UUID, actor_id: UUID) -> ServiceRequest:
+        request = self._get_request(request_id)
+        if not request: raise LookupError(f"Service request {request_id} not found")
+        self._validate_transition(request.status, "InProgress")
+        old_status = request.status
+        request.status = "InProgress"
+        self._emit_event(request, old_status, "InProgress", actor_id, "provider")
+        self.db.commit()
+        self.db.refresh(request)
+        return request
+
+    def fail_request(self, request_id: UUID, actor_id: UUID) -> ServiceRequest:
+        request = self._get_request(request_id)
+        if not request: raise LookupError(f"Service request {request_id} not found")
+        self._validate_transition(request.status, "Failed")
+        old_status = request.status
+        request.status = "Failed"
+        self._emit_event(request, old_status, "Failed", actor_id, "provider")
+        self.db.commit()
+        self.db.refresh(request)
         return request
 
     def _get_request(self, request_id: UUID) -> Optional[ServiceRequest]:

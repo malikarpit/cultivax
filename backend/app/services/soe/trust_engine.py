@@ -313,3 +313,9 @@ class TrustEngine:
         months = delta.days / 30.44  # average days per month
 
         return max(0.0, months)
+
+
+class TrustScoreEngine(TrustEngine):
+    """Backward-compatible alias for legacy imports."""
+
+    pass

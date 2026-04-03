@@ -184,12 +184,36 @@ class FraudDetector:
     def _create_abuse_flag(
         self, provider_id: UUID, result: Dict[str, Any]
     ) -> None:
-        """Create an abuse flag record for admin review."""
+        """Create an abuse flag record for admin review.
+
+        AbuseFlag.farmer_id refers to the flagged user's account. For provider
+        fraud, we resolve the provider's user_id to populate this field.
+        The entity context (provider_id, entity_type) is stored in details.
+        """
+        from app.models.service_provider import ServiceProvider
+        provider = self.db.query(ServiceProvider).filter(
+            ServiceProvider.id == provider_id,
+            ServiceProvider.is_deleted == False,
+        ).first()
+
+        if not provider:
+            logger.warning(
+                f"Cannot create AbuseFlag — ServiceProvider {provider_id} not found"
+            )
+            return
+
+        enriched_details = {
+            **result,
+            "entity_type": "service_provider",
+            "entity_id": str(provider_id),
+        }
+
         flag = AbuseFlag(
-            target_type="service_provider",
-            target_id=provider_id,
+            farmer_id=provider.user_id,  # user account behind the provider
             flag_type="marketplace_fraud",
             severity="high" if result["confidence"] > 0.6 else "medium",
-            details=result,
+            anomaly_score=result.get("confidence", 0.0),
+            details=enriched_details,
         )
         self.db.add(flag)
+

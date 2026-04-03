@@ -9,10 +9,14 @@ MSDD 2.8.3 | SOE Enhancement 1, 9, 11
 
 from sqlalchemy.orm import Session
 from uuid import UUID
-from typing import List, Dict, Any, Optional
 from datetime import datetime, timezone, timedelta
 import random
 import logging
+import hashlib
+from typing import Optional, Dict, List, Any
+
+from sqlalchemy import func
+from app.models.exposure_log import ExposureLog
 
 from app.models.service_provider import ServiceProvider
 from app.services.soe.trust_engine import TrustScoreEngine
@@ -51,29 +55,46 @@ class ExposureFairnessEngine:
 
     def compute_rankings(
         self,
-        region: str,
+        region: Optional[str] = None,
         service_type: Optional[str] = None,
+        crop_type: Optional[str] = None,
+        search_text: Optional[str] = None,
         limit: int = 20,
-    ) -> List[Dict[str, Any]]:
+        page: int = 1,
+    ) -> Dict[str, Any]:
         """
-        Compute ranked provider list for a given region and service type.
+        Compute ranked provider list with filters and search text. Returns pagination dict.
         """
         # Fetch eligible providers
         query = self.db.query(ServiceProvider).filter(
             ServiceProvider.is_deleted == False,
+            ServiceProvider.is_suspended == False,
             ServiceProvider.is_verified == True,
-            ServiceProvider.region == region,
         )
+
+        if region:
+            query = query.filter(ServiceProvider.region == region)
 
         if service_type:
             query = query.filter(
                 ServiceProvider.service_types.contains([service_type])
             )
+            
+        if crop_type:
+            query = query.filter(
+                ServiceProvider.crop_specializations.contains([crop_type])
+            )
+            
+        if search_text:
+            query = query.filter(
+                ServiceProvider.business_name.ilike(f"%{search_text}%")
+            )
 
+        total = query.count()
         providers = query.all()
 
         if not providers:
-            return []
+            return {"items": [], "total": 0, "page": page, "limit": limit}
 
         # Compute scores
         ranked = []
@@ -106,6 +127,7 @@ class ExposureFairnessEngine:
                 "service_types": provider.service_types,
                 "random_factor": float(int(random_factor * 10000)) / 10000,
                 "exposure_decay": float(int(decay * 10000)) / 10000,
+                "raw_model": provider,
             })
 
         # Sort by ranking score descending
@@ -114,7 +136,16 @@ class ExposureFairnessEngine:
         # Apply exposure cap enforcement
         ranked = self._enforce_exposure_cap(ranked)
 
-        return [r for i, r in enumerate(ranked) if i < limit]
+        # Paginate the results after scoring
+        offset = (page - 1) * limit
+        paginated_ranked = ranked[offset:offset+limit]
+
+        return {
+            "items": paginated_ranked,
+            "total": total,
+            "page": page,
+            "limit": limit
+        }
 
     def _compute_regional_weight(
         self, provider: ServiceProvider, total_in_region: int
@@ -134,9 +165,55 @@ class ExposureFairnessEngine:
         If provider consistently dominates visibility, apply slight decay.
         Returns a multiplier between 0.85 and 1.0.
         """
-        # In a full implementation, this would query exposure_log table
-        # For now, return no decay
+        thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=EXPOSURE_WINDOW_DAYS)
+        
+        # Get total impressions overall in last 30 days
+        total_impressions = self.db.query(func.count(ExposureLog.id)).filter(
+            ExposureLog.shown_at >= thirty_days_ago
+        ).scalar() or 0
+        
+        if total_impressions < 50:
+            # Not enough data to warrant decay
+            return 1.0
+
+        provider_impressions = self.db.query(func.count(ExposureLog.id)).filter(
+            ExposureLog.provider_id == provider_id,
+            ExposureLog.shown_at >= thirty_days_ago
+        ).scalar() or 0
+
+        share = provider_impressions / total_impressions
+        
+        # If share is extremely high, heavily penalize. If it's somewhat high, slightly penalize.
+        if share > 0.5:
+            return 0.85
+        if share > 0.3:
+            return 0.95
+            
         return 1.0
+
+    def log_impressions(self, providers: List[Dict[str, Any]], region: str, page: int = 1) -> None:
+        """
+        Write batch of exposure impressions after rendering a search endpoint.
+        """
+        if not providers:
+            return
+            
+        signature = hashlib.sha256(f"{region}:{page}:{datetime.now(timezone.utc).date()}".encode()).hexdigest()
+        
+        now = datetime.now(timezone.utc)
+        logs = []
+        for i, p in enumerate(providers):
+            logs.append(ExposureLog(
+                provider_id=UUID(p["provider_id"]),
+                region=region,
+                search_signature_hash=signature,
+                rank_position=i + 1,
+                page=page,
+                shown_at=now
+            ))
+            
+        self.db.add_all(logs)
+        self.db.commit()
 
     def _enforce_exposure_cap(
         self, ranked: List[Dict[str, Any]]
