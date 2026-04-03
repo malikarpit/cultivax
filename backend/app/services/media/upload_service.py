@@ -10,8 +10,10 @@ MSDD 4.6 — 3-month retention policy with scheduled deletion.
 
 import os
 import uuid
+import hashlib
+import mimetypes
 from datetime import datetime, timezone, timedelta
-from typing import Optional
+from typing import Optional, Dict
 import logging
 
 from sqlalchemy.orm import Session  # type: ignore
@@ -26,7 +28,16 @@ logger = logging.getLogger(__name__)
 # Configuration
 # ---------------------------------------------------------------------------
 
-MAX_FILE_SIZE_MB = 50
+# ✅ Whitelist MIME types with magic-byte validation
+ALLOWED_MIMES = {
+    'image/jpeg': [b'\xff\xd8\xff'],  # JPEG magic bytes
+    'image/png': [b'\x89PNG'],  # PNG magic bytes
+    'image/webp': [b'RIFF', b'WEBP'],  # WebP magic bytes
+    'image/gif': [b'GIF8'], # GIF magic bytes
+}
+
+MAX_FILE_SIZE_MB = 10  # Reduced to 10MB default for images
+MAX_VIDEO_SIZE_MB = 50
 ALLOWED_EXTENSIONS = {
     "image": {"jpg", "jpeg", "png", "webp", "gif"},
     "video": {"mp4", "mov", "avi", "mkv"},
@@ -54,6 +65,7 @@ class UploadResult:
         self.scheduled_deletion_at = scheduled_deletion_at
         self.signed_url = signed_url
         self.storage_backend = storage_backend
+        self.is_duplicate = False
 
     def to_dict(self) -> dict:
         result = {
@@ -63,6 +75,7 @@ class UploadResult:
             "file_size": self.file_size,
             "scheduled_deletion_at": self.scheduled_deletion_at.isoformat(),
             "storage_backend": self.storage_backend,
+            "is_duplicate": self.is_duplicate,
         }
         if self.signed_url:
             result["download_url"] = self.signed_url
@@ -137,6 +150,26 @@ class CloudStorageClient:
         return url
 
     @classmethod
+    def generate_upload_signed_url(
+        cls,
+        blob_path: str,
+        content_type: str,
+        expiry_minutes: Optional[int] = None,
+    ) -> str:
+        """
+        Generate a signed URL for direct upload (PUT) to a blob.
+        """
+        cls._init_client()
+        expiry = expiry_minutes or settings.GCS_SIGNED_URL_EXPIRY_MINUTES
+        blob = cls._bucket.blob(blob_path)
+        return blob.generate_signed_url(
+            version="v4",
+            expiration=timedelta(minutes=expiry),
+            method="PUT",
+            content_type=content_type,
+        )
+
+    @classmethod
     def delete_blob(cls, blob_path: str) -> bool:
         """Delete a blob from GCS. Returns True if deleted."""
         cls._init_client()
@@ -172,6 +205,10 @@ class UploadService:
         filename: str,
         content: bytes,
         content_type: Optional[str] = None,
+        source_channel: str = 'web',
+        geo_verified: bool = False,
+        capture_lat: Optional[float] = None,
+        capture_lng: Optional[float] = None
     ) -> UploadResult:
         """
         Upload a media file for a crop instance.
@@ -205,15 +242,45 @@ class UploadService:
         if not crop:
             raise PermissionError("Crop not found or not owned by you")
 
-        # Validate file
+        # ✅ 1. Validate file size and MIME type / extension
         ext = self._get_extension(filename)
         file_type = self._classify_file(ext)
-        self._validate_size(content)
+        guessed_mime = mimetypes.guess_type(filename)[0] or content_type or f"{file_type}/{ext}"
+        
+        self._validate_size(content, file_type)
+        self._validate_magic_bytes(content, guessed_mime)
+
+        # ✅ 2. Compute checksum for dedup
+        checksum = hashlib.sha256(content).hexdigest()
+        
+        # Check for duplicate
+        existing = self.db.query(MediaFile).filter(
+            MediaFile.crop_instance_id == crop_instance_id,
+            MediaFile.checksum_sha256 == checksum,
+            MediaFile.deleted_at == None
+        ).first()
+
+        if existing:
+            logger.info(
+                f"Duplicate media detected: crop={crop_instance_id}, "
+                f"checksum={checksum}, existing_id={existing.id}"
+            )
+            # Create a mock UploadResult for existing
+            result = UploadResult(
+                media_id=str(existing.id),
+                file_path=existing.storage_path,
+                file_type=existing.file_type,
+                file_size=existing.file_size_bytes or len(content),
+                scheduled_deletion_at=existing.scheduled_deletion_at or (datetime.now(timezone.utc) + timedelta(days=RETENTION_DAYS)),
+                signed_url=self.get_download_url(str(existing.id))
+            )
+            result.is_duplicate = True
+            return result
 
         # Generate unique filename
         media_id = str(uuid.uuid4())
         stored_filename = f"{media_id}.{ext}"
-        mime = content_type or f"{file_type}/{ext}"
+        mime = guessed_mime
 
         # Choose storage backend
         if self.use_gcs:
@@ -238,7 +305,12 @@ class UploadService:
             file_size_bytes=len(content),
             original_filename=filename,
             mime_type=mime,
-            analysis_status="Pending",
+            checksum_sha256=checksum,
+            source_channel=source_channel,
+            capture_lat=capture_lat,
+            capture_lng=capture_lng,
+            geo_verified=geo_verified,
+            analysis_status="pending",
             scheduled_deletion_at=scheduled_deletion,
         )
         self.db.add(media_record)
@@ -328,11 +400,23 @@ class UploadService:
                 return file_type
         return "unknown"
 
-    def _validate_size(self, content: bytes):
+    def _validate_magic_bytes(self, content: bytes, mime_type: str):
+        """Verify file magic bytes matches claimed MIME type."""
+        # Check only if we know the magic bytes (e.g. for images)
+        if mime_type in ALLOWED_MIMES:
+            magic_prefix = content[:16]
+            expected_magics = ALLOWED_MIMES[mime_type]
+            if not any(magic_prefix.startswith(m) for m in expected_magics):
+                raise ValueError(
+                    f"File magic bytes do not match claimed type {mime_type}. Possible polyglot/corrupted file."
+                )
+
+    def _validate_size(self, content: bytes, file_type: str):
         """Enforce file size limits."""
         size_mb = len(content) / (1024 * 1024)
-        if size_mb > MAX_FILE_SIZE_MB:
+        max_size = MAX_FILE_SIZE_MB if file_type == 'image' else MAX_VIDEO_SIZE_MB
+        if size_mb > max_size:
             raise ValueError(
                 f"File size ({size_mb:.1f}MB) exceeds maximum "
-                f"allowed size ({MAX_FILE_SIZE_MB}MB)"
+                f"allowed size ({max_size}MB)"
             )
