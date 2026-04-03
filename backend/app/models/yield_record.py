@@ -26,6 +26,9 @@ class YieldRecord(BaseModel):
     reported_yield = Column(Float, nullable=False)
     yield_unit = Column(String(20), default="kg/acre", nullable=False)
     harvest_date = Column(Date, nullable=True)
+    quality_grade = Column(String(10), nullable=True)
+    moisture_pct = Column(Float, nullable=True)
+    notes = Column(String(1000), nullable=True)
 
     # ML-verified yield (capped by biological limit)
     ml_yield_value = Column(Float, nullable=True)

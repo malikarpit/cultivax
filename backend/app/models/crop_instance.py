@@ -54,6 +54,9 @@ class CropInstance(BaseModel):
     region = Column(String(100), nullable=False, index=True)
     sub_region = Column(String(100), nullable=True)
 
+    # land parcel for geospatial features
+    land_parcel_id = Column(UUID(as_uuid=True), ForeignKey("land_parcels.id"), nullable=True)
+
     # Rule template reference
     rule_template_id = Column(UUID(as_uuid=True), nullable=True)
     rule_template_version = Column(Integer, nullable=True)

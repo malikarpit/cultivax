@@ -2,24 +2,29 @@
 Rules API
 
 CRUD for crop rule templates (admin only).
-GET  /api/v1/rules
+GET  /api/v1/rules  (paginated)
 POST /api/v1/rules
 PUT  /api/v1/rules/{rule_id}
+POST /api/v1/rules/{rule_id}/validate
+POST /api/v1/rules/{rule_id}/approve
+POST /api/v1/rules/{rule_id}/deprecate
 
 MSDD 1.4 — rule_version_applied tracking
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Body
 from sqlalchemy.orm import Session
 from uuid import UUID
 from typing import Optional
 from pydantic import BaseModel
-from datetime import date
+from datetime import date, datetime, timezone
 
 from app.database import get_db
 from app.api.deps import get_current_user, require_role
 from app.models.user import User
 from app.models.crop_rule_template import CropRuleTemplate
+from app.models.admin_audit import AdminAuditLog
+from app.services.admin_audit import create_audit_entry
 
 router = APIRouter(prefix="/rules", tags=["Crop Rules"])
 
@@ -46,29 +51,49 @@ class RuleResponse(BaseModel):
     region: Optional[str]
     version_id: str
     effective_from_date: date
-    is_active: str
+    status: str
+    validation_errors: Optional[list] = None
+    approved_by: Optional[str] = None
+    approved_at: Optional[datetime] = None
     description: Optional[str]
-    created_at: str
+    created_at: datetime
+    created_by: Optional[str] = None
 
     class Config:
         from_attributes = True
 
 
-@router.get("/", response_model=list[RuleResponse])
+@router.get(
+    "/",
+    dependencies=[Depends(require_role(["admin"]))],
+)
 async def list_rules(
+    page: int = Query(1, ge=1),
+    per_page: int = Query(20, ge=1, le=100),
     crop_type: Optional[str] = None,
-    active_only: bool = True,
+    region: Optional[str] = None,
+    rule_status: Optional[str] = Query(None, alias="status"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """List crop rule templates."""
+    """List crop rule templates paginated. Admin only."""
     query = db.query(CropRuleTemplate).filter(CropRuleTemplate.is_deleted == False)
     if crop_type:
         query = query.filter(CropRuleTemplate.crop_type == crop_type)
-    if active_only:
-        query = query.filter(CropRuleTemplate.is_active == "active")
-    rules = query.order_by(CropRuleTemplate.created_at.desc()).all()
-    return [RuleResponse.model_validate(r) for r in rules]
+    if region:
+        query = query.filter(CropRuleTemplate.region == region)
+    if rule_status:
+        query = query.filter(CropRuleTemplate.status == rule_status)
+        
+    total = query.count()
+    rules = query.order_by(CropRuleTemplate.created_at.desc()).offset((page - 1) * per_page).limit(per_page).all()
+    
+    return {
+        "items": [RuleResponse.model_validate(r) for r in rules],
+        "total": total,
+        "page": page,
+        "per_page": per_page
+    }
 
 
 @router.post(
@@ -82,7 +107,7 @@ async def create_rule(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Create a new crop rule template (admin only)."""
+    """Create a new crop rule template (draft state). Admin only."""
     rule = CropRuleTemplate(
         crop_type=data.crop_type,
         variety=data.variety,
@@ -97,6 +122,7 @@ async def create_rule(
         drift_limits=data.drift_limits or {},
         description=data.description,
         created_by=current_user.id,
+        status="draft"
     )
     db.add(rule)
     db.commit()
@@ -104,45 +130,132 @@ async def create_rule(
     return RuleResponse.model_validate(rule)
 
 
-@router.put(
-    "/{rule_id}",
+@router.post(
+    "/{rule_id}/validate",
     response_model=RuleResponse,
     dependencies=[Depends(require_role(["admin"]))],
 )
-async def update_rule(
+async def validate_rule(
     rule_id: UUID,
-    data: RuleCreateRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Update a crop rule template (admin only). Creates new version."""
-    existing = db.query(CropRuleTemplate).filter(
-        CropRuleTemplate.id == rule_id,
-        CropRuleTemplate.is_deleted == False,
-    ).first()
-    if not existing:
-        raise HTTPException(status_code=404, detail="Rule template not found")
-
-    # Deprecate old version
-    existing.is_active = "deprecated"
-
-    # Create new version
-    new_rule = CropRuleTemplate(
-        crop_type=data.crop_type,
-        variety=data.variety,
-        region=data.region,
-        version_id=data.version_id,
-        effective_from_date=data.effective_from_date,
-        stage_definitions=data.stage_definitions,
-        risk_parameters=data.risk_parameters,
-        irrigation_windows=data.irrigation_windows or {},
-        fertilizer_windows=data.fertilizer_windows or {},
-        harvest_windows=data.harvest_windows or {},
-        drift_limits=data.drift_limits or {},
-        description=data.description,
-        created_by=current_user.id,
-    )
-    db.add(new_rule)
+    """Validate a draft rule template semantics. Moves to validated if success."""
+    rule = db.query(CropRuleTemplate).filter(CropRuleTemplate.id == rule_id).first()
+    if not rule:
+        raise HTTPException(status_code=404, detail="Rule not found")
+        
+    if rule.status not in ["draft", "validated"]:
+        raise HTTPException(status_code=400, detail="Can only validate draft templates")
+        
+    errors = []
+    if not rule.stage_definitions or len(rule.stage_definitions) == 0:
+        errors.append("Stage definitions are empty")
+        
+    # Semantic verification
+    last_day = -1
+    for s in rule.stage_definitions:
+        start_day = s.get("start_day", -1)
+        if start_day <= last_day:
+            errors.append(f"Stage sequence monotonically increasing validation failed near day {start_day}")
+        last_day = start_day
+        
+    if "water_threshold" not in rule.risk_parameters:
+        errors.append("Missing required risk parameter: water_threshold")
+        
+    if errors:
+        rule.validation_errors = errors
+        rule.status = "draft"
+    else:
+        rule.validation_errors = []
+        rule.status = "validated"
+        
     db.commit()
-    db.refresh(new_rule)
-    return RuleResponse.model_validate(new_rule)
+    db.refresh(rule)
+    return RuleResponse.model_validate(rule)
+
+
+@router.post(
+    "/{rule_id}/approve",
+    response_model=RuleResponse,
+    dependencies=[Depends(require_role(["admin"]))],
+)
+async def approve_rule(
+    rule_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Approve a validated rule template. Replaces active."""
+    rule = db.query(CropRuleTemplate).filter(CropRuleTemplate.id == rule_id).first()
+    if not rule:
+        raise HTTPException(status_code=404, detail="Rule not found")
+        
+    if rule.status != "validated":
+        raise HTTPException(status_code=400, detail="Only validated rules can be approved")
+        
+    if str(rule.created_by) == str(current_user.id):
+        raise HTTPException(status_code=403, detail="Dual-admin required: Cannot self-approve created templates")
+        
+    # Transactional Deprecation of previous active
+    active_in_scope = db.query(CropRuleTemplate).filter(
+        CropRuleTemplate.crop_type == rule.crop_type,
+        CropRuleTemplate.region == rule.region,
+        CropRuleTemplate.variety == rule.variety,
+        CropRuleTemplate.status == "active",
+        CropRuleTemplate.id != rule_id
+    ).all()
+    
+    for old_active in active_in_scope:
+        old_active.status = "deprecated"
+        
+    rule.status = "active"
+    rule.approved_by = current_user.id
+    rule.approved_at = datetime.now(timezone.utc)
+    
+    create_audit_entry(
+        db=db,
+        admin_id=current_user.id,
+        action="rule_approved",
+        entity_type="crop_rule_template",
+        entity_id=rule_id,
+        after_value={"crop_type": rule.crop_type}
+    )
+    
+    db.commit()
+    db.refresh(rule)
+    return RuleResponse.model_validate(rule)
+
+
+@router.post(
+    "/{rule_id}/deprecate",
+    response_model=RuleResponse,
+    dependencies=[Depends(require_role(["admin"]))],
+)
+async def deprecate_rule(
+    rule_id: UUID,
+    reason: str = Body(..., embed=True),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Deprecate an active or validated template."""
+    rule = db.query(CropRuleTemplate).filter(CropRuleTemplate.id == rule_id).first()
+    if not rule:
+        raise HTTPException(status_code=404, detail="Rule not found")
+        
+    if rule.status == "deprecated":
+        raise HTTPException(status_code=400, detail="Already deprecated")
+        
+    rule.status = "deprecated"
+    
+    create_audit_entry(
+        db=db,
+        admin_id=current_user.id,
+        action="rule_deprecated",
+        entity_type="crop_rule_template",
+        entity_id=rule_id,
+        reason=reason
+    )
+    
+    db.commit()
+    db.refresh(rule)
+    return RuleResponse.model_validate(rule)

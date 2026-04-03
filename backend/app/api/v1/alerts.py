@@ -14,26 +14,40 @@ from app.database import get_db
 from app.api.deps import get_current_user
 from app.models.user import User
 from app.models.alert import Alert
-from app.schemas.alert import AlertResponse, AlertAcknowledge
+from app.schemas.alert import (
+    AlertResponse,
+    BulkAcknowledgeRequest,
+    BulkAcknowledgeResponse,
+)
+from app.services.notifications import AlertService
 
 router = APIRouter(prefix="/alerts", tags=["Alerts"])
 
 
 @router.get("/", response_model=list[AlertResponse])
 async def get_alerts(
+    severity: Optional[str] = Query(default=None),
+    urgency_level: Optional[str] = Query(default=None),
+    alert_type: Optional[str] = Query(default=None),
+    crop_instance_id: Optional[UUID] = Query(default=None),
     unacknowledged_only: bool = True,
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """Get alerts for the current user."""
-    query = db.query(Alert).filter(
-        Alert.user_id == current_user.id,
-        Alert.is_deleted == False,
+    service = AlertService(db)
+    alerts = service.get_alerts(
+        user_id=current_user.id,
+        unacknowledged_only=unacknowledged_only,
+        severity=severity,
+        urgency_level=urgency_level,
+        alert_type=alert_type,
+        crop_instance_id=crop_instance_id,
+        skip=skip,
+        limit=limit,
     )
-    if unacknowledged_only:
-        query = query.filter(Alert.is_acknowledged == False)
-
-    alerts = query.order_by(Alert.created_at.desc()).limit(50).all()
     return [AlertResponse.model_validate(a) for a in alerts]
 
 
@@ -44,8 +58,6 @@ async def acknowledge_alert(
     current_user: User = Depends(get_current_user),
 ):
     """Acknowledge an alert."""
-    from datetime import datetime, timezone
-
     alert = db.query(Alert).filter(
         Alert.id == alert_id,
         Alert.user_id == current_user.id,
@@ -55,8 +67,21 @@ async def acknowledge_alert(
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
 
-    alert.is_acknowledged = True
-    alert.acknowledged_at = datetime.now(timezone.utc)
+    service = AlertService(db)
+    service.acknowledge_alert(alert_id)
     db.commit()
     db.refresh(alert)
     return AlertResponse.model_validate(alert)
+
+
+@router.post("/acknowledge-bulk", response_model=BulkAcknowledgeResponse)
+async def acknowledge_alerts_bulk(
+    payload: BulkAcknowledgeRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Acknowledge a list of alerts owned by the current user."""
+    service = AlertService(db)
+    acknowledged_count = service.bulk_acknowledge(current_user.id, payload.alert_ids)
+    db.commit()
+    return BulkAcknowledgeResponse(acknowledged_count=acknowledged_count)

@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from uuid import UUID
 
 from app.database import get_db
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_role
 from app.models.user import User
 from app.schemas.yield_record import YieldSubmission, YieldResponse
 from app.services.ctis.yield_service import YieldService
@@ -22,6 +22,7 @@ router = APIRouter(prefix="/crops", tags=["Yield"])
     "/{crop_id}/yield",
     response_model=YieldResponse,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_role(["farmer"]))],
 )
 async def submit_yield(
     crop_id: UUID,
@@ -42,7 +43,47 @@ async def submit_yield(
     try:
         result = service.submit_yield(crop_id, current_user.id, data)
         return YieldResponse.model_validate(result)
+    except RuntimeError as e:
+        raise HTTPException(status_code=409, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.get(
+    "/{crop_id}/yield",
+    response_model=YieldResponse,
+    dependencies=[Depends(require_role(["farmer"]))],
+)
+async def get_latest_yield(
+    crop_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Return latest yield submission for a crop owned by current farmer."""
+    service = YieldService(db)
+    try:
+        result = service.get_latest_yield(crop_id, current_user.id)
+        return YieldResponse.model_validate(result)
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.get(
+    "/{crop_id}/yield/history",
+    response_model=list[YieldResponse],
+    dependencies=[Depends(require_role(["farmer"]))],
+)
+async def list_yield_history(
+    crop_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """List yield submissions for a crop owned by current farmer (newest first)."""
+    service = YieldService(db)
+    try:
+        records = service.list_yield_history(crop_id, current_user.id)
+        return [YieldResponse.model_validate(item) for item in records]
     except LookupError as e:
         raise HTTPException(status_code=404, detail=str(e))

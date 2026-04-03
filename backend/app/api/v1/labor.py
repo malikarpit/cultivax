@@ -11,7 +11,7 @@ MSDD Section 2.6 — Labor Marketplace
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from uuid import UUID
 from typing import Optional
 
@@ -20,7 +20,7 @@ from app.api.deps import get_current_user
 from app.models.user import User
 from app.models.labor import Labor
 from app.models.service_provider import ServiceProvider
-from app.schemas.labor import LaborCreate, LaborResponse
+from app.schemas.labor import LaborCreate, LaborResponse, LaborUpdate, LaborAvailabilityUpdate
 from app.schemas.common import PaginatedResponse
 
 from datetime import datetime, timezone
@@ -72,9 +72,8 @@ async def list_labor(
     current_user: User = Depends(get_current_user),
 ):
     """List available labor with optional region and type filters."""
-    query = db.query(Labor).filter(
+    query = db.query(Labor).options(joinedload(Labor.provider)).filter(
         Labor.is_deleted == False,
-        Labor.is_available == True,
     )
 
     if region:
@@ -90,8 +89,16 @@ async def list_labor(
         .all()
     )
 
+    enriched_items = []
+    for l in items:
+        base = LaborResponse.model_validate(l).dict()
+        base["provider_name"] = l.provider.business_name if l.provider else None
+        base["provider_is_verified"] = l.provider.is_verified if l.provider else False
+        base["provider_trust_score"] = l.provider.trust_score if l.provider else None
+        enriched_items.append(LaborResponse(**base))
+
     return PaginatedResponse(
-        items=[LaborResponse.model_validate(l) for l in items],
+        items=enriched_items,
         total=total,
         page=page,
         per_page=per_page,
@@ -118,7 +125,7 @@ async def get_labor(
 @router.put("/{labor_id}", response_model=LaborResponse)
 async def update_labor(
     labor_id: UUID,
-    data: LaborCreate,
+    data: LaborUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -138,15 +145,42 @@ async def update_labor(
     if not provider:
         raise HTTPException(status_code=403, detail="You do not own this labor listing")
 
-    labor.labor_type = data.labor_type
-    labor.description = data.description
-    labor.available_units = data.available_units
-    labor.daily_rate = data.daily_rate
-    labor.hourly_rate = data.hourly_rate
-    labor.region = data.region
-    labor.sub_region = data.sub_region
+    update_data = data.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(labor, key, value)
+        
     labor.updated_at = datetime.now(timezone.utc)
 
+    db.commit()
+    db.refresh(labor)
+    return LaborResponse.model_validate(labor)
+
+
+@router.patch("/{labor_id}/availability", response_model=LaborResponse)
+async def toggle_availability(
+    labor_id: UUID,
+    data: LaborAvailabilityUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Toggle labor listing availability explicitly."""
+    labor = db.query(Labor).filter(
+        Labor.id == labor_id,
+        Labor.is_deleted == False,
+    ).first()
+    if not labor:
+        raise HTTPException(status_code=404, detail="Labor listing not found")
+
+    provider = db.query(ServiceProvider).filter(
+        ServiceProvider.id == labor.provider_id,
+        ServiceProvider.user_id == current_user.id,
+    ).first()
+    if not provider:
+        raise HTTPException(status_code=403, detail="You do not own this labor listing")
+
+    labor.is_available = data.is_available
+    labor.updated_at = datetime.now(timezone.utc)
+    
     db.commit()
     db.refresh(labor)
     return LaborResponse.model_validate(labor)

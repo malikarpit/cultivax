@@ -5,7 +5,7 @@ Stores uploaded media file metadata.
 TDD Section 2.7.1. Scheduled deletion after 3 months (MSDD 11.12).
 """
 
-from sqlalchemy import Column, String, Float, Integer, Boolean, DateTime, ForeignKey
+from sqlalchemy import Column, String, Float, Integer, Boolean, DateTime, ForeignKey, Index, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 
 from app.models.base import BaseModel
@@ -13,6 +13,11 @@ from app.models.base import BaseModel
 
 class MediaFile(BaseModel):
     __tablename__ = "media_files"
+    __table_args__ = (
+        UniqueConstraint('crop_instance_id', 'checksum_sha256', name='uq_media_checksum_per_crop'),
+        Index('ix_media_crop_created', 'crop_instance_id', 'created_at', 'deleted_at'),
+        Index('ix_media_status', 'analysis_status', 'deleted_at'),
+    )
 
     crop_instance_id = Column(
         UUID(as_uuid=True),
@@ -33,7 +38,15 @@ class MediaFile(BaseModel):
 
     # Processing status
     analysis_status = Column(String(20), default="pending", nullable=False)
-    # pending | processing | completed | failed
+    # pending | processing | analyzed | completed | failed
+
+    # Ingest metadata (NEW)
+    checksum_sha256 = Column(String(64), index=True, nullable=True)  # SHA-256 hex
+    source_channel = Column(String(20), default='web')  # web, mobile, api
+    capture_lat = Column(Float, nullable=True)
+    capture_lng = Column(Float, nullable=True)
+    deleted_at = Column(DateTime(timezone=True), nullable=True)  # Soft delete
+    is_quarantined = Column(Boolean, default=False)
 
     # Extracted features (after ML analysis)
     extracted_features = Column(JSONB, default=dict)

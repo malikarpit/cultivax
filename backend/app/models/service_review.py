@@ -27,6 +27,9 @@ class ServiceReview(BaseModel):
     # Reviewer (farmer)
     reviewer_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
 
+    # Provider
+    provider_id = Column(UUID(as_uuid=True), ForeignKey("service_providers.id"), nullable=False, index=True)
+
     # Rating
     rating = Column(Float, nullable=False)  # 1.0 - 5.0
     comment = Column(Text, nullable=True)

@@ -40,6 +40,8 @@ from app.models.backup_log import BackupLog
 from app.models.land_parcel import LandParcel
 from app.models.whatsapp_session import WhatsAppSession
 from app.models.farmer_audit import FarmerAudit
+from app.models.weather_snapshot import WeatherSnapshot
+from app.models.exposure_log import ExposureLog
 
 __all__ = [
     "Base",
@@ -79,4 +81,6 @@ __all__ = [
     "LandParcel",
     "WhatsAppSession",
     "FarmerAudit",
+    "WeatherSnapshot",
+    "ExposureLog",
 ]

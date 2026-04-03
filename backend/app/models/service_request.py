@@ -21,12 +21,14 @@ class ServiceRequest(BaseModel):
 
     # Request details
     service_type = Column(String(100), nullable=False)
-    crop_type = Column(String(100), nullable=True)
+    crop_instance_id = Column(UUID(as_uuid=True), ForeignKey("crop_instances.id"), nullable=True)
     description = Column(Text, nullable=True)
+    region = Column(String(100), nullable=True)
+    urgency = Column(String(50), default="normal")
 
     # Scheduling
-    requested_date = Column(DateTime(timezone=True), nullable=True)
-    completed_date = Column(DateTime(timezone=True), nullable=True)
+    preferred_date = Column(DateTime(timezone=True), nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
 
     # Status
     status = Column(

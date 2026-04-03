@@ -26,6 +26,16 @@ from app.api.v1.recommendations import router as recommendations_router
 from app.api.v1.sync import router as sync_router
 from app.api.v1.reviews import router as reviews_router
 from app.api.v1.labor import router as labor_router
+from app.api.v1.land_parcels import router as land_parcels_router
+from app.api.v1.weather import router as weather_router
+from app.api.v1.dashboard import router as dashboard_router
+from app.api.v1.translations import router as translations_router
+from app.api.v1.onboarding import router as onboarding_router
+from app.api.v1.whatsapp import router as whatsapp_router  # API-0131
+from app.api.v1.sync import crops_sync_router  # API-0103 /crops/{id}/sync-batch
+from app.api.v1.csp_report import router as csp_report_router  # CSP violation ingestion
+from app.api.v1.health import router as health_router  # API-0150 /api/v1/health
+from app.api.v1.operations import router as operations_router  # API-0108 operations status
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -38,12 +48,28 @@ api_router.include_router(media_router)
 api_router.include_router(admin_router)
 api_router.include_router(simulation_router)
 api_router.include_router(yield_router)
+from fastapi import Depends
+from app.security.feature_flags import require_feature_flag
+
 api_router.include_router(service_requests_router)
-api_router.include_router(ml_router)
+api_router.include_router(
+    ml_router, 
+    dependencies=[Depends(require_feature_flag("ML", enabled_by_default=True))]
+)
 api_router.include_router(rules_router)
 api_router.include_router(features_router)
 api_router.include_router(alerts_router)
 api_router.include_router(recommendations_router)
 api_router.include_router(sync_router)
+api_router.include_router(crops_sync_router)  # API-0103: /crops/{id}/sync-batch
 api_router.include_router(reviews_router)
 api_router.include_router(labor_router)
+api_router.include_router(land_parcels_router)
+api_router.include_router(weather_router)
+api_router.include_router(dashboard_router)
+api_router.include_router(translations_router)
+api_router.include_router(onboarding_router)
+api_router.include_router(whatsapp_router)  # API-0131: WhatsApp webhook
+api_router.include_router(csp_report_router)  # CSP violation ingestion (report-to)
+api_router.include_router(health_router)  # API-0150: /api/v1/health
+api_router.include_router(operations_router)  # API-0108: /api/v1/operations/{id}

@@ -57,6 +57,9 @@ class EventLog(BaseModel):
     retry_count = Column(Integer, default=0, nullable=False)
     max_retries = Column(Integer, default=3, nullable=False)
     failure_reason = Column(String(1000), nullable=True)
+    last_error = Column(String(2000), nullable=True)  # Stack trace
+    last_failed_at = Column(DateTime(timezone=True), nullable=True)
+    next_retry_at = Column(DateTime(timezone=True), nullable=True, index=True)
 
     # Timestamps
     processed_at = Column(DateTime(timezone=True), nullable=True)

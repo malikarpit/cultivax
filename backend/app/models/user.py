@@ -6,11 +6,15 @@ Fields from TDD Section 2.3.1 + soft delete (MSDD 5.10)
 + accessibility_settings (MSDD 7.14) + is_onboarded (Patch Sec 10).
 """
 
-from sqlalchemy import Column, String, Boolean, DateTime, Text
+from sqlalchemy import Column, String, Boolean, DateTime, Text, Integer
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 
 from app.models.base import BaseModel
+
+# Lockout configuration
+MAX_FAILED_LOGIN_ATTEMPTS = 5
+LOCKOUT_DURATION_MINUTES = 15
 
 
 class User(BaseModel):
@@ -35,6 +39,12 @@ class User(BaseModel):
 
     # Account status
     is_active = Column(Boolean, default=True, nullable=False)
+
+    # Login security — brute force protection
+    failed_login_attempts = Column(Integer, default=0, nullable=False)
+    locked_until = Column(DateTime(timezone=True), nullable=True)
+    last_login_at = Column(DateTime(timezone=True), nullable=True)
+    last_login_ip = Column(String(45), nullable=True)
 
     # Soft delete timestamp (MSDD 5.10, TDD 2.2.1)
     deleted_at = Column(DateTime, nullable=True)
