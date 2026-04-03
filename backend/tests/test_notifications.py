@@ -14,7 +14,7 @@ from unittest.mock import MagicMock
 from uuid import uuid4
 
 from app.services.ml.risk_predictor import RiskPredictor
-from app.services.media.analysis_service import MediaAnalysisService
+from app.services.media.analysis_service import AnalysisService
 
 
 # ===========================================================================
@@ -29,19 +29,28 @@ class TestMLSafetyGuards:
 
     def test_ml_disabled_returns_false(self):
         """Kill switch OFF → is_ml_safe returns False."""
-        assert self.predictor.is_ml_safe(training_samples=500, ml_enabled=False) is False
+        from unittest.mock import patch, MagicMock
+        # Mock the feature flag to return False (kill switch OFF)
+        with patch("app.services.feature_flags.is_enabled", return_value=False) as mock_flag:
+            with patch("app.services.ml.risk_predictor.logger"):
+                result = self.predictor.is_ml_safe(training_samples=500, db=MagicMock())
+        assert result is False
 
     def test_insufficient_data_returns_false(self):
         """< 200 training samples → is_ml_safe returns False."""
-        assert self.predictor.is_ml_safe(training_samples=100, ml_enabled=True) is False
+        # No DB needed — insufficient data is checked before feature flag
+        result = self.predictor.is_ml_safe(training_samples=100)
+        assert result is False
 
     def test_sufficient_data_and_enabled_returns_true(self):
-        """>= 200 samples + enabled → is_ml_safe returns True."""
-        assert self.predictor.is_ml_safe(training_samples=200, ml_enabled=True) is True
+        """>= 200 samples + enabled (no db=default True) → is_ml_safe returns True."""
+        result = self.predictor.is_ml_safe(training_samples=200)
+        assert result is True
 
     def test_exactly_threshold_returns_true(self):
         """Exactly 200 samples → is_ml_safe returns True."""
-        assert self.predictor.is_ml_safe(training_samples=200, ml_enabled=True) is True
+        result = self.predictor.is_ml_safe(training_samples=200)
+        assert result is True
 
 
 # ===========================================================================
@@ -89,35 +98,35 @@ class TestStressEscalationGuardrail:
 
     def test_small_increase_passes(self):
         """A small stress increase passes through."""
-        result = MediaAnalysisService.stress_escalation_guardrail(
+        result = AnalysisService.stress_escalation_guardrail(
             current_stress=50.0, new_stress=55.0
         )
         assert result == 55.0
 
     def test_large_increase_capped(self):
         """A large stress increase is capped at max_daily_increase."""
-        result = MediaAnalysisService.stress_escalation_guardrail(
+        result = AnalysisService.stress_escalation_guardrail(
             current_stress=50.0, new_stress=80.0, max_daily_increase=15.0
         )
         assert result == 65.0  # 50 + 15
 
     def test_confidence_weighting_reduces_increase(self):
         """Low confidence reduces the effective stress increase."""
-        result = MediaAnalysisService.stress_escalation_guardrail(
+        result = AnalysisService.stress_escalation_guardrail(
             current_stress=50.0, new_stress=60.0, confidence=0.5
         )
         assert result == 55.0  # 50 + (10 * 0.5)
 
     def test_decrease_not_guarded(self):
         """Stress decreases are allowed without guardrail."""
-        result = MediaAnalysisService.stress_escalation_guardrail(
+        result = AnalysisService.stress_escalation_guardrail(
             current_stress=80.0, new_stress=40.0
         )
         assert result == 40.0
 
     def test_zero_confidence_no_increase(self):
         """Zero confidence → no stress increase applied."""
-        result = MediaAnalysisService.stress_escalation_guardrail(
+        result = AnalysisService.stress_escalation_guardrail(
             current_stress=50.0, new_stress=70.0, confidence=0.0
         )
         assert result == 50.0

@@ -8,7 +8,7 @@ Patch Module 2, Sec 15
 
 from sqlalchemy.orm import Session
 from uuid import UUID
-from typing import List, Dict, Any, Optional
+from typing import List, Optional
 from datetime import datetime, timezone, timedelta
 import logging
 
@@ -155,3 +155,93 @@ class RecommendationEngine:
         ).order_by(Recommendation.priority_rank.desc()).limit(
             MAX_DAILY_RECOMMENDATIONS
         ).all()
+
+    def refresh_recommendations(
+        self,
+        crop_instance_id: UUID,
+    ) -> List[Recommendation]:
+        """
+        Regenerate recommendations for a crop and persist fresh active records.
+
+        Existing active recommendations are soft-expired before inserting new rows.
+        """
+        now = datetime.now(timezone.utc)
+
+        existing_active = self.db.query(Recommendation).filter(
+            Recommendation.crop_instance_id == crop_instance_id,
+            Recommendation.status == "active",
+            Recommendation.is_deleted == False,
+        ).all()
+
+        for rec in existing_active:
+            rec.status = "expired"
+            rec.valid_until = now
+
+        generated = self.compute_recommendations(crop_instance_id)
+        for rec in generated:
+            rec.valid_from = now
+            if rec.valid_until is None:
+                rec.valid_until = now + timedelta(days=1)
+            self.db.add(rec)
+
+        self.db.commit()
+        return self.get_recommendations(crop_instance_id)
+
+    def ensure_recommendations(
+        self,
+        crop_instance_id: UUID,
+    ) -> List[Recommendation]:
+        """
+        Return active recommendations and auto-generate when missing.
+        """
+        recs = self.get_recommendations(crop_instance_id)
+        if recs:
+            return recs
+        return self.refresh_recommendations(crop_instance_id)
+
+    def update_status(
+        self,
+        crop_instance_id: UUID,
+        recommendation_id: UUID,
+        status: str,
+        reason: Optional[str] = None,
+    ) -> Recommendation:
+        """Update recommendation status to dismissed or acted."""
+        rec = self.db.query(Recommendation).filter(
+            Recommendation.id == recommendation_id,
+            Recommendation.crop_instance_id == crop_instance_id,
+            Recommendation.is_deleted == False,
+        ).first()
+
+        if not rec:
+            raise ValueError("Recommendation not found")
+
+        if status not in ("dismissed", "acted"):
+            raise ValueError("Invalid recommendation status")
+
+        rec.status = status
+        rec.valid_until = datetime.now(timezone.utc)
+
+        params = rec.message_parameters or {}
+        if reason:
+            params["resolution_reason"] = reason
+            rec.message_parameters = params
+
+        self.db.commit()
+        self.db.refresh(rec)
+        return rec
+
+    def refresh_for_active_crops(self) -> int:
+        """Generate recommendations for all non-archived active crop instances."""
+        crops = self.db.query(CropInstance).filter(
+            CropInstance.is_deleted == False,
+            CropInstance.is_archived == False,
+            CropInstance.state.in_(["Active", "AtRisk", "ReadyToHarvest"]),
+        ).all()
+
+        refreshed = 0
+        for crop in crops:
+            self.refresh_recommendations(crop.id)
+            refreshed += 1
+
+        return refreshed

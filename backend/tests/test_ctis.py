@@ -38,6 +38,7 @@ def _make_crop(sowing_date=None, state="Active"):
     crop.baseline_growth_stage = None
     crop.event_chain_hash = None
     crop.is_deleted = False
+    crop.region = "Punjab"
     return crop
 
 
@@ -52,6 +53,10 @@ def _make_action(effective_date, action_type="irrigation", category="Timeline-Cr
     action.is_orphaned = False
     action.applied_in_replay = None
     action.is_deleted = False
+    action.metadata_json = {}
+    action.action_impact_type = None
+    action.source = "manual"
+    action.is_override = False
     return action
 
 
@@ -65,6 +70,8 @@ class TestReplayDeterminism:
     def test_apply_action_is_deterministic(self):
         """Running _apply_action with same inputs produces same state."""
         db = MagicMock()
+        # Ensure weather snapshot lookups return None to avoid MagicMock comparisons
+        db.query.return_value.filter.return_value.order_by.return_value.first.return_value = None
         engine = ReplayEngine(db)
 
         crop = _make_crop(sowing_date=date(2025, 6, 1))
@@ -85,6 +92,8 @@ class TestReplayDeterminism:
     def test_multiple_actions_deterministic(self):
         """Multiple actions replay to identical state."""
         db = MagicMock()
+        # Ensure weather snapshot lookups return None to avoid MagicMock comparisons
+        db.query.return_value.filter.return_value.order_by.return_value.first.return_value = None
         engine = ReplayEngine(db)
 
         crop = _make_crop(sowing_date=date(2025, 6, 1))

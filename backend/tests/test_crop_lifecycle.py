@@ -8,65 +8,29 @@ End-to-end test covering the complete crop lifecycle:
   4. Submit yield → verify state transitions to 'Harvested'
   5. Verify crop cannot accept new actions after harvest
 
-Tests use the FastAPI test client with SQLite in-memory DB.
+Tests use PostgreSQL via shared conftest fixtures.
 """
 
 import pytest
 from datetime import date, timedelta
-from uuid import uuid4
+from uuid import UUID, uuid4
 
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-
-from app.main import app
-from app.database import Base, get_db
 from app.security.auth import create_access_token
+from app.models.crop_instance import CropInstance
 from app.models.user import User
+from tests.conftest import unwrap
 
 
-# ── Test Database Setup ────────────────────────────────────────────
-
-TEST_DB_URL = "sqlite:///./test_lifecycle.db"
-engine = create_engine(TEST_DB_URL, connect_args={"check_same_thread": False})
-TestSession = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-
-@pytest.fixture(scope="function")
-def db():
-    """Fresh database per test."""
-    Base.metadata.create_all(bind=engine)
-    session = TestSession()
-    try:
-        yield session
-    finally:
-        session.close()
-        Base.metadata.drop_all(bind=engine)
-
-
-@pytest.fixture(scope="function")
-def client(db):
-    """Test client with DB override."""
-    def _override():
-        try:
-            yield db
-        finally:
-            pass
-
-    app.dependency_overrides[get_db] = _override
-    with TestClient(app) as c:
-        yield c
-    app.dependency_overrides.clear()
-
+# ── Test Fixtures (use shared conftest db/client) ──────────────────
 
 @pytest.fixture
 def farmer_user(db):
     """Create a test farmer in the database."""
     user = User(
         id=uuid4(),
-        username="lifecycle_farmer",
         email="farmer@test.com",
-        hashed_password="hashed_test_password",
+        phone=f"+91{uuid4().int % 10**10:010d}",
+        password_hash="hashed_test_password",
         role="farmer",
         full_name="Test Farmer",
         region="Punjab",
@@ -93,7 +57,7 @@ class TestCropLifecycleFlow:
     Simulates the complete lifecycle of a wheat crop from creation to harvest.
     """
 
-    def test_full_lifecycle(self, client, farmer_headers, farmer_user):
+    def test_full_lifecycle(self, client, db, farmer_headers, farmer_user):
         """
         Flow:
           1. POST /crops → create wheat crop
@@ -119,12 +83,12 @@ class TestCropLifecycleFlow:
         )
         assert create_resp.status_code == 201, f"Create failed: {create_resp.text}"
 
-        crop_data = create_resp.json()
+        crop_data = unwrap(create_resp)
         crop_id = crop_data["id"]
 
         # Verify basic fields
         assert crop_data["crop_type"] == "wheat"
-        assert crop_data["state"] == "Active"
+        assert crop_data["state"] == "Created"
         assert crop_data["region"] == "Punjab"
         assert crop_data["sowing_date"] == sowing.isoformat()
 
@@ -143,7 +107,7 @@ class TestCropLifecycleFlow:
         )
         assert action1_resp.status_code == 201, f"Action1 failed: {action1_resp.text}"
 
-        action1_data = action1_resp.json()
+        action1_data = unwrap(action1_resp)
         assert action1_data["action_type"] == "irrigation"
         assert action1_data["effective_date"] == action1_date.isoformat()
 
@@ -162,7 +126,7 @@ class TestCropLifecycleFlow:
         )
         assert action2_resp.status_code == 201, f"Action2 failed: {action2_resp.text}"
 
-        action2_data = action2_resp.json()
+        action2_data = unwrap(action2_resp)
         assert action2_data["action_type"] == "fertilizer"
 
         # ── Step 4: Verify crop state is still Active ───────────
@@ -171,7 +135,12 @@ class TestCropLifecycleFlow:
             headers=farmer_headers,
         )
         assert get_resp.status_code == 200
-        assert get_resp.json()["state"] == "Active"
+        assert unwrap(get_resp)["state"] == "Active"
+
+        # Move to harvest-eligible state for strict yield submission policy.
+        crop_obj = db.query(CropInstance).filter(CropInstance.id == UUID(crop_id)).first()
+        crop_obj.state = "ReadyToHarvest"
+        db.commit()
 
         # ── Step 5: Submit yield ────────────────────────────────
         harvest_date = date.today() - timedelta(days=5)
@@ -186,7 +155,7 @@ class TestCropLifecycleFlow:
         )
         assert yield_resp.status_code == 201, f"Yield submit failed: {yield_resp.text}"
 
-        yield_data = yield_resp.json()
+        yield_data = unwrap(yield_resp)
         assert yield_data["reported_yield"] == 4200.0
         assert yield_data["crop_instance_id"] == crop_id
 
@@ -196,7 +165,7 @@ class TestCropLifecycleFlow:
             headers=farmer_headers,
         )
         assert final_resp.status_code == 200
-        final_data = final_resp.json()
+        final_data = unwrap(final_resp)
         assert final_data["state"] == "Harvested", (
             f"Expected 'Harvested' but got '{final_data['state']}'"
         )
@@ -227,7 +196,7 @@ class TestChronologicalInvariant:
             headers=farmer_headers,
         )
         assert resp.status_code == 201
-        crop_id = resp.json()["id"]
+        crop_id = unwrap(resp)["id"]
 
         # Try logging action BEFORE sowing date
         pre_sowing = sowing - timedelta(days=5)
@@ -260,7 +229,7 @@ class TestChronologicalInvariant:
             headers=farmer_headers,
         )
         assert resp.status_code == 201
-        crop_id = resp.json()["id"]
+        crop_id = unwrap(resp)["id"]
 
         # Log first action (day 20)
         d1 = sowing + timedelta(days=20)
@@ -313,7 +282,7 @@ class TestIdempotency:
             },
             headers=farmer_headers,
         )
-        crop_id = resp.json()["id"]
+        crop_id = unwrap(resp)["id"]
 
         action_date = sowing + timedelta(days=15)
         payload = {
@@ -369,7 +338,7 @@ class TestCropListing:
         # List all crops
         all_resp = client.get("/api/v1/crops/", headers=farmer_headers)
         assert all_resp.status_code == 200
-        all_data = all_resp.json()
+        all_data = unwrap(all_resp)
         assert all_data["total"] >= 2
 
         # Filter by crop_type
@@ -378,7 +347,7 @@ class TestCropListing:
             headers=farmer_headers,
         )
         assert wheat_resp.status_code == 200
-        wheat_data = wheat_resp.json()
+        wheat_data = unwrap(wheat_resp)
         for item in wheat_data["items"]:
             assert item["crop_type"] == "wheat"
 
@@ -407,7 +376,7 @@ class TestReplayConsistency:
             },
             headers=farmer_headers,
         )
-        crop_id = resp.json()["id"]
+        crop_id = unwrap(resp)["id"]
 
         # Log a few sequential actions
         for day_offset in [7, 14, 21, 28]:
@@ -425,7 +394,7 @@ class TestReplayConsistency:
         # Fetch crop — verify consistent state
         get_resp = client.get(f"/api/v1/crops/{crop_id}", headers=farmer_headers)
         assert get_resp.status_code == 200
-        data = get_resp.json()
+        data = unwrap(get_resp)
         assert data["state"] == "Active"
         # current_day_number should be >= 28 (at least as far as last action)
         assert data["current_day_number"] >= 28, (
