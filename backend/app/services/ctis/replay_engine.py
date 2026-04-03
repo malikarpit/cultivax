@@ -28,6 +28,12 @@ from app.models.action_log import ActionLog  # type: ignore
 from app.models.snapshot import CropInstanceSnapshot  # type: ignore
 from app.models.deviation import DeviationProfile  # type: ignore
 from app.models.event_log import EventLog  # type: ignore
+from app.services.ctis.snapshot_manager import SnapshotManager
+from app.services.ctis.drift_enforcer import DriftEnforcer
+from app.services.ctis.stress_engine import StressEngine
+from app.services.ctis.deviation_tracker import DeviationTracker
+from app.repositories.weather_repository import WeatherRepository
+from app.api.v1.weather import _region_coords
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +84,10 @@ class ReplayEngine:
 
     def __init__(self, db: Session):
         self.db = db
+        self.snapshot_manager = SnapshotManager(db)
+        self.drift_enforcer = DriftEnforcer()
+        self.stress_engine = StressEngine()
+        self.deviation_tracker = DeviationTracker(db)
 
     async def replay_crop_instance(
         self,
@@ -216,12 +226,7 @@ class ReplayEngine:
         self, crop_instance_id: UUID
     ) -> Optional[CropInstanceSnapshot]:
         """Load the most recent snapshot for incremental replay."""
-        return (
-            self.db.query(CropInstanceSnapshot)
-            .filter(CropInstanceSnapshot.crop_instance_id == crop_instance_id)
-            .order_by(CropInstanceSnapshot.created_at.desc())
-            .first()
-        )
+        return self.snapshot_manager.load_latest_snapshot(crop_instance_id)
 
     def _initialize_state(
         self, crop: CropInstance, snapshot: Optional[CropInstanceSnapshot]
@@ -308,10 +313,50 @@ class ReplayEngine:
             category_multiplier = 0.5
 
         # Apply stress: decay existing + add impact
-        new_stress = (state["stress_score"] * STRESS_DECAY_FACTOR) + (
+        base_new_stress = (state["stress_score"] * STRESS_DECAY_FACTOR) + (
             impact * category_multiplier
         )
-        state["stress_score"] = max(0.0, min(new_stress, MAX_STRESS))
+
+        metadata_raw = getattr(action, "metadata_json", None)
+        metadata = metadata_raw if isinstance(metadata_raw, dict) else {}
+        
+        # Resolve historic weather risk via Snapshot Repository (Feature 16)
+        weather_risk_score = metadata.get("weather_risk", 0.0)
+        if action.effective_date:
+            # Recreate the location key
+            # Replay requires region or parcel coordinates. For now, use region defaults if parcel info not joined.
+            defaults = _region_coords(crop.region)
+            loc_key = f"geo_{round(defaults['lat'], 2)}_{round(defaults['lng'], 2)}"
+            
+            repo = WeatherRepository(self.db)
+            snapshot = repo.get_closest_snapshot(loc_key, action.effective_date)
+            if snapshot:
+                weather_risk_score = snapshot.weather_risk_score
+            else:
+                # Fallback to region string if explicit geo key misses
+                loc_key_reg = f"reg_{str(crop.region).lower().strip().replace(' ', '_')}"
+                snapshot_reg = repo.get_closest_snapshot(loc_key_reg, action.effective_date)
+                if snapshot_reg:
+                    weather_risk_score = snapshot_reg.weather_risk_score
+
+        deviation_penalty = min(
+            abs(state.get("stage_offset_days", 0)) / max(crop.max_allowed_drift or 7, 1),
+            1.0,
+        )
+        stress_inputs = self.stress_engine.integrate_stress(
+            backend_ml=float(min(max(state["risk_index"], 0.0), 1.0)),
+            weather_risk=float(min(max(weather_risk_score, 0.0), 1.0)),
+            deviation_penalty=deviation_penalty,
+            edge_signal=float(min(max(metadata.get("edge_signal", 0.0), 0.0), 1.0)),
+            previous_stress=float(min(max(state["stress_score"] / MAX_STRESS, 0.0), 1.0)),
+            confidence=float(min(max(metadata.get("confidence", 1.0), 0.0), 1.0)),
+        )
+        integrated_stress = stress_inputs["new_stress"] * MAX_STRESS
+
+        # Blend base action impact with multi-signal stress integration.
+        blended_stress = (base_new_stress + integrated_stress) / 2.0
+        state["stress_score"] = max(0.0, min(blended_stress, MAX_STRESS))
+        state["stress_components"] = stress_inputs.get("signal_breakdown", {})
 
         # Compute risk index from stress (normalized to 0-1)
         state["risk_index"] = min(state["stress_score"] / MAX_STRESS, MAX_RISK)
@@ -356,8 +401,16 @@ class ReplayEngine:
                 current_idx = expected_stages.index(state["stage"])
                 state["stage_offset_days"] = (current_idx - expected_idx) * 15
 
+            drift_result = self.drift_enforcer.enforce_drift(
+                current_state=crop.state,
+                stage_offset_days=state["stage_offset_days"],
+                current_day_number=state["current_day_number"],
+                expected_day_number=state.get("baseline_day_number", day_number),
+            )
+            state["stage_offset_days"] = drift_result["clamped_offset"]
+
             # If drift exceeds max allowed, increase stress penalty
-            if abs(state["stage_offset_days"]) > (crop.max_allowed_drift or 7):
+            if drift_result["was_clamped"]:
                 state["stress_score"] = min(
                     state["stress_score"] + 10.0, MAX_STRESS
                 )
@@ -394,7 +447,13 @@ class ReplayEngine:
         Creates a tamper-detection chain: hash(prev_hash + action_data).
         """
         prev_hash = state.get("chain_hash") or ""
-        action_data = f"{action.id}:{action.action_type}:{action.effective_date}:{action.server_timestamp}"
+        metadata_raw = getattr(action, "metadata_json", None)
+        metadata = metadata_raw if isinstance(metadata_raw, dict) else {}
+        metadata_json = json.dumps(metadata, sort_keys=True)
+        action_data = (
+            f"{action.id}:{action.action_type}:{action.effective_date}:{action.server_timestamp}:"
+            f"{metadata_json}:{action.action_impact_type}:{action.source}:{action.is_override}"
+        )
         raw = f"{prev_hash}:{action_data}"
         new_hash = hashlib.sha256(raw.encode()).hexdigest()
         state["chain_hash"] = new_hash
@@ -431,7 +490,7 @@ class ReplayEngine:
         self, crop: CropInstance, state: dict, action_count: int
     ):
         """Create a replay checkpoint snapshot."""
-        snapshot = CropInstanceSnapshot(
+        self.snapshot_manager.create_snapshot(
             crop_instance_id=crop.id,
             snapshot_data={
                 "stress_score": state["stress_score"],
@@ -442,15 +501,23 @@ class ReplayEngine:
                 "consecutive_deviations": state["consecutive_deviations"],
                 "deviation_trend_slope": state["deviation_trend_slope"],
                 "cumulative_deviation_days": state["cumulative_deviation_days"],
+                "chain_hash": state.get("chain_hash"),
+                "stress_components": state.get("stress_components", {}),
             },
             action_count_at_snapshot=action_count,
-            snapshot_version=1,
         )
-        self.db.add(snapshot)
         logger.info(f"Snapshot created at action_count={action_count}")
 
     def _update_deviation_profile(self, crop: CropInstance, state: dict):
         """Sync the deviation profile with computed replay state."""
+        update = self.deviation_tracker.update_deviation_profile(
+            crop.id,
+            state.get("stage_offset_days", 0),
+        )
+        state["consecutive_deviations"] = update.consecutive_count
+        state["deviation_trend_slope"] = update.trend_slope
+        state["cumulative_deviation_days"] = update.cumulative_days
+
         deviation = (
             self.db.query(DeviationProfile)
             .filter(DeviationProfile.crop_instance_id == crop.id)

@@ -15,7 +15,6 @@ import json
 import logging
 
 from app.models.snapshot import CropInstanceSnapshot
-from app.models.crop_instance import CropInstance
 from app.models.action_log import ActionLog
 
 logger = logging.getLogger(__name__)
@@ -43,25 +42,21 @@ class SnapshotManager:
         """
         last_snapshot = self._get_latest_snapshot(crop_instance_id)
 
-        if last_snapshot:
-            last_action_seq = last_snapshot.action_sequence_number or 0
-        else:
-            last_action_seq = 0
+        last_action_count = last_snapshot.action_count_at_snapshot if last_snapshot else 0
 
         # Count actions since last snapshot
         action_count = self.db.query(ActionLog).filter(
             ActionLog.crop_instance_id == crop_instance_id,
-            ActionLog.sequence_number > last_action_seq,
             ActionLog.is_deleted == False,
         ).count()
 
-        return action_count >= SNAPSHOT_INTERVAL
+        return max(action_count - last_action_count, 0) >= SNAPSHOT_INTERVAL
 
     def create_snapshot(
         self,
         crop_instance_id: UUID,
-        state_data: Dict[str, Any],
-        action_sequence_number: int,
+        snapshot_data: Dict[str, Any],
+        action_count_at_snapshot: int,
         replay_hash: Optional[str] = None,
     ) -> CropInstanceSnapshot:
         """
@@ -75,10 +70,9 @@ class SnapshotManager:
         """
         snapshot = CropInstanceSnapshot(
             crop_instance_id=crop_instance_id,
-            state_data=state_data,
-            action_sequence_number=action_sequence_number,
-            replay_hash=replay_hash,
-            snapshot_version="1.0",
+            snapshot_data=snapshot_data,
+            action_count_at_snapshot=action_count_at_snapshot,
+            snapshot_version=1,
             created_at=datetime.now(timezone.utc),
         )
         self.db.add(snapshot)
@@ -86,7 +80,7 @@ class SnapshotManager:
 
         logger.info(
             f"Created snapshot for crop {crop_instance_id} "
-            f"at action_seq={action_sequence_number}"
+            f"at action_count={action_count_at_snapshot}"
         )
         return snapshot
 
@@ -110,7 +104,7 @@ class SnapshotManager:
         """
         snapshots = self.db.query(CropInstanceSnapshot).filter(
             CropInstanceSnapshot.crop_instance_id == crop_instance_id,
-            CropInstanceSnapshot.action_sequence_number > after_sequence,
+            CropInstanceSnapshot.action_count_at_snapshot > after_sequence,
             CropInstanceSnapshot.is_deleted == False,
         ).all()
 
@@ -138,7 +132,7 @@ class SnapshotManager:
                 CropInstanceSnapshot.crop_instance_id == crop_instance_id,
                 CropInstanceSnapshot.is_deleted == False,
             )
-            .order_by(CropInstanceSnapshot.action_sequence_number.desc())
+            .order_by(CropInstanceSnapshot.action_count_at_snapshot.desc())
             .first()
         )
 

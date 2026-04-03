@@ -12,11 +12,14 @@ from datetime import date
 import math
 
 from app.models.crop_instance import CropInstance
+from app.models.land_parcel import LandParcel
 from app.models.deviation import DeviationProfile
 from app.models.user import User
 from app.schemas.crop_instance import CropInstanceCreate, CropInstanceUpdate
 from app.schemas.common import PaginatedResponse
 from app.services.ctis.seasonal_window import assign_seasonal_window
+from app.services.event_dispatcher.db_dispatcher import DBEventDispatcher
+from app.services.event_dispatcher.event_types import CTISEvents
 
 
 class CropService:
@@ -25,6 +28,48 @@ class CropService:
 
     def create_crop(self, farmer: User, data: CropInstanceCreate) -> CropInstance:
         """Create a new crop instance with seasonal window assignment."""
+
+        if data.land_parcel_id:
+            parcel = self.db.query(LandParcel).filter(
+                LandParcel.id == data.land_parcel_id,
+                LandParcel.farmer_id == farmer.id,
+                LandParcel.is_deleted == False,
+            ).first()
+            if not parcel:
+                raise ValueError("Invalid land_parcel_id for this farmer")
+
+        # Resolve Active Rule Template dynamically by precedence policy
+        from app.models.crop_rule_template import CropRuleTemplate
+        base_query = self.db.query(CropRuleTemplate).filter(
+            CropRuleTemplate.status == "active",
+            CropRuleTemplate.crop_type == data.crop_type,
+            CropRuleTemplate.effective_from_date <= data.sowing_date
+        )
+        # Attempt exact match (region + variety)
+        rule_template = base_query.filter(
+            CropRuleTemplate.region == data.region,
+            CropRuleTemplate.variety == data.variety
+        ).order_by(CropRuleTemplate.effective_from_date.desc()).first()
+        
+        # Fallback exactly matching region ignoring variety
+        if not rule_template:
+            rule_template = base_query.filter(
+                CropRuleTemplate.region == data.region,
+                CropRuleTemplate.variety == None
+            ).order_by(CropRuleTemplate.effective_from_date.desc()).first()
+        
+        # Fallback exactly matching global configurations ignoring both
+        if not rule_template:
+            rule_template = base_query.filter(
+                CropRuleTemplate.region == None,
+                CropRuleTemplate.variety == None
+            ).order_by(CropRuleTemplate.effective_from_date.desc()).first()
+
+        assigned_rule_id = rule_template.id if rule_template else None
+        
+        if not assigned_rule_id:
+            import logging
+            logging.warning(f"CTIS Validation Warning: NO active rule template found parsing {data.crop_type} scope.")
 
         # Assign seasonal window (immutable at creation — MSDD 1.9)
         window = assign_seasonal_window(
@@ -39,12 +84,19 @@ class CropService:
             region=data.region,
             sub_region=data.sub_region,
             land_area=data.land_area,
-            rule_template_id=data.rule_template_id,
+            land_parcel_id=data.land_parcel_id,
+            rule_template_id=data.rule_template_id or assigned_rule_id,
             seasonal_window_category=window,
             state="Created",
             metadata_extra=data.metadata_extra or {},
         )
         self.db.add(crop)
+        self.db.flush()
+
+        # Mark onboarding complete on first successful crop creation
+        if not farmer.is_onboarded:
+            farmer.is_onboarded = True
+            self.db.add(farmer)
 
         # Initialize deviation profile
         deviation = DeviationProfile(crop_instance_id=crop.id)
@@ -63,6 +115,8 @@ class CropService:
         crop_type: Optional[str] = None,
         region: Optional[str] = None,
         include_archived: bool = False,
+        search: Optional[str] = None,
+        seasonal_window_category: Optional[str] = None,
     ) -> PaginatedResponse:
         """List crops with pagination and filtering."""
 
@@ -80,6 +134,13 @@ class CropService:
             query = query.filter(CropInstance.crop_type == crop_type)
         if region:
             query = query.filter(CropInstance.region == region)
+        if seasonal_window_category:
+            query = query.filter(CropInstance.seasonal_window_category == seasonal_window_category)
+        if search:
+            query = query.filter(
+                (CropInstance.crop_type.ilike(f"%{search}%")) |
+                (CropInstance.variety.ilike(f"%{search}%"))
+            )
 
         total = query.count()
         total_pages = math.ceil(total / per_page) if total > 0 else 1
@@ -113,6 +174,16 @@ class CropService:
             return None
 
         update_data = data.model_dump(exclude_unset=True)
+
+        if "land_parcel_id" in update_data and update_data["land_parcel_id"] is not None:
+            parcel = self.db.query(LandParcel).filter(
+                LandParcel.id == update_data["land_parcel_id"],
+                LandParcel.farmer_id == farmer_id,
+                LandParcel.is_deleted == False,
+            ).first()
+            if not parcel:
+                raise ValueError("Invalid land_parcel_id for this farmer")
+
         for field, value in update_data.items():
             setattr(crop, field, value)
 
@@ -139,8 +210,41 @@ class CropService:
         crop.stage = None
         crop.stage_offset_days = 0
 
-        # TODO: In Day 12, trigger full replay via Event Dispatcher
+        # Trigger full replay via Event Dispatcher
+        dispatcher = DBEventDispatcher(self.db)
+        dispatcher.publish(
+            event_type=CTISEvents.REPLAY_TRIGGERED,
+            entity_type="CropInstance",
+            entity_id=str(crop.id),
+            payload={
+                "crop_instance_id": str(crop.id),
+                "reason": "sowing_date_modified",
+                "new_sowing_date": crop.sowing_date.isoformat()
+            }
+        )
 
+        self.db.commit()
+        self.db.refresh(crop)
+        return crop
+
+    def change_state(self, crop_id: UUID, farmer_id: UUID, new_state: str) -> Optional[CropInstance]:
+        """Change the state of a crop."""
+        crop = self.get_crop(crop_id, farmer_id)
+        if not crop:
+            return None
+        crop.state = new_state
+        self.db.commit()
+        self.db.refresh(crop)
+        return crop
+
+    def set_archived(self, crop_id: UUID, farmer_id: UUID, is_archived: bool) -> Optional[CropInstance]:
+        """Set the archived status of a crop."""
+        crop = self.get_crop(crop_id, farmer_id)
+        if not crop:
+            return None
+        crop.is_archived = is_archived
+        if is_archived:
+            crop.state = "Archived"
         self.db.commit()
         self.db.refresh(crop)
         return crop

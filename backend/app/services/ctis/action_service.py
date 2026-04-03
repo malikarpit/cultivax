@@ -103,18 +103,33 @@ class ActionService:
         if crop.state == "Created":
             crop.state = "Active"
 
+        # Provisional update for Day 7 (until ReplayEngine is implemented)
+        action_day = (data.effective_date - crop.sowing_date).days
+        if crop.current_day_number is None or action_day > crop.current_day_number:
+            crop.current_day_number = action_day
+
         # Publish ActionLogged event for Replay Engine pipeline (Day 13)
+        import hashlib
+        import json
+        
+        payload_dict = {
+            "crop_instance_id": str(crop_id),
+            "action_type": data.action_type,
+            "effective_date": str(data.effective_date),
+            "category": data.category,
+        }
+        
+        # Simple hash based on idempotency_key or payload
+        hash_source = data.idempotency_key or json.dumps(payload_dict)
+        e_hash = hashlib.sha256(hash_source.encode()).hexdigest()
+
         event = EventLog(
             event_type="ActionLogged",
-            source="ActionService",
             entity_type="CropInstance",
-            entity_id=str(crop_id),
-            payload={
-                "crop_instance_id": str(crop_id),
-                "action_type": data.action_type,
-                "effective_date": str(data.effective_date),
-                "category": data.category,
-            },
+            entity_id=crop_id,
+            partition_key=crop_id,
+            event_hash=e_hash,
+            payload=payload_dict,
         )
         self.db.add(event)
 
@@ -126,3 +141,62 @@ class ActionService:
         self.db.commit()
         self.db.refresh(action)
         return action
+
+    def list_actions(self, crop_id: UUID, farmer_id: UUID) -> list[ActionLog]:
+        """List chronological actions for a specific crop."""
+        # Verify ownership
+        crop = self.db.query(CropInstance).filter(
+            CropInstance.id == crop_id,
+            CropInstance.farmer_id == farmer_id,
+        ).first()
+
+        if not crop:
+            raise PermissionError("Crop not found or not owned by you")
+
+        return self.db.query(ActionLog).filter(
+            ActionLog.crop_instance_id == crop_id,
+            ActionLog.is_deleted == False
+        ).order_by(ActionLog.effective_date.desc()).all()
+
+    def list_actions_paginated(
+        self,
+        crop_id: UUID,
+        farmer_id: UUID,
+        page: int = 1,
+        page_size: int = 20,
+        sort: str = "-effective_date",
+    ) -> dict:
+        """List crop actions with pagination and deterministic sorting."""
+        crop = self.db.query(CropInstance).filter(
+            CropInstance.id == crop_id,
+            CropInstance.farmer_id == farmer_id,
+            CropInstance.is_deleted == False,
+        ).first()
+
+        if not crop:
+            raise PermissionError("Crop not found or not owned by you")
+
+        page = max(page, 1)
+        page_size = min(max(page_size, 1), 100)
+        offset = (page - 1) * page_size
+
+        query = self.db.query(ActionLog).filter(
+            ActionLog.crop_instance_id == crop_id,
+            ActionLog.is_deleted == False,
+        )
+
+        total = query.count()
+
+        if sort == "effective_date":
+            query = query.order_by(ActionLog.effective_date.asc(), ActionLog.created_at.asc())
+        else:
+            query = query.order_by(ActionLog.effective_date.desc(), ActionLog.created_at.desc())
+
+        actions = query.offset(offset).limit(page_size).all()
+        return {
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "has_more": (offset + page_size) < total,
+            "actions": actions,
+        }

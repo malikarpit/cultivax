@@ -11,11 +11,14 @@ from sqlalchemy.orm import Session
 from uuid import UUID
 from typing import Optional
 from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import logging
 
 from app.models.crop_instance import CropInstance
 from app.models.yield_record import YieldRecord
+from app.models.weather_snapshot import WeatherSnapshot
 from app.schemas.yield_record import YieldSubmission
+from app.api.v1.weather import _region_coords
 
 logger = logging.getLogger(__name__)
 
@@ -66,31 +69,56 @@ class YieldService:
         if not crop:
             raise LookupError(f"Crop instance {crop_id} not found")
 
-        if crop.state not in ("Active", "ReadyToHarvest", "AtRisk", "Delayed"):
-            raise ValueError(
-                f"Cannot submit yield for crop in state '{crop.state}'"
+        existing = self.db.query(YieldRecord).filter(
+            YieldRecord.crop_instance_id == crop_id,
+            YieldRecord.is_deleted == False,
+        ).first()
+        if existing:
+            raise RuntimeError(
+                "Yield already submitted for this crop. Resubmission is blocked; use /yield/history to review."
             )
 
-        # Compute verification score
-        verification_score = self._compute_verification_score(crop)
+        if crop.state != "ReadyToHarvest":
+            raise ValueError(
+                f"Cannot submit yield unless crop is in 'ReadyToHarvest' state (current: '{crop.state}')"
+            )
+
+        # Compute verification score (Feature 16 Weather Contribution output)
+        verification_score, weather_risk_recent = self._compute_verification_score(crop)
 
         # Biological limit cap
         bio_limit = BIOLOGICAL_LIMITS.get(
             crop.crop_type.lower(), DEFAULT_BIOLOGICAL_LIMIT
         )
         ml_yield_value = min(data.reported_yield, bio_limit)
+        was_capped = ml_yield_value < data.reported_yield
 
         # Create yield record
+        metadata = {
+            "stress_score": float(crop.stress_score or 0.0),
+            "risk_index": float(crop.risk_index or 0.0),
+            "weather_risk_recent": float(weather_risk_recent),
+            "seasonal_window_category": crop.seasonal_window_category,
+            "crop_state_at_submission": crop.state,
+            "biological_cap": bio_limit,
+            "reported_yield": data.reported_yield,
+            "ml_yield_value": ml_yield_value,
+            "bio_cap_applied": was_capped,
+        }
+
         yield_record = YieldRecord(
             crop_instance_id=crop_id,
-            farmer_id=farmer_id,
             reported_yield=data.reported_yield,
             ml_yield_value=ml_yield_value,
-            yield_unit=data.yield_unit or "tons_per_hectare",
-            verification_score=verification_score,
+            yield_unit=data.yield_unit or "kg/acre",
+            yield_verification_score=verification_score,
             harvest_date=data.harvest_date or datetime.now(timezone.utc).date(),
             quality_grade=data.quality_grade,
+            moisture_pct=data.moisture_pct,
             notes=data.notes,
+            biological_cap=bio_limit,
+            bio_cap_applied=was_capped,
+            verification_metadata=metadata,
         )
         self.db.add(yield_record)
 
@@ -109,17 +137,50 @@ class YieldService:
 
         return yield_record
 
-    def _compute_verification_score(self, crop: CropInstance) -> float:
+    def get_latest_yield(self, crop_id: UUID, farmer_id: UUID) -> YieldRecord:
+        crop = self.db.query(CropInstance).filter(
+            CropInstance.id == crop_id,
+            CropInstance.farmer_id == farmer_id,
+            CropInstance.is_deleted == False,
+        ).first()
+        if not crop:
+            raise LookupError(f"Crop instance {crop_id} not found")
+
+        record = self.db.query(YieldRecord).filter(
+            YieldRecord.crop_instance_id == crop_id,
+            YieldRecord.is_deleted == False,
+        ).order_by(YieldRecord.created_at.desc()).first()
+        if not record:
+            raise LookupError("No yield record found for this crop")
+        return record
+
+    def list_yield_history(self, crop_id: UUID, farmer_id: UUID) -> list[YieldRecord]:
+        crop = self.db.query(CropInstance).filter(
+            CropInstance.id == crop_id,
+            CropInstance.farmer_id == farmer_id,
+            CropInstance.is_deleted == False,
+        ).first()
+        if not crop:
+            raise LookupError(f"Crop instance {crop_id} not found")
+
+        return self.db.query(YieldRecord).filter(
+            YieldRecord.crop_instance_id == crop_id,
+            YieldRecord.is_deleted == False,
+        ).order_by(YieldRecord.created_at.desc()).all()
+
+    def _compute_verification_score(self, crop: CropInstance) -> tuple[float, float]:
         """
         Compute YieldVerificationScore (0-1) from:
         - Stress history
-        - Weather conditions during season
+        - Weather conditions during season (7-day rolling average)
         - Seasonal risk category
+        
+        Returns: (score, weather_risk_recent)
         """
         score = 1.0
 
         # Penalty for high stress
-        stress = float(crop.stress_score or 0.0)
+        stress = float(crop.stress_score or 0.0) / 100.0  # normalize
         score -= stress * 0.3
 
         # Penalty for risk
@@ -132,4 +193,22 @@ class YieldService:
         elif crop.seasonal_window_category == "Early":
             score -= 0.05
 
-        return max(0.0, min(1.0, float(int(score * 10000)) / 10000))
+        # Feature 16: Weather Intelligence 7-day rolling risk
+        recent_cutoff = datetime.now(timezone.utc) - timedelta(days=7)
+        defaults = _region_coords(crop.region)
+        loc_key = f"geo_{round(defaults['lat'], 2)}_{round(defaults['lng'], 2)}"
+        
+        recent_snapshots = self.db.query(WeatherSnapshot).filter(
+            WeatherSnapshot.location_key == loc_key,
+            WeatherSnapshot.captured_at >= recent_cutoff
+        ).all()
+        
+        weather_risk_recent = 0.0
+        if recent_snapshots:
+            weather_risk_recent = sum(s.weather_risk_score for s in recent_snapshots) / len(recent_snapshots)
+        
+        # Apply up to 15% penalty for bad weather at harvest time
+        score -= weather_risk_recent * 0.15
+
+        final_score = max(0.0, min(1.0, float(int(score * 10000)) / 10000))
+        return final_score, round(weather_risk_recent, 4)
