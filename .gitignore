@@ -31,6 +31,7 @@ Thumbs.db
 node_modules/
 .next/
 out/
+*.tsbuildinfo
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -62,26 +63,17 @@ docs/important documentation/extracted_pdfkit/
 *.pyc
 .mypy_cache/
 
-# Large Media Files
+# Large Media Files and User Uploads
 *.mp4
 *.mov
 *.avi
 *.mkv
+backend/uploads/media/*
+!backend/uploads/media/.gitkeep
 
 # Helper Scripts (Local Only)
 build_history.sh
 build_history_random.sh
 
-# Workflow PDF
-workflow.pdf
-docs/important documentation/workflow.pdf
-
-# Antigravity Docs
-docs/antigravity docs/
-
-# Generated analysis files
-docs/gap_analysis.md
-docs/md files/
-docs/user_perspective_report.md
-docs/deep_audit_report.md
-docs/important documentation/UI_SPEC.md
+# Working documents
+working docs/
