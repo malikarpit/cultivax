@@ -14,6 +14,7 @@ class CTISEvents:
     """Crop Timeline Intelligence System events."""
     ACTION_LOGGED = "ctis.action_logged"
     REPLAY_TRIGGERED = "ctis.replay_triggered"
+    REPLAY_REQUESTED = "ctis.replay_requested"   # FX-EVENTS-P1-0005: admin force-replay
     REPLAY_COMPLETED = "ctis.replay_completed"
     REPLAY_FAILED = "ctis.replay_failed"
     STAGE_CHANGED = "ctis.stage_changed"
@@ -71,6 +72,7 @@ class NotificationEvents:
     ALERT_ACKNOWLEDGED = "notification.alert_acknowledged"
     RECOMMENDATION_CREATED = "notification.recommendation_created"
     RECOMMENDATION_ACTED = "notification.recommendation_acted"
+    WEATHER_UPDATED = "notification.weather_updated"
 
 
 # All event types for validation

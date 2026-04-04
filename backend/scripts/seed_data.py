@@ -216,6 +216,8 @@ def seed_users(db: Session) -> dict:
     ]
 
     for i, fd in enumerate(farmers_data):
+        # First farmer (i=0) starts un-onboarded so the onboarding flow
+        # (banner → wizard → crop POST → flag flip) can be tested locally.
         farmer = User(
             id=uuid4(),
             full_name=fd["name"],
@@ -225,7 +227,7 @@ def seed_users(db: Session) -> dict:
             role="farmer",
             region=fd["region"],
             is_active=True,
-            is_onboarded=True,
+            is_onboarded=(i != 0),
         )
         db.add(farmer)
         users[f"farmer_{i}"] = farmer

@@ -23,7 +23,7 @@ from typing import Dict, Any, Optional
 from uuid import UUID, uuid4
 
 from sqlalchemy.orm import Session
-from sqlalchemy import and_
+from sqlalchemy import and_, or_
 
 from app.models.event_log import EventLog
 from app.services.event_dispatcher.interface import EventDispatcherInterface
@@ -38,6 +38,10 @@ EVENT_MAX_AGE_OVERRIDES = {
     "WeatherUpdated": 15,
     "MediaAnalyzed": 120,
 }
+
+# Backpressure threshold: increase processing batch under sustained queue depth
+QUEUE_BACKPRESSURE_THRESHOLD = 100
+MAX_BACKPRESSURE_BATCH_SIZE = 50
 
 # Circuit breaker config (Ed Enh 7)
 CIRCUIT_BREAKER_THRESHOLD = 5  # Consecutive failures to trip
@@ -116,14 +120,30 @@ class DBEventDispatcher(EventDispatcherInterface):
         Process pending events using SELECT FOR UPDATE SKIP LOCKED.
         Processes in FIFO order per partition_key.
         """
+        pending_count = self.db.query(EventLog).filter(
+            EventLog.status == "Created"
+        ).count()
+        effective_batch_size = batch_size
+        if pending_count > QUEUE_BACKPRESSURE_THRESHOLD:
+            effective_batch_size = min(MAX_BACKPRESSURE_BATCH_SIZE, batch_size * 3)
+            logger.warning(
+                f"Event queue backpressure: pending={pending_count}, "
+                f"increasing batch_size to {effective_batch_size}"
+            )
+
         # Get oldest pending events, locking rows
-        # Phase 4B: Priority-based processing (MSDD 3.8)
+        # Filter: next_retry_at is NULL or next_retry_at <= now()
+        now = datetime.now(timezone.utc)
         events = self.db.query(EventLog).filter(
             EventLog.status == "Created",
+            or_(
+                EventLog.next_retry_at.is_(None),
+                EventLog.next_retry_at <= now
+            )
         ).order_by(
             EventLog.priority.desc(),     # Higher priority first
             EventLog.created_at.asc(),    # Then oldest first (FIFO)
-        ).limit(batch_size).with_for_update(skip_locked=True).all()
+        ).limit(effective_batch_size).with_for_update(skip_locked=True).all()
 
         processed_count = 0
         for event in events:
@@ -161,18 +181,32 @@ class DBEventDispatcher(EventDispatcherInterface):
                 self._record_success(event.event_type)
 
             except Exception as e:
+                import traceback
+                error_trace = traceback.format_exc()
+                
                 event.retry_count += 1
+                event.last_failed_at = datetime.now(timezone.utc)
+                event.last_error = error_trace[:2000] if len(error_trace) > 2000 else error_trace
+
                 # Record failure for circuit breaker
                 self._record_failure(event.event_type)
 
                 if event.retry_count >= event.max_retries:
                     event.status = "DeadLetter"
-                    event.failure_reason = str(e)
+                    event.failure_reason = f"Max retries exceeded: {str(e)}"
                     logger.error(f"Event {event.id} moved to DeadLetter: {e}")
                 else:
                     event.status = "Created"  # Reset for retry
                     event.failure_reason = str(e)
-                    logger.warning(f"Event {event.id} retry {event.retry_count}: {e}")
+                    # Exponential backoff: base=5s, multiplier=2, max=300s (5mins)
+                    import random
+                    from datetime import timedelta
+                    base_delay = 5
+                    delay_seconds = min(base_delay * (2 ** (event.retry_count - 1)), 300)
+                    jitter = random.uniform(0.8, 1.2)
+                    final_delay = int(delay_seconds * jitter)
+                    event.next_retry_at = datetime.now(timezone.utc) + timedelta(seconds=final_delay)
+                    logger.warning(f"Event {event.id} retry {event.retry_count}. Waiting {final_delay}s. Error: {e}")
 
         self.db.commit()
         return processed_count
