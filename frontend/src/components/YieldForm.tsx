@@ -18,11 +18,11 @@ interface YieldFormProps {
   cropId: string;
   cropType: string;
   landArea: number;
-  onSubmit: (data: YieldData) => Promise<void>;
+  onSubmit: (data: YieldFormData) => Promise<void>;
   onCancel: () => void;
 }
 
-interface YieldData {
+export interface YieldFormData {
   yield_quantity_kg: number;
   quality_grade: string;
   harvest_date: string;
@@ -38,7 +38,7 @@ const QUALITY_GRADES = [
 ];
 
 export default function YieldForm({ cropId, cropType, landArea, onSubmit, onCancel }: YieldFormProps) {
-  const [formData, setFormData] = useState<YieldData>({
+  const [formData, setFormData] = useState<YieldFormData>({
     yield_quantity_kg: 0,
     quality_grade: 'B',
     harvest_date: new Date().toISOString().split('T')[0],

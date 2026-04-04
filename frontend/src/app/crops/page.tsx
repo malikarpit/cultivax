@@ -1,119 +1,230 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import CropCard from '@/components/CropCard';
+/**
+ * Crops List Page
+ *
+ * Enhanced filter bar, circular health indicator,
+ * grid/list toggle, pagination, responsive cards.
+ */
 
-interface CropInstance {
-  id: string;
-  crop_type: string;
-  variety: string;
-  state: string;
-  region: string;
-  sowing_date: string;
-  stress_score: number;
-  risk_index: number;
-  seasonal_window_category: string;
-}
+import { useState, useMemo } from 'react';
+import Link from 'next/link';
+import {
+  Plus, Search, Grid3X3, List, Sprout,
+  Calendar, MapPin, ArrowUpDown,
+} from 'lucide-react';
+import clsx from 'clsx';
+import ProtectedRoute from '@/components/ProtectedRoute';
+import { useFetch } from '@/hooks/useFetch';
+import Badge, { getStatusVariant } from '@/components/Badge';
+import FilterChips from '@/components/FilterChips';
+import TrustRing from '@/components/TrustRing';
+
+const STATE_FILTERS = [
+  { label: 'All States', value: 'all' },
+  { label: 'Active', value: 'Active' },
+  { label: 'At Risk', value: 'AtRisk' },
+  { label: 'Delayed', value: 'Delayed' },
+  { label: 'Harvested', value: 'Harvested' },
+  { label: 'Closed', value: 'Closed' },
+];
+
+const SEASON_FILTERS = [
+  { label: 'All Seasons', value: 'all' },
+  { label: 'Rabi', value: 'rabi' },
+  { label: 'Kharif', value: 'kharif' },
+  { label: 'Zaid', value: 'zaid' },
+];
 
 export default function CropsPage() {
-  const [crops, setCrops] = useState<CropInstance[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState({ state: '', crop_type: '' });
-  const router = useRouter();
+  const [search, setSearch] = useState('');
+  const [stateFilter, setStateFilter] = useState('all');
+  const [seasonFilter, setSeasonFilter] = useState('all');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [page, setPage] = useState(1);
+  const perPage = 12;
 
-  useEffect(() => {
-    fetchCrops();
-  }, [filter]);
-
-  const fetchCrops = async () => {
-    try {
-      const params = new URLSearchParams();
-      if (filter.state) params.append('state', filter.state);
-      if (filter.crop_type) params.append('crop_type', filter.crop_type);
-
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/crops?${params}`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-        }
-      );
-      const data = await res.json();
-      setCrops(data.items || []);
-    } catch (error) {
-      console.error('Failed to fetch crops:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Fetch crops
+  const queryParams = new URLSearchParams({
+    page: String(page),
+    per_page: String(perPage),
+    ...(stateFilter !== 'all' ? { state: stateFilter } : {}),
+    ...(seasonFilter !== 'all' ? { seasonal_window_category: seasonFilter } : {}),
+    ...(search ? { search } : {}),
+  });
+  const { data, loading } = useFetch(`/api/v1/crops?${queryParams}`);
+  const crops = data?.items || [];
+  const totalPages = data?.total_pages || 1;
+  const total = data?.total || 0;
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">My Crops</h1>
-        <button
-          onClick={() => router.push('/crops/new')}
-          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-        >
-          + New Crop
-        </button>
+    <ProtectedRoute requiredRole={["farmer", "admin"]}>
+    <div className="animate-fade-in">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-cultivax-text-primary">My Crops</h1>
+          <p className="text-sm text-cultivax-text-muted mt-0.5">
+            {total} crop{total !== 1 ? 's' : ''} total
+          </p>
+        </div>
+        <Link href="/crops/new" className="btn-primary flex items-center gap-2 w-fit">
+          <Plus className="w-4 h-4" /> New Crop
+        </Link>
       </div>
 
-      {/* Filters */}
-      <div className="flex gap-4 mb-6">
-        <select
-          value={filter.state}
-          onChange={(e) => setFilter({ ...filter, state: e.target.value })}
-          className="px-3 py-2 border rounded-lg"
-        >
-          <option value="">All States</option>
-          <option value="Created">Created</option>
-          <option value="Active">Active</option>
-          <option value="Delayed">Delayed</option>
-          <option value="AtRisk">At Risk</option>
-          <option value="Harvested">Harvested</option>
-        </select>
-        <select
-          value={filter.crop_type}
-          onChange={(e) => setFilter({ ...filter, crop_type: e.target.value })}
-          className="px-3 py-2 border rounded-lg"
-        >
-          <option value="">All Crops</option>
-          <option value="wheat">Wheat</option>
-          <option value="rice">Rice</option>
-          <option value="cotton">Cotton</option>
-        </select>
+      {/* Search + Filters */}
+      <div className="space-y-3 mb-6">
+        <div className="flex gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-cultivax-text-muted" />
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search crops by type, variety, region..."
+              className="!pl-10"
+            />
+          </div>
+          <div className="flex bg-cultivax-elevated rounded-lg p-0.5 gap-0.5">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={clsx(
+                'p-2 rounded-md transition-colors',
+                viewMode === 'grid' ? 'bg-cultivax-primary/15 text-cultivax-primary' : 'text-cultivax-text-muted'
+              )}
+            >
+              <Grid3X3 className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={clsx(
+                'p-2 rounded-md transition-colors',
+                viewMode === 'list' ? 'bg-cultivax-primary/15 text-cultivax-primary' : 'text-cultivax-text-muted'
+              )}
+            >
+              <List className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-3">
+          <FilterChips options={STATE_FILTERS} selected={stateFilter} onChange={setStateFilter} />
+          <FilterChips options={SEASON_FILTERS} selected={seasonFilter} onChange={setSeasonFilter} />
+        </div>
       </div>
 
-      {/* Crop Grid */}
+      {/* Crops Grid/List */}
       {loading ? (
-        <div className="text-center py-12 text-gray-500">Loading crops...</div>
+        <div className={clsx(
+          viewMode === 'grid'
+            ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4'
+            : 'space-y-3'
+        )}>
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="skeleton h-40 rounded-xl" />
+          ))}
+        </div>
       ) : crops.length === 0 ? (
-        <div className="text-center py-12 text-gray-500">
-          No crops found. Create your first crop to get started.
+        <div className="card text-center py-16">
+          <Sprout className="w-12 h-12 text-cultivax-text-muted mx-auto mb-4" />
+          <h3 className="text-lg font-semibold mb-2">No crops yet</h3>
+          <p className="text-sm text-cultivax-text-muted mb-6">Create your first crop to get started</p>
+          <Link href="/crops/new" className="btn-primary inline-flex items-center gap-2">
+            <Plus className="w-4 h-4" /> Create First Crop
+          </Link>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {crops.map((crop) => (
-            <div
+        <div className={clsx(
+          viewMode === 'grid'
+            ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4'
+            : 'space-y-3'
+        )}>
+          {crops.map((crop: any) => (
+            <Link
               key={crop.id}
-              onClick={() => router.push(`/crops/${crop.id}`)}
-              className="cursor-pointer"
+              href={`/crops/${crop.id}`}
+              className="card-interactive p-5 block"
             >
-              <CropCard
-                id={crop.id}
-                crop_type={crop.crop_type}
-                state={crop.state}
-                region={crop.region}
-                sowing_date={crop.sowing_date}
-                stress_score={crop.stress_score}
-              />
-            </div>
+              <div className="flex items-start gap-4">
+                {/* Health ring */}
+                <TrustRing
+                  score={1 - (crop.stress_score || 0.2)}
+                  size={48}
+                  strokeWidth={3}
+                  showLabel
+                  labelFormat="percentage"
+                />
+
+                <div className="flex-1 min-w-0">
+                  {/* Title + Badge */}
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <h3 className="text-sm font-semibold truncate">
+                      {crop.crop_type}
+                      {crop.variety && (
+                        <span className="font-normal text-cultivax-text-muted"> — {crop.variety}</span>
+                      )}
+                    </h3>
+                    <Badge variant={getStatusVariant(crop.state)} size="sm">
+                      {crop.state}
+                    </Badge>
+                  </div>
+
+                  {/* Meta row */}
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-cultivax-text-muted">
+                    <span className="flex items-center gap-1">
+                      <Calendar className="w-3 h-3" />
+                      Day {crop.current_day_number || '0'}
+                    </span>
+                    <span>{crop.stage || 'Germination'}</span>
+                    {crop.region && (
+                      <span className="flex items-center gap-1">
+                        <MapPin className="w-3 h-3" />
+                        {crop.region}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Season */}
+                  {crop.seasonal_window_category && (
+                    <div className="mt-2">
+                      <Badge variant="teal" size="sm">
+                        {crop.seasonal_window_category}
+                      </Badge>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </Link>
           ))}
         </div>
       )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-6">
+          <p className="text-sm text-cultivax-text-muted">
+            Showing {(page - 1) * perPage + 1}–{Math.min(page * perPage, total)} of {total}
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setPage(Math.max(1, page - 1))}
+              disabled={page === 1}
+              className="btn-secondary text-sm px-3 py-1.5"
+            >
+              Previous
+            </button>
+            <button
+              onClick={() => setPage(Math.min(totalPages, page + 1))}
+              disabled={page === totalPages}
+              className="btn-secondary text-sm px-3 py-1.5"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
     </div>
+    </ProtectedRoute>
   );
 }
