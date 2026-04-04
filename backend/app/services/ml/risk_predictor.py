@@ -1,5 +1,5 @@
 """
-ML Risk Predictor — Rule-Based Fallback (v1 Stub)
+ML Risk Predictor — V1 Rule-Based Risk Engine
 
 Predicts risk for a crop instance using rule-based logic.
 Will be replaced with a trained ML model in future iterations.
@@ -81,6 +81,7 @@ class RiskPrediction:
             "risk_adjusted": self.risk_adjusted,
             "risk_label": self.risk_label,
             "model_version": self.model_version,
+            "model_status": "stub" if self.model_version.startswith("rule-based") else "active",
             "generated_at": self.generated_at,
         }
 
@@ -99,7 +100,7 @@ class RiskPrediction:
 
 class RiskPredictor:
     """
-    Rule-based risk predictor (v1 stub) with ML safety guards.
+    Rule-based risk predictor (V1 engine) with ML safety guards.
 
     Uses stress_score, deviation metrics, and stage progression
     to compute risk probability. No trained model — pure heuristics.
@@ -126,11 +127,16 @@ class RiskPredictor:
         "default": 50.0,
     }
 
-    def is_ml_safe(self, training_samples: int = 0, ml_enabled: bool = True) -> bool:
+    def is_ml_safe(self, training_samples: int = 0, db=None) -> bool:
         """
         Check if ML prediction is safe to use (Patch 3.4 + ML Enh 8).
         Returns False if kill switch is off or insufficient training data.
         """
+        ml_enabled = True
+        if db:
+            from app.services.feature_flags import is_enabled
+            ml_enabled = is_enabled(db, "prod.ml_kill_switch", default=True)
+
         if not ml_enabled:
             logger.info("ML kill switch is OFF — using rule-based fallback")
             return False
@@ -168,6 +174,8 @@ class RiskPredictor:
         consecutive_deviations: int = 0,
         action_count: int = 0,
         max_allowed_drift: int = 7,
+        db=None,
+        training_samples: int = 0,
     ) -> RiskPrediction:
         """
         Predict risk for a crop instance using rule-based logic.
@@ -206,11 +214,25 @@ class RiskPredictor:
             stage=stage,
         )
 
+        # --- Dynamically resolve active model (Audit 31) ---
+        active_version = MODEL_VERSION
+        inference_source = "fallback_rule_based"
+        if db and self.is_ml_safe(training_samples=training_samples, db=db):
+            try:
+                from app.services.ml.model_registry import ModelRegistry
+                registry = ModelRegistry(db)
+                active_model = registry.get_active_model("risk_predictor")
+                if active_model:
+                    active_version = f"v{active_model.version}"
+                    inference_source = "registry_ml_inference"
+            except Exception as e:
+                logger.error(f"Failed to resolve active ML Model, failing over safely: {e}")
+
         prediction = RiskPrediction(
             prediction_value=risk_probability,
             confidence_score=confidence,
             data_sufficiency_index=data_sufficiency,
-            model_version=MODEL_VERSION,
+            model_version=active_version,
         )
 
         logger.info(
@@ -294,5 +316,12 @@ class RiskPredictor:
         if stage in ("flowering", "maturity"):
             # Critical stages — amplify risk slightly
             risk *= 1.15
+
+        # Guardrail: very high stress should never remain in low/moderate buckets
+        # even when other signals are sparse.
+        if stress_score >= 85:
+            risk = max(risk, 0.65)
+        elif stress_score >= 75:
+            risk = max(risk, 0.55)
 
         return float(round(min(risk, 1.0), 4))  # type: ignore
