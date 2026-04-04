@@ -1,220 +1,308 @@
-/**
- * Service Request — Create a service request for a provider.
- * Pre-fills provider if coming from marketplace (?provider=id).
- */
-
 'use client';
 
-import { useState, useEffect } from 'react';
+/**
+ * Service Request Form — Book agricultural services
+ * 
+ * Reference: stitch_landing_page 3/service_request_form
+ * Layout: 2-column (form left, summary right)
+ * Features: Provider card, service type, crop selector, 
+ * request summary with pricing, yield lift projection
+ */
+
+import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
+import {
+  ArrowRight, Star, MapPin, Calendar, Zap,
+  ChevronDown, Sprout, HelpCircle, Info,
+  CheckCircle, Leaf,
+} from 'lucide-react';
+import clsx from 'clsx';
+import ProtectedRoute from '@/components/ProtectedRoute';
 import { useApi } from '@/hooks/useApi';
-import { apiPost } from '@/lib/api';
+
+/* ─── Mock Data ──────────────────────────────────────────── */
+
+const SERVICES = [
+  'Automated Nutrient Infusion',
+  'Drone Crop Survey',
+  'Soil Analysis & Report',
+  'Pest Management Spray',
+  'Irrigation System Setup',
+  'Harvest Labor Assistance',
+];
+
+const CROPS = [
+  { id: '1', name: 'Wheat HD-2967', code: 'GH-S7-01', icon: '🌾', selected: true },
+  { id: '2', name: 'Basmati Rice', code: 'GH-S7-04', icon: '🌿', selected: false },
+  { id: '3', name: 'Pima Cotton', code: 'GH-S7-09', icon: '🌱', selected: false },
+];
 
 export default function ServiceRequestPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const preselectedProvider = searchParams.get('provider') || '';
+  const providerId = searchParams.get('provider') || '00000000-0000-0000-0000-000000000000';
+  const api = useApi();
 
-  const [formData, setFormData] = useState({
-    provider_id: preselectedProvider,
-    service_type: '',
-    description: '',
-    preferred_date: '',
-    location: '',
-    urgency: 'normal',
-  });
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  const [serviceType, setServiceType] = useState(SERVICES[0]);
+  const [preferredDate, setPreferredDate] = useState('');
+  const [selectedCrops, setSelectedCrops] = useState<string[]>(['1']);
+  const [notes, setNotes] = useState('');
 
-  // Load providers for dropdown
-  const { data: providers, execute: loadProviders } = useApi<any[]>();
-  useEffect(() => {
-    loadProviders('/api/v1/providers');
-  }, [loadProviders]);
-
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
-  ) => {
-    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  const toggleCrop = (id: string) => {
+    setSelectedCrops(prev =>
+      prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]
+    );
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitting(true);
-    setError(null);
+  const baseFee = 125;
+  const droneCalibration = 45;
+  const priorityDispatch = 15;
+  const total = baseFee + droneCalibration + priorityDispatch;
 
+  const handleSubmit = async () => {
     try {
-      await apiPost('/api/v1/service-requests', {
-        provider_id: formData.provider_id,
-        service_type: formData.service_type,
-        description: formData.description,
-        preferred_date: formData.preferred_date,
-        location: formData.location,
-        urgency: formData.urgency,
+      await api.execute('/api/v1/service-requests', {
+        method: 'POST',
+        body: {
+          provider_id: providerId,
+          service_type: serviceType,
+          description: notes,
+          preferred_date: preferredDate ? new Date(preferredDate).toISOString() : undefined,
+          agreed_price: total
+        }
       });
-      setSuccess(true);
-      setTimeout(() => router.push('/services'), 2000);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setSubmitting(false);
+      router.push('/services');
+    } catch (err) {
+      console.error(err);
     }
   };
 
-  if (success) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="card text-center max-w-md">
-          <div className="text-5xl mb-4">✅</div>
-          <h2 className="text-xl font-semibold mb-2">Request Submitted!</h2>
-          <p className="text-gray-400 text-sm">
-            Your service request has been sent. The provider will be notified shortly.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      {/* Header */}
+    <ProtectedRoute requiredRole="farmer">
+    <div className="animate-fade-in space-y-8">
+      {/* Breadcrumb */}
+      <nav className="flex items-center gap-2 text-[11px] font-mono text-m3-on-surface-variant">
+        <Link href="/services" className="hover:text-m3-primary transition-colors">MARKETPLACE</Link>
+        <span>›</span>
+        <span className="text-m3-primary">Request Service</span>
+      </nav>
+
+      {/* Page Title */}
       <div>
-        <h1 className="text-2xl font-bold">Request a Service</h1>
-        <p className="text-gray-400 mt-1">
-          Fill in the details below to create a service request
+        <h1 className="text-4xl md:text-5xl font-extrabold tracking-tighter text-m3-on-surface">
+          Request Service
+        </h1>
+        <p className="text-m3-on-surface-variant mt-2 max-w-xl">
+          Customize your technical request. Our specialized agricultural technicians use precision sensors and drone-assisted mapping to optimize your harvest output.
         </p>
       </div>
 
-      {/* Form */}
-      <form onSubmit={handleSubmit} className="card space-y-5">
-        {/* Provider Selection */}
-        <div>
-          <label className="text-sm text-gray-400 block mb-1.5">
-            Service Provider *
-          </label>
-          <select
-            name="provider_id"
-            value={formData.provider_id}
-            onChange={handleChange}
-            required
-            className="w-full"
-          >
-            <option value="">Select a provider</option>
-            {(providers || []).map((p: any) => (
-              <option key={p.id} value={p.id}>
-                {p.business_name} — {p.region}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Service Type */}
-        <div>
-          <label className="text-sm text-gray-400 block mb-1.5">
-            Service Type *
-          </label>
-          <select
-            name="service_type"
-            value={formData.service_type}
-            onChange={handleChange}
-            required
-            className="w-full"
-          >
-            <option value="">Select service type</option>
-            <option value="Equipment">Equipment Rental</option>
-            <option value="Labor">Labor</option>
-            <option value="Consultation">Consultation</option>
-            <option value="Transport">Transport</option>
-          </select>
-        </div>
-
-        {/* Description */}
-        <div>
-          <label className="text-sm text-gray-400 block mb-1.5">
-            Description *
-          </label>
-          <textarea
-            name="description"
-            value={formData.description}
-            onChange={handleChange}
-            required
-            rows={4}
-            placeholder="Describe what you need..."
-            className="w-full resize-none"
-          />
-        </div>
-
-        {/* Preferred Date + Location */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="text-sm text-gray-400 block mb-1.5">
-              Preferred Date
-            </label>
-            <input
-              type="date"
-              name="preferred_date"
-              value={formData.preferred_date}
-              onChange={handleChange}
-              className="w-full"
-            />
+      {/* ═══ Main Grid ═══ */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        {/* Left: Form */}
+        <div className="lg:col-span-8 space-y-8">
+          {/* Provider Card */}
+          <div className="glass-card rounded-2xl p-6 border border-m3-outline-variant/10 flex flex-col sm:flex-row items-start sm:items-center gap-6">
+            <div className="w-16 h-16 rounded-full bg-m3-surface-container-highest flex items-center justify-center flex-shrink-0 overflow-hidden">
+              <Sprout className="w-8 h-8 text-m3-primary" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-xl font-bold text-m3-on-surface">Dr. Aris Thorne</h3>
+              <div className="flex items-center gap-3 mt-1">
+                <span className="flex items-center gap-1 text-sm">
+                  <Star className="w-4 h-4 fill-m3-secondary text-m3-secondary" />
+                  <span className="font-bold">4.9</span>
+                  <span className="text-m3-on-surface-variant text-xs">(128 reviews)</span>
+                </span>
+                <span className="flex items-center gap-1 text-xs text-m3-on-surface-variant">
+                  <MapPin className="w-3 h-3" /> Northern Region
+                </span>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <span className="stat-tag bg-m3-primary/10 text-m3-primary border border-m3-primary/20 px-3 py-1.5">
+                Precision Drone
+              </span>
+              <span className="stat-tag bg-m3-secondary/10 text-m3-secondary border border-m3-secondary/20 px-3 py-1.5">
+                Soil Analytics
+              </span>
+            </div>
           </div>
-          <div>
-            <label className="text-sm text-gray-400 block mb-1.5">
-              Location
-            </label>
-            <input
-              type="text"
-              name="location"
-              value={formData.location}
-              onChange={handleChange}
-              placeholder="e.g., Village name, District"
-              className="w-full"
-            />
+
+          {/* Service Type + Date */}
+          <div className="glass-card rounded-2xl p-8 border border-m3-outline-variant/10 space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-[11px] font-bold uppercase tracking-widest text-m3-on-surface-variant block ml-1">
+                  Service Type
+                </label>
+                <div className="relative">
+                  <select
+                    value={serviceType}
+                    onChange={(e) => setServiceType(e.target.value)}
+                    className="w-full bg-m3-surface-container-highest border-none rounded-lg px-4 py-3.5 text-m3-on-surface focus:ring-1 focus:ring-m3-primary/40 appearance-none transition-all"
+                  >
+                    {SERVICES.map(s => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-m3-on-surface-variant pointer-events-none" />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[11px] font-bold uppercase tracking-widest text-m3-on-surface-variant block ml-1">
+                  Preferred Date
+                </label>
+                <div className="relative">
+                  <input
+                    type="date"
+                    value={preferredDate}
+                    onChange={(e) => setPreferredDate(e.target.value)}
+                    className="w-full bg-m3-surface-container-highest border-none rounded-lg px-4 py-3.5 text-m3-on-surface focus:ring-1 focus:ring-m3-primary/40 transition-all [color-scheme:dark]"
+                  />
+                  <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-m3-on-surface-variant pointer-events-none" />
+                </div>
+              </div>
+            </div>
+
+            {/* Target Crop Selection */}
+            <div className="space-y-3">
+              <label className="text-[11px] font-bold uppercase tracking-widest text-m3-on-surface-variant block ml-1">
+                Target Crop Environment
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {CROPS.map(crop => (
+                  <button
+                    key={crop.id}
+                    onClick={() => toggleCrop(crop.id)}
+                    className={clsx(
+                      'p-4 rounded-xl border transition-all text-left flex items-center gap-3',
+                      selectedCrops.includes(crop.id)
+                        ? 'bg-m3-primary/10 border-m3-primary/30 text-m3-primary'
+                        : 'bg-m3-surface-container-high border-m3-outline-variant/10 text-m3-on-surface-variant hover:border-m3-outline/30'
+                    )}
+                  >
+                    <span className="text-2xl">{crop.icon}</span>
+                    <div>
+                      <p className="text-sm font-bold">{crop.name}</p>
+                      <p className="text-[10px] font-mono opacity-70">{crop.code}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Notes */}
+            <div className="space-y-2">
+              <label className="text-[11px] font-bold uppercase tracking-widest text-m3-on-surface-variant block ml-1">
+                Logistical Specifications
+              </label>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Include any specific sensor thresholds or access codes for automated security gates..."
+                rows={4}
+                className="w-full bg-m3-surface-container-highest border-none rounded-lg px-4 py-3 text-m3-on-surface focus:ring-1 focus:ring-m3-primary/40 placeholder:text-m3-on-surface-variant/30 transition-all resize-none"
+              />
+            </div>
+          </div>
+
+          {/* Info Banner */}
+          <div className="glass-card rounded-xl p-4 border border-m3-outline-variant/10 flex items-start gap-3">
+            <Info className="w-5 h-5 text-m3-tertiary flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-m3-on-surface-variant">
+              Requests are subject to weather verification. Real-time drone dispatch is contingent on atmospheric stability scores above 75%.
+            </p>
           </div>
         </div>
 
-        {/* Urgency */}
-        <div>
-          <label className="text-sm text-gray-400 block mb-1.5">Urgency</label>
-          <select
-            name="urgency"
-            value={formData.urgency}
-            onChange={handleChange}
-            className="w-full"
-          >
-            <option value="low">Low — flexible timeline</option>
-            <option value="normal">Normal</option>
-            <option value="high">High — needed soon</option>
-            <option value="urgent">Urgent — immediate</option>
-          </select>
-        </div>
+        {/* Right: Summary Sidebar */}
+        <div className="lg:col-span-4 space-y-6">
+          {/* Request Summary */}
+          <div className="glass-card rounded-2xl p-6 border border-m3-outline-variant/10 space-y-5 sticky top-24">
+            <h4 className="text-sm font-bold uppercase tracking-widest text-m3-on-surface-variant">
+              Request Summary
+            </h4>
 
-        {/* Error */}
-        {error && (
-          <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3">
-            <p className="text-red-400 text-sm">{error}</p>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-m3-on-surface-variant">Base Service Fee</span>
+                <span className="text-sm font-bold font-mono text-m3-on-surface">
+                  {baseFee.toFixed(2)} <span className="text-m3-primary text-[10px]">INR</span>
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-m3-on-surface-variant">Drone Calibration</span>
+                <span className="text-sm font-bold font-mono text-m3-on-surface">
+                  {droneCalibration.toFixed(2)} <span className="text-m3-primary text-[10px]">INR</span>
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-m3-on-surface-variant">Priority Dispatch</span>
+                <span className="text-sm font-bold font-mono text-m3-primary">
+                  +{priorityDispatch.toFixed(2)} <span className="text-[10px]">INR</span>
+                </span>
+              </div>
+            </div>
+
+            <div className="border-t border-m3-outline-variant/10 pt-4">
+              <p className="mono-label mb-1">Total Impact</p>
+              <p className="text-4xl font-black font-mono tracking-tighter text-m3-on-surface">
+                {total.toFixed(2)}{' '}
+                <span className="text-sm font-normal text-m3-primary">INR</span>
+              </p>
+            </div>
+
+            <button
+              onClick={handleSubmit}
+              disabled={api.loading}
+              className="w-full bg-gradient-to-br from-m3-primary to-m3-primary-container text-m3-on-primary py-3.5 rounded-xl font-bold text-sm shadow-lg shadow-m3-primary/20 hover:scale-[1.01] active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Zap className="w-4 h-4" /> {api.loading ? 'Submitting...' : 'Submit Request'}
+            </button>
+            {api.error && <p className="text-red-400 text-xs mt-2">{api.error}</p>}
+
+            <p className="text-[10px] text-m3-on-surface-variant text-center leading-relaxed">
+              By submitting, you agree to the CultivaX Service Protocol and Service Level Agreements. Credits will be held until service completion.
+            </p>
           </div>
-        )}
 
-        {/* Actions */}
-        <div className="flex gap-3 pt-2">
-          <button
-            type="submit"
-            disabled={submitting}
-            className="btn-primary flex-1 disabled:opacity-50"
-          >
-            {submitting ? 'Submitting...' : 'Submit Request'}
-          </button>
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="btn-secondary"
-          >
-            Cancel
-          </button>
+          {/* Estimated Yield Lift */}
+          <div className="glass-card rounded-2xl p-6 border border-m3-outline-variant/10">
+            <div className="flex items-center justify-between mb-4">
+              <p className="mono-label font-bold">Estimated Yield Lift</p>
+              <span className="stat-tag bg-m3-primary/10 text-m3-primary">+12.4%</span>
+            </div>
+            <div>
+              <span className="stat-tag bg-m3-secondary/10 text-m3-secondary mb-2 inline-block">
+                Projected Growth
+              </span>
+              <div className="w-full bg-m3-surface-container-highest h-2 rounded-full overflow-hidden mt-2">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-m3-secondary to-m3-primary transition-all duration-700"
+                  style={{ width: '68%' }}
+                />
+              </div>
+              <div className="flex justify-between mt-2">
+                <span className="text-[10px] text-m3-on-surface-variant font-mono">Current: 68%</span>
+                <span className="text-[10px] text-m3-on-surface-variant font-mono">Target: 92%</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Help Card */}
+          <div className="glass-card rounded-2xl p-6 border border-m3-outline-variant/10 flex items-center gap-4">
+            <HelpCircle className="w-8 h-8 text-m3-on-surface-variant flex-shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-m3-on-surface">Need help deciding?</p>
+              <p className="text-xs text-m3-on-surface-variant">Chat with an AI Agronomist</p>
+            </div>
+          </div>
         </div>
-      </form>
+      </div>
     </div>
+    </ProtectedRoute>
   );
 }

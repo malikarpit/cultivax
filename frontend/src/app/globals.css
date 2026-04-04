@@ -2,196 +2,579 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+/* ============================================================
+   CultivaX Global Styles — Dark Agricultural Intelligence Theme
+   ============================================================ */
 
+/* Leaflet CSS */
+@import 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+
+/* ─── CSS Custom Properties ────────────────────────────────── */
 :root {
-  --cultivax-primary: #10B981;
-  --cultivax-bg: #0F172A;
-  --cultivax-surface: #1E293B;
-  --cultivax-card: #334155;
-  --cultivax-text: #F1F5F9;
-  --cultivax-muted: #94A3B8;
+  /* Core Palette */
+  --bg-base: #0B0F19;
+  --bg-surface: #111827;
+  --bg-elevated: #1F2937;
+  --bg-card: #1E293B;
+  
+  --border-default: #1F2937;
+  --border-highlight: #374151;
+  
+  --text-primary: #F9FAFB;
+  --text-secondary: #9CA3AF;
+  --text-muted: #6B7280;
+  
+  --accent-green: #10B981;
+  --accent-green-hover: #059669;
+  --accent-amber: #F59E0B;
+  --accent-red: #EF4444;
+  --accent-blue: #3B82F6;
+  
+  /* Spacing scale */
+  --sidebar-width: 16rem;
+  --header-height: 3.75rem;
+  
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-base: 250ms ease;
+  --transition-slow: 350ms ease;
+  
+  /* Border radius */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  
+  /* Font scale for accessibility */
+  --font-scale: 1;
+}
+
+/* ─── Base Styles ──────────────────────────────────────────── */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: calc(16px * var(--font-scale));
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
-  background-color: var(--cultivax-bg);
-  color: var(--cultivax-text);
-  font-family: 'Inter', system-ui, sans-serif;
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  line-height: 1.6;
+  margin: 0;
+  min-height: 100vh;
 }
 
-/* Scrollbar styling */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: var(--cultivax-bg); }
-::-webkit-scrollbar-thumb { background: var(--cultivax-card); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--cultivax-muted); }
-
-/* Input styling */
-input, select, textarea {
-  @apply bg-cultivax-surface border border-cultivax-card rounded-lg px-4 py-2.5
-    text-white placeholder-gray-500 focus:outline-none focus:ring-2
-    focus:ring-cultivax-primary focus:border-transparent transition-all;
+/* ─── Scrollbar ────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
 
-/* Button base */
-.btn-primary {
-  @apply bg-cultivax-primary hover:bg-cultivax-secondary text-white font-medium
-    px-6 py-2.5 rounded-lg transition-all duration-200 active:scale-95;
+::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-.btn-secondary {
-  @apply bg-cultivax-card hover:bg-cultivax-surface text-white font-medium
-    px-6 py-2.5 rounded-lg border border-cultivax-card transition-all duration-200;
+::-webkit-scrollbar-thumb {
+  background: var(--border-highlight);
+  border-radius: 3px;
 }
 
-/* Card styling */
-.card {
-  @apply bg-cultivax-surface rounded-xl border border-cultivax-card p-6
-    transition-all duration-200 hover:border-cultivax-primary/30;
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
 }
 
-/* ═══════════════════════════════════════════════════════
-   ACCESSIBILITY MODES (MSDD Section 7.1 – 7.2)
-   ═══════════════════════════════════════════════════════ */
+/* ─── Focus Styles ─────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--accent-green);
+  outline-offset: 2px;
+}
 
-/* Large Text Mode — 1.5× base font-size (MSDD 7.1) */
+/* ─── Selection ────────────────────────────────────────────── */
+::selection {
+  background: rgba(16, 185, 129, 0.3);
+  color: var(--text-primary);
+}
+
+/* ============================================================
+   COMPONENT CLASSES
+   ============================================================ */
+
+@layer components {
+
+  /* ─── Cards ────────────────────────────────────────────── */
+  .card {
+    @apply bg-cultivax-surface border border-cultivax-border rounded-xl p-5;
+    transition: border-color var(--transition-base), box-shadow var(--transition-base);
+  }
+  .card:hover {
+    @apply border-cultivax-border-highlight;
+  }
+  
+  .card-interactive {
+    @apply card cursor-pointer;
+  }
+  .card-interactive:hover {
+    @apply border-cultivax-border-highlight shadow-card-hover;
+    transform: translateY(-1px);
+  }
+
+  .card-stat {
+    @apply bg-cultivax-surface border border-cultivax-border rounded-xl p-4;
+    transition: all var(--transition-base);
+  }
+  .card-stat:hover {
+    @apply border-cultivax-border-highlight shadow-glow-green;
+  }
+
+  /* ─── Buttons ──────────────────────────────────────────── */
+  .btn-primary {
+    @apply bg-cultivax-primary hover:bg-cultivax-primary-hover text-white 
+           font-medium px-5 py-2.5 rounded-lg
+           transition-all duration-200
+           disabled:opacity-50 disabled:cursor-not-allowed
+           active:scale-[0.98];
+  }
+  
+  .btn-secondary {
+    @apply bg-transparent border border-cultivax-border hover:border-cultivax-primary 
+           text-cultivax-text-secondary hover:text-cultivax-primary
+           font-medium px-5 py-2.5 rounded-lg
+           transition-all duration-200
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  
+  .btn-danger {
+    @apply bg-cultivax-danger hover:bg-red-600 text-white 
+           font-medium px-5 py-2.5 rounded-lg
+           transition-all duration-200
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  
+  .btn-ghost {
+    @apply bg-transparent hover:bg-cultivax-elevated text-cultivax-text-secondary 
+           hover:text-cultivax-text-primary
+           font-medium px-5 py-2.5 rounded-lg
+           transition-all duration-200;
+  }
+
+  .btn-icon {
+    @apply p-2 rounded-lg hover:bg-cultivax-elevated text-cultivax-text-muted 
+           hover:text-cultivax-text-primary transition-colors duration-200;
+  }
+
+  /* ─── Inputs ───────────────────────────────────────────── */
+  input[type="text"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="password"],
+  input[type="number"],
+  input[type="date"],
+  input[type="search"],
+  select,
+  textarea {
+    @apply bg-cultivax-elevated border border-cultivax-border rounded-lg 
+           px-4 py-2.5 text-cultivax-text-primary
+           placeholder:text-cultivax-text-muted
+           focus:outline-none focus:border-cultivax-primary focus:ring-1 focus:ring-cultivax-primary
+           transition-colors duration-200;
+    width: 100%;
+  }
+  
+  select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236B7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.75rem center;
+    background-repeat: no-repeat;
+    background-size: 1.25em 1.25em;
+    padding-right: 2.5rem;
+  }
+
+  textarea {
+    min-height: 100px;
+    resize: vertical;
+  }
+
+  /* ─── Badges ───────────────────────────────────────────── */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+  .badge-green {
+    @apply badge bg-emerald-500/15 text-emerald-400 border border-emerald-500/20;
+  }
+  .badge-amber {
+    @apply badge bg-amber-500/15 text-amber-400 border border-amber-500/20;
+  }
+  .badge-red {
+    @apply badge bg-red-500/15 text-red-400 border border-red-500/20;
+  }
+  .badge-blue {
+    @apply badge bg-blue-500/15 text-blue-400 border border-blue-500/20;
+  }
+  .badge-gray {
+    @apply badge bg-gray-500/15 text-gray-400 border border-gray-500/20;
+  }
+  .badge-teal {
+    @apply badge bg-teal-500/15 text-teal-400 border border-teal-500/20;
+  }
+
+  /* ─── Tables ───────────────────────────────────────────── */
+  .data-table {
+    @apply w-full text-sm;
+  }
+  .data-table thead th {
+    @apply px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider 
+           text-cultivax-text-muted border-b border-cultivax-border bg-cultivax-bg;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  }
+  .data-table tbody td {
+    @apply px-4 py-3 border-b border-cultivax-border text-cultivax-text-secondary;
+  }
+  .data-table tbody tr {
+    @apply transition-colors duration-150;
+  }
+  .data-table tbody tr:hover {
+    @apply bg-cultivax-elevated/50;
+  }
+
+  /* ─── Filter Chips ─────────────────────────────────────── */
+  .chip {
+    @apply inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium
+           border cursor-pointer transition-all duration-200 select-none;
+  }
+  .chip-default {
+    @apply chip border-cultivax-border text-cultivax-text-muted 
+           hover:border-cultivax-border-highlight hover:text-cultivax-text-secondary;
+  }
+  .chip-active {
+    @apply chip bg-cultivax-primary/15 border-cultivax-primary/40 text-cultivax-primary;
+  }
+
+  /* ─── Labels ───────────────────────────────────────────── */
+  .form-label {
+    @apply block text-sm font-medium text-cultivax-text-secondary mb-2;
+  }
+
+  /* ─── Dividers ─────────────────────────────────────────── */
+  .divider {
+    @apply border-t border-cultivax-border my-4;
+  }
+
+  /* ─── Skeleton Loaders ─────────────────────────────────── */
+  .skeleton {
+    @apply bg-cultivax-elevated rounded-lg animate-pulse;
+  }
+
+  /* ─── Progress Bar ─────────────────────────────────────── */
+  .progress-bar {
+    @apply h-2 bg-cultivax-elevated rounded-full overflow-hidden;
+  }
+  .progress-bar-fill {
+    @apply h-full rounded-full transition-all duration-500;
+  }
+}
+
+/* ============================================================
+   GLASS CARD & M3 SURFACE UTILITIES
+   ============================================================ */
+
+.glass-card {
+  background: rgba(36, 42, 58, 0.4);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+}
+
+.glass-card-solid {
+  background: rgba(25, 31, 47, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* SVG growth arc for circular progress */
+.growth-arc {
+  stroke-dasharray: 100;
+  transition: stroke-dashoffset 0.8s ease-in-out;
+}
+
+/* Mono uppercase label pattern from reference */
+.mono-label {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.625rem; /* 10px */
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
+/* Tag pill for stat card badges */
+.stat-tag {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.625rem; /* 10px */
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+}
+
+/* ============================================================
+   RECHARTS DARK THEME OVERRIDES
+   ============================================================ */
+
+.recharts-cartesian-grid line {
+  stroke: var(--border-default) !important;
+}
+
+.recharts-text {
+  fill: var(--text-muted) !important;
+  font-size: 0.75rem !important;
+}
+
+.recharts-tooltip-wrapper .recharts-default-tooltip {
+  background: var(--bg-elevated) !important;
+  border: 1px solid var(--border-highlight) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+}
+
+.recharts-tooltip-label {
+  color: var(--text-primary) !important;
+}
+
+.recharts-tooltip-item {
+  color: var(--text-secondary) !important;
+}
+
+/* ============================================================
+   LEAFLET MAP DARK THEME OVERRIDES
+   ============================================================ */
+
+.leaflet-container {
+  background: var(--bg-base) !important;
+  border-radius: var(--radius-lg);
+}
+
+.leaflet-control-zoom a {
+  background: var(--bg-elevated) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-default) !important;
+}
+
+.leaflet-control-zoom a:hover {
+  background: var(--bg-card) !important;
+}
+
+.leaflet-popup-content-wrapper {
+  background: var(--bg-surface) !important;
+  color: var(--text-primary) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+}
+
+.leaflet-popup-tip {
+  background: var(--bg-surface) !important;
+}
+
+.leaflet-control-attribution {
+  background: var(--bg-base) !important;
+  color: var(--text-muted) !important;
+  font-size: 0.6rem !important;
+}
+
+/* ============================================================
+   ACCESSIBILITY MODES
+   ============================================================ */
+
+/* Large Text Mode */
+.large-text {
+  --font-scale: 1.25;
+}
+
+.large-text input,
+.large-text select,
+.large-text textarea {
+  font-size: 1.1rem;
+  padding: 0.75rem 1rem;
+}
+
+.large-text .btn-primary,
+.large-text .btn-secondary,
+.large-text .btn-danger {
+  font-size: 1.1rem;
+  padding: 0.75rem 1.5rem;
+}
+
+/* High Contrast Mode */
+.high-contrast {
+  --bg-base: #000000;
+  --bg-surface: #111111;
+  --bg-elevated: #222222;
+  --bg-card: #1a1a1a;
+  --border-default: #444444;
+  --border-highlight: #666666;
+  --text-primary: #FFFFFF;
+  --text-secondary: #CCCCCC;
+  --text-muted: #999999;
+  --accent-green: #00FF88;
+  --accent-amber: #FFD700;
+  --accent-red: #FF4444;
+  --accent-blue: #44AAFF;
+}
+
+.high-contrast .card,
+.high-contrast .card-stat,
+.high-contrast .card-interactive {
+  border-width: 2px;
+}
+
+.high-contrast .badge {
+  border-width: 2px;
+  font-weight: 700;
+}
+
+/* ============================================================
+   MOBILE RESPONSIVE UTILITIES
+   ============================================================ */
+
+/* Hide scrollbar on mobile for horizontal chip lists */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Mobile-friendly touch targets */
+@media (max-width: 768px) {
+  .btn-primary,
+  .btn-secondary,
+  .btn-danger,
+  .btn-ghost {
+    min-height: 44px;
+    font-size: 1rem;
+  }
+  
+  input, select, textarea {
+    min-height: 44px;
+    font-size: 16px; /* Prevents iOS zoom on focus */
+  }
+  
+  .chip {
+    min-height: 36px;
+  }
+}
+
+/* ============================================================
+   UTILITY ANIMATIONS
+   ============================================================ */
+
+.onboarding-pulse {
+  animation: pulseGlow 2s ease-in-out infinite;
+  position: relative;
+}
+
+.onboarding-pulse::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: inherit;
+  border: 2px solid var(--accent-green);
+  animation: pulseGlow 2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 5px rgba(16, 185, 129, 0.2); }
+  50% { box-shadow: 0 0 20px rgba(16, 185, 129, 0.5); }
+}
+
+/* Gradient text utility */
+.gradient-text {
+  background: linear-gradient(135deg, #10B981 0%, #F59E0B 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ============================================================
+   ACCESSIBILITY MODES
+   Toggled via document.documentElement.classList
+   from useAccessibility hook + AuthContext hydrateSettings()
+   ============================================================ */
+
+/* ─── Large Text Mode ─────────────────────────────────────── */
 html.large-text {
-  font-size: 24px; /* Default is 16px → 1.5× = 24px */
+  --font-scale: 1.25;
 }
 
 html.large-text body {
-  line-height: 1.6;
+  line-height: 1.8;
 }
 
-html.large-text input,
-html.large-text select,
-html.large-text textarea,
-html.large-text button {
-  font-size: 1rem;
-}
-
-/* High Contrast Mode — WCAG AAA contrast ratios (MSDD 7.2) */
+/* ─── High Contrast Mode ──────────────────────────────────── */
 html.high-contrast {
-  --cultivax-bg: #000000;
-  --cultivax-surface: #1a1a1a;
-  --cultivax-card: #2a2a2a;
-  --cultivax-text: #ffffff;
-  --cultivax-muted: #cccccc;
-  --cultivax-primary: #00ff88;
+  --bg-base: #000000;
+  --bg-surface: #0a0a0a;
+  --bg-elevated: #1a1a1a;
+  --bg-card: #111111;
+  --text-primary: #ffffff;
+  --text-secondary: #e0e0e0;
+  --text-muted: #b0b0b0;
+  --border-default: #555555;
+  --border-highlight: #888888;
 }
 
-html.high-contrast body {
-  background-color: #000000;
-  color: #ffffff;
-}
-
-html.high-contrast .card,
-html.high-contrast .bg-cultivax-surface {
-  border-color: #555555 !important;
-}
-
-html.high-contrast a,
-html.high-contrast button {
-  text-decoration-thickness: 2px;
-}
-
+html.high-contrast button,
 html.high-contrast input,
 html.high-contrast select,
-html.high-contrast textarea {
-  border-color: #888888 !important;
-  background-color: #1a1a1a !important;
-  color: #ffffff !important;
+html.high-contrast textarea,
+html.high-contrast a {
+  border: 1px solid var(--border-highlight) !important;
 }
 
-html.high-contrast ::placeholder {
-  color: #999999 !important;
+html.high-contrast :focus-visible {
+  outline: 3px solid #ffffff;
+  outline-offset: 3px;
 }
 
-/* ═══════════════════════════════════════════════════════
-   RESPONSIVE BREAKPOINTS
-   ═══════════════════════════════════════════════════════ */
-
-/* Mobile-first responsive adjustments */
-@media (max-width: 640px) {
-  main {
-    padding: 1rem !important;
-  }
-
-  .card {
-    padding: 1rem;
-  }
-
-  /* Stack sidebar below on mobile */
-  .flex.h-screen {
-    flex-direction: column;
-  }
+/* ─── Reduce Motion Mode ──────────────────────────────────── */
+html.reduce-motion,
+html.reduce-motion *,
+html.reduce-motion *::before,
+html.reduce-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
 }
 
-@media (max-width: 768px) {
-  table {
-    display: block;
-    overflow-x: auto;
-  }
+/* ─── Dark Mode (explicit toggle — overrides system pref) ─── */
+/* Note: CultivaX defaults to a dark theme already. This toggle
+   flips to a LIGHTER dark variant or full light in the future. */
+html.dark-mode {
+  /* Currently the design is already dark. This class is a placeholder
+     for future light-mode toggle (invert to dark-mode ON = keep dark). */
 }
 
-/* ═══════════════════════════════════════════════════════
-   LOADING & ANIMATION UTILITIES
-   ═══════════════════════════════════════════════════════ */
+/* ============================================================
+   LANGUAGE-SPECIFIC FONTS (Indic Scripts)
+   ============================================================ */
 
-/* Loading spinner */
-@keyframes spin {
-  to { transform: rotate(360deg); }
+/* Devanagari (Hindi, Marathi) */
+html[lang="hi"] body,
+html[lang="mr"] body {
+  font-family: 'Inter', 'Noto Sans Devanagari', system-ui, sans-serif;
 }
 
-.loading-spinner {
-  @apply inline-block w-5 h-5 border-2 border-gray-500 border-t-cultivax-primary rounded-full;
-  animation: spin 0.6s linear infinite;
+/* Tamil */
+html[lang="ta"] body {
+  font-family: 'Inter', 'Noto Sans Tamil', system-ui, sans-serif;
 }
 
-.loading-spinner-lg {
-  @apply inline-block w-8 h-8 border-[3px] border-gray-600 border-t-cultivax-primary rounded-full;
-  animation: spin 0.8s linear infinite;
-}
-
-/* Skeleton loader */
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-
-.skeleton {
-  @apply rounded-lg;
-  background: linear-gradient(
-    90deg,
-    var(--cultivax-card) 25%,
-    var(--cultivax-surface) 50%,
-    var(--cultivax-card) 75%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.5s ease-in-out infinite;
-}
-
-/* Page transition */
-.page-enter {
-  @apply opacity-0 translate-y-2;
-  animation: page-fade-in 0.3s ease-out forwards;
-}
-
-@keyframes page-fade-in {
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Error state */
-.error-container {
-  @apply flex flex-col items-center justify-center p-8 text-center;
-}
-
-.error-container .error-icon {
-  @apply text-red-400 text-4xl mb-3;
-}
-
-.error-container .error-message {
-  @apply text-gray-400 text-sm max-w-md;
+/* Telugu */
+html[lang="te"] body {
+  font-family: 'Inter', 'Noto Sans Telugu', system-ui, sans-serif;
 }

@@ -20,17 +20,28 @@ interface Review {
   farmer_name?: string;
 }
 
+interface ReviewData {
+  aggregates: {
+    average_rating: number;
+    total_count: number;
+  };
+  reviews: Review[];
+}
+
 export default function ProviderReviewsPage() {
   const { user } = useAuth();
-  const reviewsApi = useApi<Review[]>();
+  const reviewsApi = useApi<ReviewData>();
 
   useEffect(() => {
-    reviewsApi.execute('/api/v1/reviews').catch(() => {});
-  }, []);
+    if (user?.id) {
+      reviewsApi.execute(`/api/v1/reviews?provider_id=${user.id}`).catch(() => {});
+    }
+  }, [user?.id]);
 
-  const reviews = reviewsApi.data || [];
+  const reviews = reviewsApi.data?.reviews || [];
+  const aggregates = reviewsApi.data?.aggregates || { average_rating: 0, total_count: 0 };
   const avgRating = reviews.length > 0
-    ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
+    ? aggregates.average_rating.toFixed(1)
     : '—';
 
   const renderStars = (rating: number) => {
@@ -38,7 +49,7 @@ export default function ProviderReviewsPage() {
   };
 
   return (
-    <ProtectedRoute>
+    <ProtectedRoute requiredRole={["provider", "admin"]}>
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold">My Reviews</h1>

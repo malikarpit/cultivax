@@ -7,12 +7,12 @@
  * POST /api/v1/reviews
  */
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { useApi } from '@/hooks/useApi';
 
-export default function ReviewSubmissionPage() {
+function ReviewSubmissionContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const providerId = searchParams.get('provider') || '';
@@ -133,5 +133,13 @@ export default function ReviewSubmissionPage() {
         </form>
       </div>
     </ProtectedRoute>
+  );
+}
+
+export default function ReviewSubmissionPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-cultivax-text-muted">Loading...</div>}>
+      <ReviewSubmissionContent />
+    </Suspense>
   );
 }

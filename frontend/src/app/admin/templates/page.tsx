@@ -69,7 +69,7 @@ export default function TemplateGovernancePage() {
   };
 
   return (
-    <ProtectedRoute>
+    <ProtectedRoute requiredRole="admin">
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold">Template Governance</h1>

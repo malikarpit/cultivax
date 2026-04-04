@@ -1,161 +1,148 @@
-/**
- * Service Marketplace — Browse providers page.
- * Displays a searchable, filterable grid of service providers with trust scores.
- * SOE Enhancement 9: Trust Score Transparency.
- */
-
 'use client';
 
+/**
+ * Service Marketplace — Find and book agricultural services
+ *
+ * Search + category filter chips + provider cards with trust rings
+ */
+
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import ProviderCard from '@/components/ProviderCard';
-import { useApi } from '@/hooks/useApi';
+import Link from 'next/link';
+import {
+  Search, MapPin, Star, Clock, CheckCircle2,
+  Beaker, Plane, Droplets, Bug, Users, Wrench,
+  ArrowRight, SlidersHorizontal,
+} from 'lucide-react';
+import clsx from 'clsx';
+import ProtectedRoute from '@/components/ProtectedRoute';
+import TrustRing from '@/components/TrustRing';
+import FilterChips from '@/components/FilterChips';
+import Badge from '@/components/Badge';
+import { useFetch } from '@/hooks/useFetch';
 
-interface Provider {
-  id: string;
-  business_name: string;
-  region: string;
-  service_types: string[];
-  crop_specializations: string[];
-  trust_score: number;
-  is_verified: boolean;
-  completed_requests: number;
-  response_time_hours?: number;
-}
+const CATEGORIES = [
+  { label: 'All', value: 'all' },
+  { label: 'Soil Testing', value: 'soil_testing' },
+  { label: 'Drone Survey', value: 'drone_survey' },
+  { label: 'Irrigation', value: 'irrigation' },
+  { label: 'Pest Control', value: 'pest_control' },
+  { label: 'Harvest Labor', value: 'harvest_labor' },
+  { label: 'Equipment Rental', value: 'equipment_rental' },
+];
 
-export default function ServiceMarketplace() {
-  const router = useRouter();
-  const { data: providers, loading, error, execute } = useApi<Provider[]>();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [regionFilter, setRegionFilter] = useState('');
-  const [serviceFilter, setServiceFilter] = useState('');
-  const [cropFilter, setCropFilter] = useState('');
+export default function ServicesPage() {
+  const [search, setSearch] = useState('');
+  const [category, setCategory] = useState('all');
 
+  const [debouncedSearch, setDebouncedSearch] = useState(search);
+
+  // Debounce search input map
   useEffect(() => {
-    const params = new URLSearchParams();
-    if (regionFilter) params.append('region', regionFilter);
-    if (serviceFilter) params.append('service_type', serviceFilter);
-    if (cropFilter) params.append('crop_type', cropFilter);
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [search]);
 
-    const query = params.toString();
-    execute(`/api/v1/providers${query ? `?${query}` : ''}`);
-  }, [regionFilter, serviceFilter, cropFilter, execute]);
-
-  const filteredProviders = (providers || []).filter((p) =>
-    p.business_name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const handleRequestService = (providerId: string) => {
-    router.push(`/services/request?provider=${providerId}`);
-  };
+  // Build query sting
+  const queryParams = new URLSearchParams();
+  if (category !== 'all') {
+    queryParams.append('service_type', category);
+  }
+  if (debouncedSearch) {
+    queryParams.append('search', debouncedSearch);
+  }
+  
+  const { data, loading, error } = useFetch(`/api/v1/providers/search?${queryParams.toString()}`);
+  const providers = data?.items || [];
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
+    <ProtectedRoute>
+    <div className="animate-fade-in">
+      <div className="mb-6">
         <h1 className="text-2xl font-bold">Service Marketplace</h1>
-        <p className="text-gray-400 mt-1">
-          Find trusted service providers for your farming needs
-        </p>
+        <p className="text-sm text-cultivax-text-muted mt-1">Find trusted agricultural service providers</p>
       </div>
 
-      {/* Filters */}
-      <div className="card">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div>
-            <label className="text-xs text-gray-400 block mb-1.5">Search</label>
-            <input
-              type="text"
-              placeholder="Search providers..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full text-sm"
-            />
-          </div>
-          <div>
-            <label className="text-xs text-gray-400 block mb-1.5">Region</label>
-            <select
-              value={regionFilter}
-              onChange={(e) => setRegionFilter(e.target.value)}
-              className="w-full text-sm"
-            >
-              <option value="">All Regions</option>
-              <option value="North">North</option>
-              <option value="South">South</option>
-              <option value="East">East</option>
-              <option value="West">West</option>
-              <option value="Central">Central</option>
-            </select>
-          </div>
-          <div>
-            <label className="text-xs text-gray-400 block mb-1.5">Service Type</label>
-            <select
-              value={serviceFilter}
-              onChange={(e) => setServiceFilter(e.target.value)}
-              className="w-full text-sm"
-            >
-              <option value="">All Services</option>
-              <option value="Equipment">Equipment Rental</option>
-              <option value="Labor">Labor</option>
-              <option value="Consultation">Consultation</option>
-              <option value="Transport">Transport</option>
-            </select>
-          </div>
-          <div>
-            <label className="text-xs text-gray-400 block mb-1.5">Crop Specialization</label>
-            <select
-              value={cropFilter}
-              onChange={(e) => setCropFilter(e.target.value)}
-              className="w-full text-sm"
-            >
-              <option value="">All Crops</option>
-              <option value="wheat">Wheat</option>
-              <option value="rice">Rice</option>
-              <option value="cotton">Cotton</option>
-            </select>
-          </div>
-        </div>
+      {/* Search */}
+      <div className="relative mb-4">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-cultivax-text-muted" />
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search for tractor rental, soil testing, drone survey..."
+          className="!pl-10"
+        />
       </div>
 
-      {/* Results */}
-      {loading && (
-        <div className="text-center py-12">
-          <div className="inline-block w-8 h-8 border-2 border-cultivax-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-gray-400 mt-3">Loading providers...</p>
-        </div>
-      )}
+      {/* Category Chips */}
+      <FilterChips options={CATEGORIES} selected={category} onChange={setCategory} className="mb-6" />
 
-      {error && (
-        <div className="card border-red-500/30 bg-red-500/10">
-          <p className="text-red-400 text-sm">Failed to load providers: {error}</p>
-        </div>
-      )}
+      {/* Provider Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {loading && (
+           <div className="col-span-1 md:col-span-2 py-12 text-center text-cultivax-text-muted">Loading providers...</div>
+        )}
+        {!loading && providers.length === 0 && (
+          <div className="card text-center py-12 col-span-1 md:col-span-2">
+            <SlidersHorizontal className="w-8 h-8 text-cultivax-text-muted mx-auto mb-3" />
+            <p className="text-cultivax-text-secondary">No ranked providers match your search</p>
+            <p className="text-xs text-cultivax-text-muted mt-1">Try expanding your parameters or search keywords.</p>
+          </div>
+        )}
+        
+        {!loading && providers.map((provider: any) => (
+          <div key={provider.id} className="card-interactive p-5">
+            <div className="flex items-start gap-4">
+              <TrustRing score={provider.trust_score ? provider.trust_score / 10 : 0} size={56} strokeWidth={4} labelFormat="decimal" />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="text-sm font-semibold truncate">{provider.business_name || 'Independent Provider'}</h3>
+                  {!provider.is_suspended ? (
+                    <Badge variant="green" size="sm" dot>Active</Badge>
+                  ) : (
+                    <Badge variant="red" size="sm">Suspended</Badge>
+                  )}
+                  {provider.is_verified && (
+                    <Badge variant="blue" size="sm">Verified</Badge>
+                  )}
+                  {provider.ranking_flags?.includes('FAIRNESS_BOOST') && (
+                    <Badge variant="purple" size="sm">✨ Fairness Boosted</Badge>
+                  )}
+                </div>
+                <p className="text-xs text-cultivax-text-muted mb-2 line-clamp-2">{provider.description}</p>
 
-      {!loading && !error && filteredProviders.length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-gray-400">No providers found matching your criteria.</p>
-        </div>
-      )}
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-cultivax-text-muted">
+                  <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {provider.region} ({provider.service_radius_km}km)</span>
+                  <span className="flex items-center gap-1 capitalize"><Wrench className="w-3 h-3" /> {provider.service_type.replace('_', ' ')}</span>
+                </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredProviders.map((provider) => (
-          <ProviderCard
-            key={provider.id}
-            {...provider}
-            onRequestService={handleRequestService}
-          />
+                <div className="flex items-center justify-between mt-3 pt-3 border-t border-cultivax-border">
+                  <Link
+                    href={`/services/${provider.id}`}
+                    className="text-xs font-medium text-cultivax-text-muted hover:text-cultivax-text-primary transition-colors"
+                  >
+                    View Details
+                  </Link>
+                  <Link
+                    href={`/services/request?provider=${provider.id}`}
+                    className={clsx(
+                      'text-xs font-medium flex items-center gap-1 transition-colors',
+                      !provider.is_suspended
+                        ? 'text-cultivax-primary hover:text-cultivax-primary-hover'
+                        : 'text-cultivax-text-muted pointer-events-none'
+                    )}
+                  >
+                    Request Service <ArrowRight className="w-3 h-3" />
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
         ))}
       </div>
-
-      {/* Trust Score Transparency Note (SOE Enhancement 9) */}
-      {!loading && filteredProviders.length > 0 && (
-        <div className="text-center">
-          <p className="text-xs text-gray-500">
-            Trust scores are calculated based on completion rate, complaint ratio,
-            resolution speed, consistency, and response time.
-          </p>
-        </div>
-      )}
     </div>
+    </ProtectedRoute>
   );
 }
