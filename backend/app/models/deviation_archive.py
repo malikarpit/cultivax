@@ -3,9 +3,10 @@ DeviationArchive — archived deviation profiles per farmer per season.
 Preserves historical deviation data for behavioral analysis.
 """
 
-from sqlalchemy import Column, String, DateTime, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID, JSONB
 from datetime import datetime, timezone
+
+from sqlalchemy import Column, DateTime, ForeignKey, String
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 
 from app.models.base import BaseModel
 
@@ -13,7 +14,9 @@ from app.models.base import BaseModel
 class DeviationArchive(BaseModel):
     __tablename__ = "deviation_profile_archive"
 
-    farmer_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    farmer_id = Column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True
+    )
     crop_type = Column(String(100), nullable=False)
     season = Column(String(50), nullable=False)  # e.g. "kharif_2025", "rabi_2024"
 

@@ -3,8 +3,9 @@ BackupLog — backup verification audit trail.
 Tracks backup dates, restore tests, and results.
 """
 
-from sqlalchemy import Column, String, Boolean, DateTime
 from datetime import datetime, timezone
+
+from sqlalchemy import Boolean, Column, DateTime, String
 
 from app.models.base import BaseModel
 

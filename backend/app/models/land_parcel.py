@@ -3,8 +3,8 @@ LandParcel — farmer land parcel registry.
 Associates farmers with physical land areas, soil types, coordinates.
 """
 
-from sqlalchemy import Column, String, Float, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy import Column, Float, ForeignKey, String
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 
 from app.models.base import BaseModel
 
@@ -12,7 +12,9 @@ from app.models.base import BaseModel
 class LandParcel(BaseModel):
     __tablename__ = "land_parcels"
 
-    farmer_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    farmer_id = Column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True
+    )
     parcel_name = Column(String(255), nullable=False)
     region = Column(String(200), nullable=False)
     sub_region = Column(String(200), nullable=True)

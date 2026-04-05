@@ -14,7 +14,7 @@ Security Features:
 import hashlib
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import Column, String, Integer, DateTime, Boolean
+from sqlalchemy import Boolean, Column, DateTime, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
 
 from app.models.base import BaseModel

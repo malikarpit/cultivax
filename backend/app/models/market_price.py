@@ -3,7 +3,7 @@ MarketPrice — regional crop market pricing data.
 Tracks mandi/market prices with staleness detection.
 """
 
-from sqlalchemy import Column, String, Float, Date, Boolean
+from sqlalchemy import Boolean, Column, Date, Float, String
 from sqlalchemy.dialects.postgresql import JSONB
 
 from app.models.base import BaseModel

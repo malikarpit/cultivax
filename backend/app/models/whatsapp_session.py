@@ -3,9 +3,10 @@ WhatsAppSession — WhatsApp chatbot session management.
 Tracks conversation context for stateful farmer interactions.
 """
 
-from sqlalchemy import Column, String, DateTime
-from sqlalchemy.dialects.postgresql import JSONB
 from datetime import datetime, timezone
+
+from sqlalchemy import Column, DateTime, String
+from sqlalchemy.dialects.postgresql import JSONB
 
 from app.models.base import BaseModel
 
