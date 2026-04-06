@@ -8,15 +8,16 @@ SOE Enhancement 7 — emit ServiceRequestEvent on each state change.
 SOE Enhancement 8 — review eligibility verification.
 """
 
-from sqlalchemy.orm import Session
-from uuid import UUID
-from typing import Optional
-from datetime import datetime, timezone
 import logging
+from datetime import datetime, timezone
+from typing import Optional
+from uuid import UUID
 
+from sqlalchemy.orm import Session
+
+from app.models.service_provider import ServiceProvider
 from app.models.service_request import ServiceRequest
 from app.models.service_request_event import ServiceRequestEvent
-from app.models.service_provider import ServiceProvider
 from app.schemas.service_request import ServiceRequestCreate
 
 logger = logging.getLogger(__name__)
@@ -49,23 +50,31 @@ class RequestService:
         """
         Create a new service request and attempt matchmaking.
         """
-        provider = self.db.query(ServiceProvider).filter(
-            ServiceProvider.id == data.provider_id,
-            ServiceProvider.is_deleted == False,
-        ).first()
+        provider = (
+            self.db.query(ServiceProvider)
+            .filter(
+                ServiceProvider.id == data.provider_id,
+                ServiceProvider.is_deleted == False,
+            )
+            .first()
+        )
         if not provider:
             raise ValueError("Provider not found")
         if provider.is_suspended:
             raise ValueError("Provider is suspended")
 
-        existing = self.db.query(ServiceRequest).filter(
-            ServiceRequest.farmer_id == farmer_id,
-            ServiceRequest.provider_id == data.provider_id,
-            ServiceRequest.service_type == data.service_type,
-            ServiceRequest.status.in_(["Pending", "Accepted", "InProgress"]),
-            ServiceRequest.is_deleted == False
-        ).first()
-        
+        existing = (
+            self.db.query(ServiceRequest)
+            .filter(
+                ServiceRequest.farmer_id == farmer_id,
+                ServiceRequest.provider_id == data.provider_id,
+                ServiceRequest.service_type == data.service_type,
+                ServiceRequest.status.in_(["Pending", "Accepted", "InProgress"]),
+                ServiceRequest.is_deleted == False,
+            )
+            .first()
+        )
+
         if existing:
             raise ValueError(
                 f"You already have an active request ({existing.status}) "
@@ -115,14 +124,10 @@ class RequestService:
         self.db.commit()
         self.db.refresh(request)
 
-        logger.info(
-            f"Service request {request_id} accepted by provider {provider_id}"
-        )
+        logger.info(f"Service request {request_id} accepted by provider {provider_id}")
         return request
 
-    def complete_request(
-        self, request_id: UUID, actor_id: UUID
-    ) -> ServiceRequest:
+    def complete_request(self, request_id: UUID, actor_id: UUID) -> ServiceRequest:
         """Mark a service request as completed."""
         request = self._get_request(request_id)
         if not request:
@@ -144,7 +149,8 @@ class RequestService:
 
     def decline_request(self, request_id: UUID, actor_id: UUID) -> ServiceRequest:
         request = self._get_request(request_id)
-        if not request: raise LookupError(f"Service request {request_id} not found")
+        if not request:
+            raise LookupError(f"Service request {request_id} not found")
         self._validate_transition(request.status, "Declined")
         old_status = request.status
         request.status = "Declined"
@@ -153,9 +159,12 @@ class RequestService:
         self.db.refresh(request)
         return request
 
-    def cancel_request(self, request_id: UUID, actor_id: UUID, role: str) -> ServiceRequest:
+    def cancel_request(
+        self, request_id: UUID, actor_id: UUID, role: str
+    ) -> ServiceRequest:
         request = self._get_request(request_id)
-        if not request: raise LookupError(f"Service request {request_id} not found")
+        if not request:
+            raise LookupError(f"Service request {request_id} not found")
         self._validate_transition(request.status, "Cancelled")
         old_status = request.status
         request.status = "Cancelled"
@@ -166,7 +175,8 @@ class RequestService:
 
     def start_request(self, request_id: UUID, actor_id: UUID) -> ServiceRequest:
         request = self._get_request(request_id)
-        if not request: raise LookupError(f"Service request {request_id} not found")
+        if not request:
+            raise LookupError(f"Service request {request_id} not found")
         self._validate_transition(request.status, "InProgress")
         old_status = request.status
         request.status = "InProgress"
@@ -177,7 +187,8 @@ class RequestService:
 
     def fail_request(self, request_id: UUID, actor_id: UUID) -> ServiceRequest:
         request = self._get_request(request_id)
-        if not request: raise LookupError(f"Service request {request_id} not found")
+        if not request:
+            raise LookupError(f"Service request {request_id} not found")
         self._validate_transition(request.status, "Failed")
         old_status = request.status
         request.status = "Failed"
@@ -187,10 +198,14 @@ class RequestService:
         return request
 
     def _get_request(self, request_id: UUID) -> Optional[ServiceRequest]:
-        return self.db.query(ServiceRequest).filter(
-            ServiceRequest.id == request_id,
-            ServiceRequest.is_deleted == False,
-        ).first()
+        return (
+            self.db.query(ServiceRequest)
+            .filter(
+                ServiceRequest.id == request_id,
+                ServiceRequest.is_deleted == False,
+            )
+            .first()
+        )
 
     def _validate_transition(self, current: str, target: str) -> None:
         valid = VALID_REQUEST_TRANSITIONS.get(current, [])

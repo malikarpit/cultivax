@@ -7,11 +7,12 @@ appropriate escalation level (Warning → Suspension → Ban).
 MSDD Enhancement 3 | SOE Enhancement 3
 """
 
-from sqlalchemy.orm import Session  # type: ignore
-from sqlalchemy import func  # type: ignore
-from uuid import UUID
-from typing import Optional
 import logging
+from typing import Optional
+from uuid import UUID
+
+from sqlalchemy import func  # type: ignore
+from sqlalchemy.orm import Session  # type: ignore
 
 from app.models.service_provider import ServiceProvider  # type: ignore
 from app.models.service_request import ServiceRequest  # type: ignore
@@ -23,9 +24,9 @@ logger = logging.getLogger(__name__)
 # Escalation thresholds
 # ---------------------------------------------------------------------------
 
-COMPLAINT_RATIO_THRESHOLD = 0.20   # 20% complaint ratio triggers escalation
-WARNING_LIMIT = 3                  # ≤ 3 complaints → Warning
-SUSPEND_LIMIT = 7                  # ≤ 7 complaints → Temporary suspension
+COMPLAINT_RATIO_THRESHOLD = 0.20  # 20% complaint ratio triggers escalation
+WARNING_LIMIT = 3  # ≤ 3 complaints → Warning
+SUSPEND_LIMIT = 7  # ≤ 7 complaints → Temporary suspension
 # > 7 complaints → Permanent suspension
 
 # Escalation levels
@@ -131,9 +132,7 @@ class EscalationPolicyEngine:
         )
 
         # Compute complaint ratio
-        complaint_ratio = (
-            complaint_count / total_reviews if total_reviews > 0 else 0.0
-        )
+        complaint_ratio = complaint_count / total_reviews if total_reviews > 0 else 0.0
 
         # Determine escalation level
         level, message = self._evaluate(complaint_count, complaint_ratio)

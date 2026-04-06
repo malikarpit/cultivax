@@ -7,13 +7,14 @@ using a weighted multi-factor formula with temporal decay.
 TDD Section 5.5 | SOE Enhancements 2 (Temporal Decay), 5 (Consistency Score)
 """
 
-from sqlalchemy.orm import Session  # type: ignore
-from sqlalchemy import func, case  # type: ignore
-from uuid import UUID
+import logging
+import math
 from datetime import datetime, timezone
 from typing import Optional
-import math
-import logging
+from uuid import UUID
+
+from sqlalchemy import case, func  # type: ignore
+from sqlalchemy.orm import Session  # type: ignore
 
 from app.models.service_provider import ServiceProvider  # type: ignore
 from app.models.service_request import ServiceRequest  # type: ignore
@@ -26,12 +27,12 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 WEIGHTS = {
-    "completion_ratio": 0.25,       # w1: completed / total requests
-    "complaint_ratio": 0.20,        # w2: applied as (1 - CPR)
-    "normalized_rating": 0.25,      # w3: avg rating normalized to 0-1
-    "verification_bonus": 0.05,     # w4: binary — verified or not
-    "consistency_score": 0.15,      # w5: 1 − variance of completion times
-    "escalation_penalty": 0.10,     # w6: subtracted for active escalations
+    "completion_ratio": 0.25,  # w1: completed / total requests
+    "complaint_ratio": 0.20,  # w2: applied as (1 - CPR)
+    "normalized_rating": 0.25,  # w3: avg rating normalized to 0-1
+    "verification_bonus": 0.05,  # w4: binary — verified or not
+    "consistency_score": 0.15,  # w5: 1 − variance of completion times
+    "escalation_penalty": 0.10,  # w6: subtracted for active escalations
 }
 
 # Temporal decay: multiply trust by 0.98 for each month of inactivity
@@ -191,9 +192,7 @@ class TrustEngine:
 
         total_reviews = len(reviews)
         ratings = [r.rating for r in reviews if r.rating is not None]
-        complaints = [
-            r for r in reviews if r.complaint_category is not None
-        ]
+        complaints = [r for r in reviews if r.complaint_category is not None]
 
         # Completion times (for consistency score)
         completion_times = []
@@ -202,16 +201,16 @@ class TrustEngine:
             .filter(
                 ServiceRequest.provider_id == provider_id,
                 ServiceRequest.status == "Completed",
-                ServiceRequest.requested_date.isnot(None),
-                ServiceRequest.completed_date.isnot(None),
+                ServiceRequest.preferred_date.isnot(None),
+                ServiceRequest.completed_at.isnot(None),
                 ServiceRequest.is_deleted == False,
             )
             .all()
         )
 
         for req in completed_with_dates:
-            if req.completed_date and req.requested_date:
-                delta = (req.completed_date - req.requested_date).total_seconds()
+            if req.completed_at and req.preferred_date:
+                delta = (req.completed_at - req.preferred_date).total_seconds()
                 completion_times.append(max(delta, 0))
 
         # Last activity date
@@ -307,6 +306,7 @@ class TrustEngine:
         now = datetime.now(timezone.utc)
         if last_activity.tzinfo is None:
             from datetime import timezone as tz
+
             last_activity = last_activity.replace(tzinfo=tz.utc)
 
         delta = now - last_activity

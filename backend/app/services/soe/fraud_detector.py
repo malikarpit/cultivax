@@ -6,22 +6,23 @@ Detects suspicious patterns in service reviews and provider behavior.
 MSDD Enhancement 8 | SOE Enhancement 8
 """
 
-from sqlalchemy.orm import Session
-from sqlalchemy import func
-from uuid import UUID
-from typing import List, Dict, Any, Optional
-from datetime import datetime, timezone, timedelta
 import logging
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional
+from uuid import UUID
 
-from app.models.service_review import ServiceReview
-from app.models.service_provider import ServiceProvider
+from sqlalchemy import func
+from sqlalchemy.orm import Session
+
 from app.models.abuse_flag import AbuseFlag
+from app.models.service_provider import ServiceProvider
+from app.models.service_review import ServiceReview
 
 logger = logging.getLogger(__name__)
 
 # Fraud detection thresholds
 SAME_REVIEWER_THRESHOLD = 3  # Flag if same reviewer reviews provider N+ times
-RATING_SPIKE_STD_DEV = 1.5   # Flag if rating std_dev in 7 days exceeds this
+RATING_SPIKE_STD_DEV = 1.5  # Flag if rating std_dev in 7 days exceeds this
 RATING_SPIKE_WINDOW_DAYS = 7
 MIN_REVIEWS_FOR_ANALYSIS = 5
 
@@ -98,10 +99,14 @@ class FraudDetector:
 
     def _check_review_pattern(self, provider_id: UUID) -> Dict[str, Any]:
         """Check if same reviewer has reviewed this provider multiple times."""
-        reviews = self.db.query(ServiceReview).filter(
-            ServiceReview.provider_id == provider_id,
-            ServiceReview.is_deleted == False,
-        ).all()
+        reviews = (
+            self.db.query(ServiceReview)
+            .filter(
+                ServiceReview.provider_id == provider_id,
+                ServiceReview.is_deleted == False,
+            )
+            .all()
+        )
 
         reviewer_counts: Dict[str, int] = {}
         for review in reviews:
@@ -109,8 +114,7 @@ class FraudDetector:
             reviewer_counts[reviewer_key] = reviewer_counts.get(reviewer_key, 0) + 1
 
         repeat_reviewers = {
-            k: v for k, v in reviewer_counts.items()
-            if v >= SAME_REVIEWER_THRESHOLD
+            k: v for k, v in reviewer_counts.items() if v >= SAME_REVIEWER_THRESHOLD
         }
 
         return {
@@ -118,7 +122,9 @@ class FraudDetector:
             "flagged": len(repeat_reviewers) > 0,
             "details": {
                 "repeat_reviewers": len(repeat_reviewers),
-                "max_reviews_by_single": max(reviewer_counts.values()) if reviewer_counts else 0,
+                "max_reviews_by_single": (
+                    max(reviewer_counts.values()) if reviewer_counts else 0
+                ),
             },
         }
 
@@ -128,11 +134,15 @@ class FraudDetector:
             days=RATING_SPIKE_WINDOW_DAYS
         )
 
-        recent_reviews = self.db.query(ServiceReview).filter(
-            ServiceReview.provider_id == provider_id,
-            ServiceReview.created_at >= window_start,
-            ServiceReview.is_deleted == False,
-        ).all()
+        recent_reviews = (
+            self.db.query(ServiceReview)
+            .filter(
+                ServiceReview.provider_id == provider_id,
+                ServiceReview.created_at >= window_start,
+                ServiceReview.is_deleted == False,
+            )
+            .all()
+        )
 
         if len(recent_reviews) < MIN_REVIEWS_FOR_ANALYSIS:
             return {"check": "rating_spike", "flagged": False, "details": {}}
@@ -140,7 +150,7 @@ class FraudDetector:
         ratings = [float(r.rating) for r in recent_reviews]
         avg = sum(ratings) / len(ratings)
         variance = sum((r - avg) ** 2 for r in ratings) / len(ratings)
-        std_dev = variance ** 0.5
+        std_dev = variance**0.5
 
         return {
             "check": "rating_spike",
@@ -155,10 +165,15 @@ class FraudDetector:
 
     def _check_timing_anomaly(self, provider_id: UUID) -> Dict[str, Any]:
         """Check for suspiciously rapid review submissions."""
-        reviews = self.db.query(ServiceReview).filter(
-            ServiceReview.provider_id == provider_id,
-            ServiceReview.is_deleted == False,
-        ).order_by(ServiceReview.created_at.asc()).all()
+        reviews = (
+            self.db.query(ServiceReview)
+            .filter(
+                ServiceReview.provider_id == provider_id,
+                ServiceReview.is_deleted == False,
+            )
+            .order_by(ServiceReview.created_at.asc())
+            .all()
+        )
 
         if len(reviews) < 3:
             return {"check": "timing_anomaly", "flagged": False, "details": {}}
@@ -166,7 +181,9 @@ class FraudDetector:
         # Check for clusters of reviews within 1 hour
         cluster_list: list[int] = []
         for i in range(len(reviews) - 2):
-            time_span = (reviews[i + 2].created_at - reviews[i].created_at).total_seconds()
+            time_span = (
+                reviews[i + 2].created_at - reviews[i].created_at
+            ).total_seconds()
             if time_span < 3600:  # 3 reviews within 1 hour
                 cluster_list.append(1)
 
@@ -181,9 +198,7 @@ class FraudDetector:
             },
         }
 
-    def _create_abuse_flag(
-        self, provider_id: UUID, result: Dict[str, Any]
-    ) -> None:
+    def _create_abuse_flag(self, provider_id: UUID, result: Dict[str, Any]) -> None:
         """Create an abuse flag record for admin review.
 
         AbuseFlag.farmer_id refers to the flagged user's account. For provider
@@ -191,10 +206,15 @@ class FraudDetector:
         The entity context (provider_id, entity_type) is stored in details.
         """
         from app.models.service_provider import ServiceProvider
-        provider = self.db.query(ServiceProvider).filter(
-            ServiceProvider.id == provider_id,
-            ServiceProvider.is_deleted == False,
-        ).first()
+
+        provider = (
+            self.db.query(ServiceProvider)
+            .filter(
+                ServiceProvider.id == provider_id,
+                ServiceProvider.is_deleted == False,
+            )
+            .first()
+        )
 
         if not provider:
             logger.warning(
@@ -216,4 +236,3 @@ class FraudDetector:
             details=enriched_details,
         )
         self.db.add(flag)
-
