@@ -114,7 +114,11 @@ class AbuseDetector:
         return {
             "is_flagged": is_flagged,
             "density": max_density,
-            "reason": f"Action density {max_density}/hr exceeds {threshold}/hr" if is_flagged else None,
+            "reason": (
+                f"Action density {max_density}/hr exceeds {threshold}/hr"
+                if is_flagged
+                else None
+            ),
         }
 
     @staticmethod
@@ -150,7 +154,11 @@ class AbuseDetector:
         return {
             "is_flagged": is_flagged,
             "duplicates": duplicates,
-            "reason": f"Duplicate action groups: {list(duplicates.keys())}" if is_flagged else None,
+            "reason": (
+                f"Duplicate action groups: {list(duplicates.keys())}"
+                if is_flagged
+                else None
+            ),
         }
 
 
@@ -237,8 +245,9 @@ def verify_production_environment() -> bool:
     Returns:
         True if safe, raises RuntimeError if unsafe.
     """
-    from app.config import settings
     from urllib.parse import urlparse
+
+    from app.config import settings
 
     if settings.APP_ENV != "production":
         logger.info(f"Environment: {settings.APP_ENV} — skipping prod DB check")
@@ -251,7 +260,9 @@ def verify_production_environment() -> bool:
     # Check against prod allowlist
     allowed_hosts = settings.prod_db_hosts
     if not allowed_hosts:
-        logger.warning("Production environment but no PROD_DB_HOST_ALLOWLIST configured")
+        logger.warning(
+            "Production environment but no PROD_DB_HOST_ALLOWLIST configured"
+        )
         return True  # No allowlist = skip check (but warn)
 
     dev_indicators = ["localhost", "127.0.0.1", "host.docker.internal", "db"]

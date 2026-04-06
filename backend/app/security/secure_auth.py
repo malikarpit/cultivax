@@ -8,11 +8,12 @@ to prevent XSS token theft. Implements 2026 security best practices.
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from fastapi import Response, Request, HTTPException, status
+from fastapi import HTTPException, Request, Response, status
 from jose import JWTError
 
 from app.config import settings
-from app.security.auth import create_access_token, create_refresh_token, verify_token
+from app.security.auth import (create_access_token, create_refresh_token,
+                               verify_token)
 
 # Cookie names
 ACCESS_TOKEN_COOKIE = "cultivax_access_token"

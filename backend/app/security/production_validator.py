@@ -5,8 +5,8 @@ Validates critical security configurations on production startup.
 Prevents deployment with insecure settings.
 """
 
-import logging
 import json
+import logging
 import secrets
 import sys
 from typing import List, Tuple
@@ -67,7 +67,10 @@ class ProductionSecurityValidator:
 
         entropy_score = sum([has_upper, has_lower, has_digit, has_special])
         if entropy_score < 3:
-            return False, "SECRET_KEY has low entropy (needs uppercase, lowercase, digits, special chars)"
+            return (
+                False,
+                "SECRET_KEY has low entropy (needs uppercase, lowercase, digits, special chars)",
+            )
 
         return True, ""
 
@@ -87,10 +90,17 @@ class ProductionSecurityValidator:
 
         # Check for wildcard
         if "*" in origins:
-            return False, "CORS_ORIGINS contains wildcard (*) - not allowed in production"
+            return (
+                False,
+                "CORS_ORIGINS contains wildcard (*) - not allowed in production",
+            )
 
         # Check for HTTP origins (should be HTTPS)
-        http_origins = [o for o in origins if o.startswith("http://") and o != "http://localhost:3000"]
+        http_origins = [
+            o
+            for o in origins
+            if o.startswith("http://") and o != "http://localhost:3000"
+        ]
         if http_origins:
             return False, f"CORS_ORIGINS contains insecure HTTP origins: {http_origins}"
 
@@ -127,7 +137,10 @@ class ProductionSecurityValidator:
         weak_passwords = ["password", "cultivax_pass", "admin", "root", "123456"]
         for weak_pass in weak_passwords:
             if weak_pass in db_url.lower():
-                return False, f"Database URL contains weak password pattern: '{weak_pass}'"
+                return (
+                    False,
+                    f"Database URL contains weak password pattern: '{weak_pass}'",
+                )
 
         # Check production DB host allowlist if configured
         if settings.CLOUD_SQL_CONNECTION_NAME and settings.PROD_DB_HOST_ALLOWLIST:
@@ -150,10 +163,16 @@ class ProductionSecurityValidator:
         raw_ring = (settings.ADMIN_API_KEYS_JSON or "").strip()
 
         if not raw_single and not raw_ring:
-            return False, "No admin API key config found (set ADMIN_API_KEY or ADMIN_API_KEYS_JSON)"
+            return (
+                False,
+                "No admin API key config found (set ADMIN_API_KEY or ADMIN_API_KEYS_JSON)",
+            )
 
         if raw_single and not raw_single.startswith("sha256:"):
-            return False, "ADMIN_API_KEY must be hash-prefixed in production (sha256:<hash>)"
+            return (
+                False,
+                "ADMIN_API_KEY must be hash-prefixed in production (sha256:<hash>)",
+            )
 
         if raw_ring:
             try:
@@ -164,7 +183,10 @@ class ProductionSecurityValidator:
             if isinstance(parsed, dict):
                 parsed = parsed.get("keys", [])
             if not isinstance(parsed, list):
-                return False, "ADMIN_API_KEYS_JSON must be a JSON array or object with `keys` array"
+                return (
+                    False,
+                    "ADMIN_API_KEYS_JSON must be a JSON array or object with `keys` array",
+                )
             if not parsed:
                 return False, "ADMIN_API_KEYS_JSON contains no key records"
 
@@ -175,7 +197,7 @@ class ProductionSecurityValidator:
                 if item.get("active", True):
                     key_hash = str(item.get("sha256") or item.get("hash") or "")
                     if key_hash.startswith("sha256:"):
-                        key_hash = key_hash[len("sha256:"):]
+                        key_hash = key_hash[len("sha256:") :]
                     if len(key_hash) == 64:
                         active_count += 1
             if active_count == 0:
@@ -195,7 +217,9 @@ class ProductionSecurityValidator:
 
         # Only enforce in production
         if settings.APP_ENV != "production":
-            logger.info("Non-production environment - skipping strict security validation")
+            logger.info(
+                "Non-production environment - skipping strict security validation"
+            )
             return errors
 
         logger.info("Running production security validation...")
@@ -204,7 +228,10 @@ class ProductionSecurityValidator:
             ("Secret Key", ProductionSecurityValidator.validate_secret_key),
             ("CORS Origins", ProductionSecurityValidator.validate_cors_origins),
             ("Debug Mode", ProductionSecurityValidator.validate_debug_mode),
-            ("Database Security", ProductionSecurityValidator.validate_database_security),
+            (
+                "Database Security",
+                ProductionSecurityValidator.validate_database_security,
+            ),
             ("Admin API Keys", ProductionSecurityValidator.validate_admin_api_keys),
         ]
 

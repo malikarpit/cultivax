@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import List, Optional, Tuple
 
-from fastapi import HTTPException, Header, Request, status
+from fastapi import Header, HTTPException, Request, status
 
 from app.config import settings
 
@@ -86,9 +86,7 @@ class AdminAPIKey:
 
         # Generate HMAC signature
         signature = hmac.new(
-            api_secret.encode(),
-            message.encode(),
-            hashlib.sha256
+            api_secret.encode(), message.encode(), hashlib.sha256
         ).hexdigest()
 
         return signature
@@ -191,7 +189,9 @@ def _build_keyring_from_json(raw_json: str) -> List[_KeyRecord]:
     if isinstance(parsed, dict):
         parsed = parsed.get("keys", [])
     if not isinstance(parsed, list):
-        raise ValueError("ADMIN_API_KEYS_JSON must be an array or object with `keys` array")
+        raise ValueError(
+            "ADMIN_API_KEYS_JSON must be an array or object with `keys` array"
+        )
 
     keyring: List[_KeyRecord] = []
     for idx, item in enumerate(parsed):
@@ -213,10 +213,14 @@ def _build_keyring_from_json(raw_json: str) -> List[_KeyRecord]:
         key_id = str(item.get("key_id") or item.get("id") or f"key-{idx+1}")
         key_hash = _parse_key_hash(str(item.get("sha256") or item.get("hash") or ""))
         if not _is_valid_sha256_hex(key_hash):
-            logger.warning("Skipping admin key '%s' due invalid SHA-256 hash format", key_id)
+            logger.warning(
+                "Skipping admin key '%s' due invalid SHA-256 hash format", key_id
+            )
             continue
 
-        keyring.append(_KeyRecord(key_id=key_id, sha256_hash=key_hash, source="keyring"))
+        keyring.append(
+            _KeyRecord(key_id=key_id, sha256_hash=key_hash, source="keyring")
+        )
 
     return keyring
 
@@ -236,8 +240,14 @@ def _resolve_active_admin_keys() -> List[_KeyRecord]:
     parsed_hash = _parse_key_hash(configured_key)
     if configured_key.startswith("sha256:"):
         if not _is_valid_sha256_hex(parsed_hash):
-            raise ValueError("ADMIN_API_KEY hash is malformed; expected sha256:<64-hex>")
-        return [_KeyRecord(key_id="legacy-single", sha256_hash=parsed_hash, source="single-hash")]
+            raise ValueError(
+                "ADMIN_API_KEY hash is malformed; expected sha256:<64-hex>"
+            )
+        return [
+            _KeyRecord(
+                key_id="legacy-single", sha256_hash=parsed_hash, source="single-hash"
+            )
+        ]
 
     # Fail closed for plaintext key in production.
     if settings.APP_ENV == "production":
@@ -252,7 +262,13 @@ def _resolve_active_admin_keys() -> List[_KeyRecord]:
         "Prefer sha256:<hash> or ADMIN_API_KEYS_JSON."
     )
     fallback_hash = hashlib.sha256(configured_key.encode()).hexdigest()
-    return [_KeyRecord(key_id="legacy-plaintext-dev", sha256_hash=fallback_hash, source="single-plaintext")]
+    return [
+        _KeyRecord(
+            key_id="legacy-plaintext-dev",
+            sha256_hash=fallback_hash,
+            source="single-plaintext",
+        )
+    ]
 
 
 async def require_admin_api_key(
@@ -325,7 +341,9 @@ async def require_admin_api_key(
 
     scoped_keyring = keyring
     if x_api_key_id:
-        scoped_keyring = [k for k in keyring if hmac.compare_digest(k.key_id, x_api_key_id)]
+        scoped_keyring = [
+            k for k in keyring if hmac.compare_digest(k.key_id, x_api_key_id)
+        ]
         if not scoped_keyring:
             logger.warning(
                 "Unknown admin key id '%s' from %s",
@@ -359,7 +377,11 @@ async def require_admin_api_key(
 
     # If signature provided, verify it
     require_signature = bool(getattr(settings, "ADMIN_REQUIRE_API_SIGNATURE", False))
-    if require_signature and request.method in {"POST", "PUT", "PATCH", "DELETE"} and not x_signature:
+    if (
+        require_signature
+        and request.method in {"POST", "PUT", "PATCH", "DELETE"}
+        and not x_signature
+    ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="X-Signature is required for admin mutating requests",
@@ -374,7 +396,7 @@ async def require_admin_api_key(
 
         # Get request body
         body = await request.body()
-        body_str = body.decode('utf-8') if body else ""
+        body_str = body.decode("utf-8") if body else ""
 
         is_valid, error = AdminAPIKey.verify_request_signature(
             request=request,

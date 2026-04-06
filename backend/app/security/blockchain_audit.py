@@ -30,6 +30,7 @@ class AuditBlock:
 
     Contains multiple audit entries with cryptographic linking.
     """
+
     index: int
     timestamp: float
     entries: List[Dict[str, Any]]
@@ -105,11 +106,13 @@ class AuditBlockchain:
         genesis_block = AuditBlock(
             index=0,
             timestamp=time.time(),
-            entries=[{
-                "action": "genesis",
-                "message": "CultivaX Audit Blockchain Initialized",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-            }],
+            entries=[
+                {
+                    "action": "genesis",
+                    "message": "CultivaX Audit Blockchain Initialized",
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                }
+            ],
             previous_hash="0",
         )
 
@@ -167,7 +170,9 @@ class AuditBlockchain:
         self.chain.append(new_block)
         self.pending_entries.clear()
 
-        logger.info(f"Block {new_block.index} committed with {len(new_block.entries)} entries")
+        logger.info(
+            f"Block {new_block.index} committed with {len(new_block.entries)} entries"
+        )
 
         return new_block
 
@@ -250,9 +255,7 @@ class AuditBlockchain:
                 hashes.append(hashes[-1])  # Duplicate last hash if odd
 
             hashes = [
-                hashlib.sha256(
-                    (hashes[i] + hashes[i + 1]).encode()
-                ).hexdigest()
+                hashlib.sha256((hashes[i] + hashes[i + 1]).encode()).hexdigest()
                 for i in range(0, len(hashes), 2)
             ]
 
@@ -319,11 +322,13 @@ class AuditBlockchain:
                         continue
 
                 # Add block metadata
-                results.append({
-                    **entry,
-                    "_block_index": block.index,
-                    "_block_hash": block.hash,
-                })
+                results.append(
+                    {
+                        **entry,
+                        "_block_index": block.index,
+                        "_block_hash": block.hash,
+                    }
+                )
 
         return results
 

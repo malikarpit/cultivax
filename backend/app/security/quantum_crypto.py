@@ -28,6 +28,7 @@ try:
     # Note: pqcrypto is a placeholder - in production use proper PQC libraries
     # like liboqs-python (Open Quantum Safe)
     import base64
+
     PQC_AVAILABLE = True
 except ImportError:
     PQC_AVAILABLE = False
@@ -41,6 +42,7 @@ class HybridKeyPair:
 
     For smooth migration and quantum resistance.
     """
+
     # Classical keys (current standard)
     classical_public_key: bytes
     classical_private_key: bytes
@@ -225,8 +227,8 @@ class QuantumResistantCrypto:
 
         # PBKDF2-HMAC-SHA512 (quantum-resistant due to generic attack resistance)
         derived_key = pbkdf2_hmac(
-            'sha512',
-            password.encode('utf-8'),
+            "sha512",
+            password.encode("utf-8"),
             salt,
             iterations,
             dklen=32,
@@ -261,7 +263,7 @@ class QuantumSafeAuditLog:
 
         # Serialize log data
         log_json = json.dumps(log_data, sort_keys=True)
-        log_bytes = log_json.encode('utf-8')
+        log_bytes = log_json.encode("utf-8")
 
         # Create hybrid signature
         classical_sig, pq_sig = QuantumResistantCrypto.hybrid_sign(
@@ -277,8 +279,12 @@ class QuantumSafeAuditLog:
                 "post_quantum": pq_sig.hex() if pq_sig else None,
                 "algorithm": "hybrid-hmac-sha256-sha512",
                 "public_key_classical": self.keypair.classical_public_key.hex(),
-                "public_key_pq": self.keypair.pq_public_key.hex() if self.keypair.pq_public_key else None,
-            }
+                "public_key_pq": (
+                    self.keypair.pq_public_key.hex()
+                    if self.keypair.pq_public_key
+                    else None
+                ),
+            },
         }
 
         return signed_entry
@@ -302,11 +308,15 @@ class QuantumSafeAuditLog:
 
         # Serialize log data (same as signing)
         log_json = json.dumps(signed_entry, sort_keys=True)
-        log_bytes = log_json.encode('utf-8')
+        log_bytes = log_json.encode("utf-8")
 
         # Get signatures
         classical_sig = bytes.fromhex(signature["classical"])
-        pq_sig = bytes.fromhex(signature["post_quantum"]) if signature["post_quantum"] else b""
+        pq_sig = (
+            bytes.fromhex(signature["post_quantum"])
+            if signature["post_quantum"]
+            else b""
+        )
 
         # Verify
         return QuantumResistantCrypto.hybrid_verify(

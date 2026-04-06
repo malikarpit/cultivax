@@ -14,7 +14,7 @@ Security Upgrades (2026):
 
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Dict
+from typing import Dict, Optional
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -74,12 +74,14 @@ def create_access_token(
     expire = datetime.now(timezone.utc) + (
         expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     )
-    to_encode.update({
-        "exp": expire,
-        "iat": datetime.now(timezone.utc),
-        "token_type": "access",
-        "jti": str(uuid.uuid4()),
-    })
+    to_encode.update(
+        {
+            "exp": expire,
+            "iat": datetime.now(timezone.utc),
+            "token_type": "access",
+            "jti": str(uuid.uuid4()),
+        }
+    )
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
@@ -91,7 +93,9 @@ def verify_token(token: str) -> Optional[Dict]:
         Decoded payload dict, or None if invalid/expired/wrong type.
     """
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        payload = jwt.decode(
+            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+        )
         # Ensure it's an access token (not a refresh token used as access)
         if payload.get("token_type") not in (None, "access"):
             return None
@@ -108,14 +112,18 @@ def create_refresh_token(data: Dict) -> str:
     in the active_sessions table for revocation support.
     """
     to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    expire = datetime.now(timezone.utc) + timedelta(
+        days=settings.REFRESH_TOKEN_EXPIRE_DAYS
+    )
     jti = str(uuid.uuid4())
-    to_encode.update({
-        "exp": expire,
-        "iat": datetime.now(timezone.utc),
-        "token_type": "refresh",
-        "jti": jti,
-    })
+    to_encode.update(
+        {
+            "exp": expire,
+            "iat": datetime.now(timezone.utc),
+            "token_type": "refresh",
+            "jti": jti,
+        }
+    )
     token = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return token
 
@@ -128,7 +136,9 @@ def verify_refresh_token(token: str) -> Optional[Dict]:
         Decoded payload dict, or None if invalid/expired/wrong type.
     """
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        payload = jwt.decode(
+            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+        )
         if payload.get("token_type") != "refresh":
             return None
         return payload

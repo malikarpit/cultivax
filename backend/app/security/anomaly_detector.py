@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class BehavioralProfile:
     """User behavioral profile for anomaly detection."""
+
     user_id: str
     typical_hour_of_day: List[int]  # Hours when user is typically active
     typical_request_rate: float  # Average requests per minute
@@ -97,12 +98,14 @@ class BehavioralAnomalyDetector:
             self.profiles[user_id] = profile
 
         # Record request
-        self.request_history[user_id].append({
-            "endpoint": endpoint,
-            "method": method,
-            "ip": ip_address,
-            "timestamp": timestamp,
-        })
+        self.request_history[user_id].append(
+            {
+                "endpoint": endpoint,
+                "method": method,
+                "ip": ip_address,
+                "timestamp": timestamp,
+            }
+        )
 
         # Run anomaly checks
         anomalies = []
@@ -207,7 +210,8 @@ class BehavioralAnomalyDetector:
         # Calculate recent request rate (last 5 minutes)
         now = datetime.now(timezone.utc)
         recent_requests = [
-            req for req in history
+            req
+            for req in history
             if (now - req["timestamp"]).total_seconds() < 300  # 5 minutes
         ]
 
@@ -260,7 +264,13 @@ class BehavioralAnomalyDetector:
             return 0.0  # Known endpoint
 
         # Check if endpoint is admin/sensitive
-        sensitive_patterns = ["/admin/", "/api/v1/admin/", "/users/", "/delete", "/suspend"]
+        sensitive_patterns = [
+            "/admin/",
+            "/api/v1/admin/",
+            "/users/",
+            "/delete",
+            "/suspend",
+        ]
         is_sensitive = any(pattern in endpoint for pattern in sensitive_patterns)
 
         if is_sensitive:
