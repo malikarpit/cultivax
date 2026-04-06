@@ -7,8 +7,8 @@ crop instances from drifting too far from expected timelines.
 MSDD 1.9 | TDD 4.5
 """
 
-from typing import Dict, Any, Optional
 import logging
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +75,9 @@ class DriftEnforcer:
         # Also enforce absolute cap
         if abs(clamped_offset) > MAX_ABSOLUTE_DRIFT:
             was_clamped = True
-            clamped_offset = MAX_ABSOLUTE_DRIFT if clamped_offset > 0 else -MAX_ABSOLUTE_DRIFT
+            clamped_offset = (
+                MAX_ABSOLUTE_DRIFT if clamped_offset > 0 else -MAX_ABSOLUTE_DRIFT
+            )
 
         # Drift ratio (0-1, how close to max drift)
         drift_ratio = abs(clamped_offset) / max_allowed if max_allowed > 0 else 0.0

@@ -13,11 +13,12 @@ Key rules:
 - Must be reversible (ML Enhancement 6)
 """
 
-from sqlalchemy.orm import Session
-from uuid import UUID
-from typing import Optional, Dict, Any, List
-from datetime import timedelta
 import logging
+from datetime import timedelta
+from typing import Any, Dict, List, Optional
+from uuid import UUID
+
+from sqlalchemy.orm import Session
 
 from app.models.action_log import ActionLog
 from app.models.crop_instance import CropInstance
@@ -51,12 +52,16 @@ class BehavioralAdapter:
             Dict with offset_days, pattern_detected, confidence, is_applied
         """
         # Load farmer's historical actions for this crop type
-        crops = self.db.query(CropInstance).filter(
-            CropInstance.farmer_id == farmer_id,
-            CropInstance.crop_type == crop_type,
-            CropInstance.is_deleted == False,
-            CropInstance.state.in_(["Harvested", "Closed", "Archived"]),
-        ).all()
+        crops = (
+            self.db.query(CropInstance)
+            .filter(
+                CropInstance.farmer_id == farmer_id,
+                CropInstance.crop_type == crop_type,
+                CropInstance.is_deleted == False,
+                CropInstance.state.in_(["Harvested", "Closed", "Archived"]),
+            )
+            .all()
+        )
 
         if len(crops) < RECURRING_THRESHOLD:
             return {
@@ -70,15 +75,20 @@ class BehavioralAdapter:
         # Analyze timing patterns across past crops
         delays = []
         for crop in crops:
-            actions = self.db.query(ActionLog).filter(
-                ActionLog.crop_instance_id == crop.id,
-                ActionLog.is_deleted == False,
-            ).order_by(ActionLog.action_effective_date.asc()).all()
+            actions = (
+                self.db.query(ActionLog)
+                .filter(
+                    ActionLog.crop_instance_id == crop.id,
+                    ActionLog.is_deleted == False,
+                )
+                .order_by(ActionLog.action_effective_date.asc())
+                .all()
+            )
 
             if actions:
                 # Compute average delay from expected timeline
                 for action in actions:
-                    if hasattr(action, 'expected_date') and action.expected_date:
+                    if hasattr(action, "expected_date") and action.expected_date:
                         delta = (
                             action.action_effective_date - action.expected_date
                         ).days
@@ -97,7 +107,9 @@ class BehavioralAdapter:
         avg_delay = sum(delays) / len(delays)
 
         # Check for recurring pattern
-        consistent_direction = all(d >= 0 for d in delays) or all(d <= 0 for d in delays)
+        consistent_direction = all(d >= 0 for d in delays) or all(
+            d <= 0 for d in delays
+        )
         pattern_detected = consistent_direction and len(delays) >= RECURRING_THRESHOLD
 
         # Bound the offset
@@ -106,7 +118,7 @@ class BehavioralAdapter:
         # Compute confidence
         if len(delays) >= 5:
             variance = sum((d - avg_delay) ** 2 for d in delays) / len(delays)
-            std_dev = variance ** 0.5
+            std_dev = variance**0.5
             confidence = max(0.0, min(1.0, 1.0 - (std_dev / MAX_OFFSET_DAYS)))
         else:
             confidence = 0.3

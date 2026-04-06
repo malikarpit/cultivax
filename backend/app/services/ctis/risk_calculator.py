@@ -6,8 +6,8 @@ Computes composite risk index from weather and farmer-behavior signals.
 TDD 4.6 — risk_index = weather_weight * weather_risk + farmer_weight * farmer_risk
 """
 
-from typing import Dict, Any, Optional
 import logging
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -69,8 +69,7 @@ class RiskCalculator:
 
         # Core risk computation
         risk_index = (
-            self.weather_weight * weather_risk
-            + self.farmer_weight * farmer_risk
+            self.weather_weight * weather_risk + self.farmer_weight * farmer_risk
         )
 
         # Add seasonal risk adjustment
@@ -89,7 +88,8 @@ class RiskCalculator:
                 "weather_risk": float(int(weather_risk * 10000)) / 10000,
                 "stress_score": float(int(stress_score * 10000)) / 10000,
                 "deviation_penalty": float(int(deviation_penalty * 10000)) / 10000,
-                "seasonal_risk_factor": float(int(seasonal_risk_factor * 10000)) / 10000,
+                "seasonal_risk_factor": float(int(seasonal_risk_factor * 10000))
+                / 10000,
                 "farmer_composite": float(int(farmer_risk * 10000)) / 10000,
             },
             "weights": {

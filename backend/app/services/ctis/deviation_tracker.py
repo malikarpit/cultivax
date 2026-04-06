@@ -7,10 +7,11 @@ computes trend slope, and flags recurring deviation patterns.
 TDD 2.3.4 | MSDD 1.9.1
 """
 
-from sqlalchemy.orm import Session  # type: ignore
-from uuid import UUID
-from typing import Optional
 import logging
+from typing import Optional
+from uuid import UUID
+
+from sqlalchemy.orm import Session  # type: ignore
 
 from app.models.deviation import DeviationProfile  # type: ignore
 
@@ -20,8 +21,8 @@ logger = logging.getLogger(__name__)
 # Configuration
 # ---------------------------------------------------------------------------
 
-RECURRING_PATTERN_THRESHOLD = 3   # Flag if consecutive deviations >= 3
-TREND_SLOPE_WARNING = 0.5         # Slope above this indicates worsening trend
+RECURRING_PATTERN_THRESHOLD = 3  # Flag if consecutive deviations >= 3
+TREND_SLOPE_WARNING = 0.5  # Slope above this indicates worsening trend
 
 
 class DeviationUpdate:
@@ -101,9 +102,7 @@ class DeviationTracker:
         )
 
         if not profile:
-            logger.warning(
-                f"No deviation profile found for crop {crop_instance_id}"
-            )
+            logger.warning(f"No deviation profile found for crop {crop_instance_id}")
             return DeviationUpdate(0, 0.0, False, 0, None, 0)
 
         # Auto-detect deviation type
@@ -129,9 +128,8 @@ class DeviationTracker:
 
         # Compute trend slope (deviation rate over time)
         if profile.cumulative_deviation_days > 0:
-            profile.deviation_trend_slope = (
-                profile.consecutive_deviation_count
-                / max(profile.cumulative_deviation_days, 1)
+            profile.deviation_trend_slope = profile.consecutive_deviation_count / max(
+                profile.cumulative_deviation_days, 1
             )
 
         # Flag recurring pattern

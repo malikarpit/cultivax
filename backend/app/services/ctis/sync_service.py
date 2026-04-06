@@ -8,14 +8,15 @@ MSDD 1.7.1 — Temporal Anomaly Detection
 Audit 15 — Full rewrite for schema alignment & ActionService integration.
 """
 
-from sqlalchemy.orm import Session
-from uuid import UUID, uuid4
-from typing import List, Dict, Any, Optional
-from datetime import datetime, timezone, timedelta, date
 import logging
+from datetime import date, datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional
+from uuid import UUID, uuid4
 
-from app.models.action_log import ActionLog
+from sqlalchemy.orm import Session
+
 from app.models.abuse_flag import AbuseFlag
+from app.models.action_log import ActionLog
 from app.models.crop_instance import CropInstance
 
 logger = logging.getLogger(__name__)
@@ -28,33 +29,48 @@ ANOMALY_SCORE_THRESHOLD = 3
 
 # Allowed action types for offline submission
 ALLOWED_ACTION_TYPES = {
-    'irrigation', 'fertilizer', 'pesticide', 'fungicide', 'herbicide',
-    'pruning', 'thinning', 'transplanting', 'harvesting', 'monitoring',
-    'soil_amendment', 'disease_management', 'pest_management', 'weeding',
-    'mulching', 'staking', 'defoliation', 'seed_treatment', 'observation',
+    "irrigation",
+    "fertilizer",
+    "pesticide",
+    "fungicide",
+    "herbicide",
+    "pruning",
+    "thinning",
+    "transplanting",
+    "harvesting",
+    "monitoring",
+    "soil_amendment",
+    "disease_management",
+    "pest_management",
+    "weeding",
+    "mulching",
+    "staking",
+    "defoliation",
+    "seed_treatment",
+    "observation",
 }
 
 # Category mapping for action types
 CATEGORY_MAP = {
-    'irrigation': 'irrigation',
-    'fertilizer': 'soil_management',
-    'pesticide': 'pest_disease_management',
-    'fungicide': 'pest_disease_management',
-    'herbicide': 'pest_disease_management',
-    'pruning': 'crop_management',
-    'thinning': 'crop_management',
-    'transplanting': 'crop_management',
-    'harvesting': 'harvesting',
-    'monitoring': 'monitoring',
-    'observation': 'monitoring',
-    'soil_amendment': 'soil_management',
-    'disease_management': 'pest_disease_management',
-    'pest_management': 'pest_disease_management',
-    'weeding': 'pest_disease_management',
-    'mulching': 'soil_management',
-    'staking': 'crop_management',
-    'defoliation': 'crop_management',
-    'seed_treatment': 'crop_management',
+    "irrigation": "irrigation",
+    "fertilizer": "soil_management",
+    "pesticide": "pest_disease_management",
+    "fungicide": "pest_disease_management",
+    "herbicide": "pest_disease_management",
+    "pruning": "crop_management",
+    "thinning": "crop_management",
+    "transplanting": "crop_management",
+    "harvesting": "harvesting",
+    "monitoring": "monitoring",
+    "observation": "monitoring",
+    "soil_amendment": "soil_management",
+    "disease_management": "pest_disease_management",
+    "pest_management": "pest_disease_management",
+    "weeding": "pest_disease_management",
+    "mulching": "soil_management",
+    "staking": "crop_management",
+    "defoliation": "crop_management",
+    "seed_treatment": "crop_management",
 }
 
 
@@ -103,21 +119,27 @@ class SyncService:
 
         # ── 2. Prefetch farmer's crops for ownership check ──
         farmer_crops: Dict[str, CropInstance] = {}
-        for crop in self.db.query(CropInstance).filter(
-            CropInstance.farmer_id == farmer_id,
-            CropInstance.is_deleted == False,
-        ).all():
+        for crop in (
+            self.db.query(CropInstance)
+            .filter(
+                CropInstance.farmer_id == farmer_id,
+                CropInstance.is_deleted == False,
+            )
+            .all()
+        ):
             farmer_crops[str(crop.id)] = crop
 
         # ── 3. Validate sequence monotonicity (batch-level) ──
         seq_numbers = [a.get("local_seq_no", 0) for a in actions]
         if seq_numbers != sorted(seq_numbers):
-            anomalies.append({
-                "action_index": -1,
-                "local_seq_no": -1,
-                "reason": "non-monotonic sequence (batch level)",
-                "severity": "warning",
-            })
+            anomalies.append(
+                {
+                    "action_index": -1,
+                    "local_seq_no": -1,
+                    "reason": "non-monotonic sequence (batch level)",
+                    "severity": "warning",
+                }
+            )
 
         # ── 4. Process each action ──
         last_seq: Optional[int] = None
@@ -142,12 +164,14 @@ class SyncService:
 
                 # 4c. Per-action monotonicity check
                 if last_seq is not None and local_seq <= last_seq:
-                    anomalies.append({
-                        "action_index": idx,
-                        "local_seq_no": local_seq,
-                        "reason": "non-monotonic sequence",
-                        "severity": "high",
-                    })
+                    anomalies.append(
+                        {
+                            "action_index": idx,
+                            "local_seq_no": local_seq,
+                            "reason": "non-monotonic sequence",
+                            "severity": "high",
+                        }
+                    )
                 last_seq = local_seq
 
                 # 4d. Validate crop ownership
@@ -170,23 +194,27 @@ class SyncService:
                 # 4f. Backdate check (≤7 days)
                 backdate_days = (now.date() - action_date.date()).days
                 if backdate_days > MAX_BACKDATE_DAYS:
-                    anomalies.append({
-                        "action_index": idx,
-                        "local_seq_no": local_seq,
-                        "reason": f"backdate: {backdate_days} days",
-                        "severity": "medium",
-                    })
+                    anomalies.append(
+                        {
+                            "action_index": idx,
+                            "local_seq_no": local_seq,
+                            "reason": f"backdate: {backdate_days} days",
+                            "severity": "medium",
+                        }
+                    )
 
                 # 4g. Future-date check (≤2 hours)
                 future_seconds = (action_date - now).total_seconds()
                 if future_seconds > MAX_FUTURE_HOURS * 3600:
                     future_h = future_seconds / 3600
-                    anomalies.append({
-                        "action_index": idx,
-                        "local_seq_no": local_seq,
-                        "reason": f"future date: {future_h:.1f} hours",
-                        "severity": "medium",
-                    })
+                    anomalies.append(
+                        {
+                            "action_index": idx,
+                            "local_seq_no": local_seq,
+                            "reason": f"future date: {future_h:.1f} hours",
+                            "severity": "medium",
+                        }
+                    )
 
                 # 4h. Insert action via corrected method
                 action_log, is_duplicate = self._insert_action(
@@ -202,24 +230,29 @@ class SyncService:
                 )
 
                 if is_duplicate:
-                    duplicate_actions.append({
-                        "action_index": idx,
-                        "action_id": str(action_log.id),
-                        "reason": "duplicate_detected",
-                        "original_sync_time": (
-                            action_log.created_at.isoformat()
-                            if action_log.created_at else now.isoformat()
-                        ),
-                    })
+                    duplicate_actions.append(
+                        {
+                            "action_index": idx,
+                            "action_id": str(action_log.id),
+                            "reason": "duplicate_detected",
+                            "original_sync_time": (
+                                action_log.created_at.isoformat()
+                                if action_log.created_at
+                                else now.isoformat()
+                            ),
+                        }
+                    )
                 else:
-                    synced_actions.append({
-                        "action_id": str(action_log.id),
-                        "crop_id": crop_id,
-                        "action_type": action_type,
-                        "action_effective_date": action_date.isoformat(),
-                        "local_seq_no": local_seq,
-                        "status": "synced",
-                    })
+                    synced_actions.append(
+                        {
+                            "action_id": str(action_log.id),
+                            "crop_id": crop_id,
+                            "action_type": action_type,
+                            "action_effective_date": action_date.isoformat(),
+                            "local_seq_no": local_seq,
+                            "status": "synced",
+                        }
+                    )
 
                 logger.info(
                     f"  Action {idx + 1}/{len(actions)} "
@@ -229,25 +262,29 @@ class SyncService:
 
             except ValueError as e:
                 logger.warning(f"  Action {idx + 1} validation error: {e}")
-                failed_actions.append({
-                    "action_index": idx,
-                    "local_seq_no": local_seq or 0,
-                    "crop_id": crop_id or None,
-                    "action_type": action_type_raw or None,
-                    "error": str(e),
-                    "status": "failed",
-                })
+                failed_actions.append(
+                    {
+                        "action_index": idx,
+                        "local_seq_no": local_seq or 0,
+                        "crop_id": crop_id or None,
+                        "action_type": action_type_raw or None,
+                        "error": str(e),
+                        "status": "failed",
+                    }
+                )
 
             except Exception as e:
                 logger.error(f"  Action {idx + 1} system error: {e}", exc_info=True)
-                failed_actions.append({
-                    "action_index": idx,
-                    "local_seq_no": local_seq or 0,
-                    "crop_id": crop_id or None,
-                    "action_type": action_type_raw or None,
-                    "error": f"System error: {str(e)[:100]}",
-                    "status": "error",
-                })
+                failed_actions.append(
+                    {
+                        "action_index": idx,
+                        "local_seq_no": local_seq or 0,
+                        "crop_id": crop_id or None,
+                        "action_type": action_type_raw or None,
+                        "error": f"System error: {str(e)[:100]}",
+                        "status": "error",
+                    }
+                )
 
         # ── 5. Create AbuseFlag if anomaly score ≥ threshold ──
         anomaly_score = len(anomalies)
@@ -320,10 +357,14 @@ class SyncService:
         idempotency_key = f"offline_{device_id}_{session_id}_{local_seq_no}"
 
         # 2. Check for duplicates
-        existing = self.db.query(ActionLog).filter(
-            ActionLog.idempotency_key == idempotency_key,
-            ActionLog.is_deleted == False,
-        ).first()
+        existing = (
+            self.db.query(ActionLog)
+            .filter(
+                ActionLog.idempotency_key == idempotency_key,
+                ActionLog.is_deleted == False,
+            )
+            .first()
+        )
 
         if existing:
             logger.info(f"Duplicate action detected: {idempotency_key}")
@@ -338,7 +379,9 @@ class SyncService:
             crop_instance_id=UUID(crop_id),
             action_type=action_type,
             category=category,
-            effective_date=action_date.date() if isinstance(action_date, datetime) else action_date,
+            effective_date=(
+                action_date.date() if isinstance(action_date, datetime) else action_date
+            ),
             metadata_json=metadata,
             notes=notes,
             source="offline",
@@ -381,6 +424,5 @@ class SyncService:
         )
         self.db.add(flag)
         logger.warning(
-            f"AbuseFlag created for farmer {farmer_id}: "
-            f"sync anomaly score={score}"
+            f"AbuseFlag created for farmer {farmer_id}: " f"sync anomaly score={score}"
         )

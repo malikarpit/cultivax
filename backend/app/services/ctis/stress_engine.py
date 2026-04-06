@@ -7,8 +7,8 @@ edge signals) into a unified stress score using weighted EMA.
 TDD Section 4.7 | MSDD 1.9
 """
 
-from typing import Optional
 import logging
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -17,10 +17,10 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 SIGNAL_WEIGHTS = {
-    "backend_ml": 0.35,       # ML risk prediction signal
-    "weather_risk": 0.25,     # Weather-based risk
-    "deviation_penalty": 0.25, # Timeline deviation penalty
-    "edge_signal": 0.15,      # Edge/media analysis signal
+    "backend_ml": 0.35,  # ML risk prediction signal
+    "weather_risk": 0.25,  # Weather-based risk
+    "deviation_penalty": 0.25,  # Timeline deviation penalty
+    "edge_signal": 0.15,  # Edge/media analysis signal
 }
 
 # EMA smoothing factor (higher = more weight on new signal)
@@ -117,9 +117,11 @@ class StressEngine:
             "signal_breakdown": {
                 "backend_ml": float(round(backend_ml * SIGNAL_WEIGHTS["backend_ml"], 4)),  # type: ignore
                 "weather_risk": float(round(weather_risk * SIGNAL_WEIGHTS["weather_risk"], 4)),  # type: ignore
-                "deviation_penalty": float(round(  # type: ignore
-                    deviation_penalty * SIGNAL_WEIGHTS["deviation_penalty"], 4
-                )),
+                "deviation_penalty": float(
+                    round(  # type: ignore
+                        deviation_penalty * SIGNAL_WEIGHTS["deviation_penalty"], 4
+                    )
+                ),
                 "edge_signal": float(round(edge_signal * SIGNAL_WEIGHTS["edge_signal"], 4)),  # type: ignore
             },
         }

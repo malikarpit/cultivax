@@ -11,9 +11,9 @@ Includes:
 """
 
 import logging
-from uuid import UUID
 from datetime import datetime, timezone
 from typing import List, Optional
+from uuid import UUID
 
 from sqlalchemy.orm import Session  # type: ignore
 
@@ -72,7 +72,9 @@ class TemplateGovernanceService:
         if template.status != "draft":
             return {
                 "valid": False,
-                "errors": [f"Cannot validate template in '{template.status}' status. Must be 'draft'."],
+                "errors": [
+                    f"Cannot validate template in '{template.status}' status. Must be 'draft'."
+                ],
                 "status": template.status,
             }
 
@@ -85,9 +87,21 @@ class TemplateGovernanceService:
         errors.extend(self._validate_risk_params(template.risk_parameters or {}))
 
         # Check 3: Window references
-        stage_names = {s.get("name") for s in (template.stage_definitions or []) if isinstance(s, dict)}
-        errors.extend(self._validate_windows(template.irrigation_windows or {}, stage_names, "irrigation"))
-        errors.extend(self._validate_windows(template.fertilizer_windows or {}, stage_names, "fertilizer"))
+        stage_names = {
+            s.get("name")
+            for s in (template.stage_definitions or [])
+            if isinstance(s, dict)
+        }
+        errors.extend(
+            self._validate_windows(
+                template.irrigation_windows or {}, stage_names, "irrigation"
+            )
+        )
+        errors.extend(
+            self._validate_windows(
+                template.fertilizer_windows or {}, stage_names, "fertilizer"
+            )
+        )
 
         # Persist validation result
         template.validation_errors = errors
@@ -95,11 +109,15 @@ class TemplateGovernanceService:
         if not errors:
             template.status = "validated"
             self.db.commit()
-            logger.info(f"Template {template_id} validated successfully → status=validated")
+            logger.info(
+                f"Template {template_id} validated successfully → status=validated"
+            )
             return {"valid": True, "errors": [], "status": "validated"}
         else:
             self.db.commit()
-            logger.warning(f"Template {template_id} validation failed: {len(errors)} errors")
+            logger.warning(
+                f"Template {template_id} validation failed: {len(errors)} errors"
+            )
             return {"valid": False, "errors": errors, "status": "draft"}
 
     def _validate_stages(self, stages: list) -> List[str]:
@@ -125,7 +143,9 @@ class TemplateGovernanceService:
             # Duration must be positive
             duration = stage.get("duration_days", 0)
             if not isinstance(duration, (int, float)) or duration <= 0:
-                errors.append(f"Stage {i} ({stage.get('name', '?')}): duration_days must be positive, got {duration}")
+                errors.append(
+                    f"Stage {i} ({stage.get('name', '?')}): duration_days must be positive, got {duration}"
+                )
 
             # Check chronological ordering (cumulative)
             start_day = stage.get("start_day", cumulative_days)
@@ -143,7 +163,10 @@ class TemplateGovernanceService:
         errors = []
 
         if not params:
-            errors.append("risk_parameters is empty — required fields: " + str(REQUIRED_RISK_FIELDS))
+            errors.append(
+                "risk_parameters is empty — required fields: "
+                + str(REQUIRED_RISK_FIELDS)
+            )
             return errors
 
         missing = REQUIRED_RISK_FIELDS - set(params.keys())
@@ -154,13 +177,19 @@ class TemplateGovernanceService:
         for field in ["stress_threshold", "max_drift_days"]:
             val = params.get(field)
             if val is not None and not isinstance(val, (int, float)):
-                errors.append(f"risk_parameters.{field} must be numeric, got {type(val).__name__}")
+                errors.append(
+                    f"risk_parameters.{field} must be numeric, got {type(val).__name__}"
+                )
             if isinstance(val, (int, float)) and val < 0:
-                errors.append(f"risk_parameters.{field} must be non-negative, got {val}")
+                errors.append(
+                    f"risk_parameters.{field} must be non-negative, got {val}"
+                )
 
         return errors
 
-    def _validate_windows(self, windows: dict, stage_names: set, window_type: str) -> List[str]:
+    def _validate_windows(
+        self, windows: dict, stage_names: set, window_type: str
+    ) -> List[str]:
         """Check window references point to valid stages."""
         errors = []
         if not windows:

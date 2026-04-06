@@ -16,24 +16,27 @@ TDD Section 4.4 | MSDD 1.18 (Failure Recovery)
 import asyncio
 import hashlib
 import json
-from sqlalchemy.orm import Session  # type: ignore
-from sqlalchemy import asc  # type: ignore
-from uuid import UUID
+import logging
 from datetime import datetime, timezone
 from typing import Optional
-import logging
+from uuid import UUID
 
-from app.models.crop_instance import CropInstance  # type: ignore
+from sqlalchemy import asc  # type: ignore
+from sqlalchemy.orm import Session  # type: ignore
+
+from app.api.v1.weather import _region_coords
 from app.models.action_log import ActionLog  # type: ignore
-from app.models.snapshot import CropInstanceSnapshot  # type: ignore
+from app.models.crop_instance import CropInstance  # type: ignore
 from app.models.deviation import DeviationProfile  # type: ignore
 from app.models.event_log import EventLog  # type: ignore
-from app.services.ctis.snapshot_manager import SnapshotManager
-from app.services.ctis.drift_enforcer import DriftEnforcer
-from app.services.ctis.stress_engine import StressEngine
-from app.services.ctis.deviation_tracker import DeviationTracker
+from app.models.snapshot import CropInstanceSnapshot  # type: ignore
 from app.repositories.weather_repository import WeatherRepository
-from app.api.v1.weather import _region_coords
+from app.services.ctis.deviation_tracker import DeviationTracker
+from app.services.ctis.drift_enforcer import DriftEnforcer
+from app.services.ctis.risk_pipeline import RiskPipeline
+from app.services.ctis.snapshot_manager import SnapshotManager
+from app.services.ctis.stress_engine import StressEngine
+from app.services.event_dispatcher.mutation_guard import allow_ctis_mutation
 
 logger = logging.getLogger(__name__)
 
@@ -58,18 +61,19 @@ DEFAULT_STAGE_TIMELINE = {
 
 # Action type → base stress impact
 STRESS_IMPACT = {
-    "irrigation": -5.0,       # Reduces stress
-    "fertilizer": -3.0,       # Reduces stress
-    "pesticide": -4.0,        # Reduces stress
-    "weeding": -2.0,          # Reduces stress
-    "observation": 0.0,       # Neutral
-    "media_upload": 0.0,      # Neutral
-    "harvest": 0.0,           # Terminal action
+    "irrigation": -5.0,  # Reduces stress
+    "fertilizer": -3.0,  # Reduces stress
+    "pesticide": -4.0,  # Reduces stress
+    "weeding": -2.0,  # Reduces stress
+    "observation": 0.0,  # Neutral
+    "media_upload": 0.0,  # Neutral
+    "harvest": 0.0,  # Terminal action
 }
 
 
 class ReplayError(Exception):
     """Raised when the replay engine encounters an unrecoverable error."""
+
     pass
 
 
@@ -87,6 +91,7 @@ class ReplayEngine:
         self.snapshot_manager = SnapshotManager(db)
         self.drift_enforcer = DriftEnforcer()
         self.stress_engine = StressEngine()
+        self.risk_pipeline = RiskPipeline()
         self.deviation_tracker = DeviationTracker(db)
 
     async def replay_crop_instance(
@@ -319,7 +324,7 @@ class ReplayEngine:
 
         metadata_raw = getattr(action, "metadata_json", None)
         metadata = metadata_raw if isinstance(metadata_raw, dict) else {}
-        
+
         # Resolve historic weather risk via Snapshot Repository (Feature 16)
         weather_risk_score = metadata.get("weather_risk", 0.0)
         if action.effective_date:
@@ -327,20 +332,25 @@ class ReplayEngine:
             # Replay requires region or parcel coordinates. For now, use region defaults if parcel info not joined.
             defaults = _region_coords(crop.region)
             loc_key = f"geo_{round(defaults['lat'], 2)}_{round(defaults['lng'], 2)}"
-            
+
             repo = WeatherRepository(self.db)
             snapshot = repo.get_closest_snapshot(loc_key, action.effective_date)
             if snapshot:
                 weather_risk_score = snapshot.weather_risk_score
             else:
                 # Fallback to region string if explicit geo key misses
-                loc_key_reg = f"reg_{str(crop.region).lower().strip().replace(' ', '_')}"
-                snapshot_reg = repo.get_closest_snapshot(loc_key_reg, action.effective_date)
+                loc_key_reg = (
+                    f"reg_{str(crop.region).lower().strip().replace(' ', '_')}"
+                )
+                snapshot_reg = repo.get_closest_snapshot(
+                    loc_key_reg, action.effective_date
+                )
                 if snapshot_reg:
                     weather_risk_score = snapshot_reg.weather_risk_score
 
         deviation_penalty = min(
-            abs(state.get("stage_offset_days", 0)) / max(crop.max_allowed_drift or 7, 1),
+            abs(state.get("stage_offset_days", 0))
+            / max(crop.max_allowed_drift or 7, 1),
             1.0,
         )
         stress_inputs = self.stress_engine.integrate_stress(
@@ -348,7 +358,9 @@ class ReplayEngine:
             weather_risk=float(min(max(weather_risk_score, 0.0), 1.0)),
             deviation_penalty=deviation_penalty,
             edge_signal=float(min(max(metadata.get("edge_signal", 0.0), 0.0), 1.0)),
-            previous_stress=float(min(max(state["stress_score"] / MAX_STRESS, 0.0), 1.0)),
+            previous_stress=float(
+                min(max(state["stress_score"] / MAX_STRESS, 0.0), 1.0)
+            ),
             confidence=float(min(max(metadata.get("confidence", 1.0), 0.0), 1.0)),
         )
         integrated_stress = stress_inputs["new_stress"] * MAX_STRESS
@@ -358,8 +370,13 @@ class ReplayEngine:
         state["stress_score"] = max(0.0, min(blended_stress, MAX_STRESS))
         state["stress_components"] = stress_inputs.get("signal_breakdown", {})
 
-        # Compute risk index from stress (normalized to 0-1)
-        state["risk_index"] = min(state["stress_score"] / MAX_STRESS, MAX_RISK)
+        risk_result = self.risk_pipeline.compute(
+            stress_score_0_100=state["stress_score"],
+            weather_risk=float(min(max(weather_risk_score, 0.0), 1.0)),
+            deviation_penalty=deviation_penalty,
+            seasonal_risk_factor=0.0,
+        )
+        state["risk_index"] = min(float(risk_result["risk_index"]), MAX_RISK)
 
         # Drift enforcement: check if action is within expected timeline
         self._enforce_drift(crop, action, state)
@@ -390,8 +407,8 @@ class ReplayEngine:
             state["cumulative_deviation_days"] += 1
 
             # Update trend slope (simple moving estimate)
-            state["deviation_trend_slope"] = (
-                state["consecutive_deviations"] / max(day_number, 1)
+            state["deviation_trend_slope"] = state["consecutive_deviations"] / max(
+                day_number, 1
             )
 
             # Compute stage offset
@@ -401,22 +418,28 @@ class ReplayEngine:
                 current_idx = expected_stages.index(state["stage"])
                 state["stage_offset_days"] = (current_idx - expected_idx) * 15
 
-            drift_result = self.drift_enforcer.enforce_drift(
-                current_state=crop.state,
-                stage_offset_days=state["stage_offset_days"],
-                current_day_number=state["current_day_number"],
-                expected_day_number=state.get("baseline_day_number", day_number),
-            )
-            state["stage_offset_days"] = drift_result["clamped_offset"]
-
-            # If drift exceeds max allowed, increase stress penalty
-            if drift_result["was_clamped"]:
-                state["stress_score"] = min(
-                    state["stress_score"] + 10.0, MAX_STRESS
-                )
         else:
             # Action is on-track, reset consecutive deviation counter
             state["consecutive_deviations"] = 0
+
+        drift_result = self.drift_enforcer.enforce_drift(
+            current_state=crop.state,
+            stage_offset_days=state["stage_offset_days"],
+            current_day_number=state["current_day_number"],
+            expected_day_number=state.get("baseline_day_number", day_number),
+        )
+        state["stage_offset_days"] = drift_result["clamped_offset"]
+
+        # Keep drift bounded by the crop template-level cap when configured.
+        max_allowed = int(crop.max_allowed_drift or drift_result["max_allowed"] or 7)
+        if abs(state["stage_offset_days"]) > max_allowed:
+            state["stage_offset_days"] = (
+                max_allowed if state["stage_offset_days"] > 0 else -max_allowed
+            )
+            drift_result["was_clamped"] = True
+
+        if drift_result["was_clamped"]:
+            state["stress_score"] = min(state["stress_score"] + 10.0, MAX_STRESS)
 
     def _is_orphaned_action(self, crop: CropInstance, action: ActionLog) -> bool:
         """
@@ -460,35 +483,36 @@ class ReplayEngine:
 
     def _write_state_to_crop(self, crop: CropInstance, state: dict):
         """Write the computed replay state back to the crop instance."""
-        crop.stress_score = round(state["stress_score"], 4)
-        crop.risk_index = round(state["risk_index"], 4)
-        crop.current_day_number = state["current_day_number"]
-        crop.stage = state["stage"]
-        crop.stage_offset_days = state["stage_offset_days"]
+        with allow_ctis_mutation():
+            crop.stress_score = round(state["stress_score"], 4)
+            crop.risk_index = round(state["risk_index"], 4)
+            crop.current_day_number = state["current_day_number"]
+            crop.stage = state["stage"]
+            crop.stage_offset_days = state["stage_offset_days"]
 
-        # Baseline tracking (MSDD 1.3.1)
-        crop.baseline_day_number = state.get("baseline_day_number", 0)
-        crop.baseline_growth_stage = state.get("baseline_growth_stage")
+            # Baseline tracking (MSDD 1.3.1)
+            crop.baseline_day_number = state.get("baseline_day_number", 0)
+            crop.baseline_growth_stage = state.get("baseline_growth_stage")
 
-        # Chain hash (TDD 2.3.1)
-        crop.event_chain_hash = state.get("chain_hash")
+            # Chain hash (TDD 2.3.1)
+            crop.event_chain_hash = state.get("chain_hash")
 
-        # Auto-transition state based on risk
-        if crop.state == "Created":
-            crop.state = "Active"
+            # Auto-transition state based on risk
+            if crop.state == "Created":
+                crop.state = "Active"
 
-        if crop.state in ("Active", "Delayed"):
-            if state["risk_index"] >= 0.7:
-                crop.state = "AtRisk"
-            elif state["stage_offset_days"] > (crop.max_allowed_drift or 7):
-                crop.state = "Delayed"
+            if crop.state in ("Active", "Delayed"):
+                if state["risk_index"] >= 0.7:
+                    crop.state = "AtRisk"
+                elif state["stage_offset_days"] > (crop.max_allowed_drift or 7):
+                    crop.state = "Delayed"
 
-        if crop.state == "AtRisk" and state["risk_index"] < 0.5:
-            crop.state = "Active"
+            if crop.state == "AtRisk" and state["risk_index"] < 0.5:
+                crop.state = "Active"
 
-    def _create_snapshot(
-        self, crop: CropInstance, state: dict, action_count: int
-    ):
+            self.db.flush()
+
+    def _create_snapshot(self, crop: CropInstance, state: dict, action_count: int):
         """Create a replay checkpoint snapshot."""
         self.snapshot_manager.create_snapshot(
             crop_instance_id=crop.id,
@@ -526,9 +550,7 @@ class ReplayEngine:
 
         if deviation:
             deviation.consecutive_deviation_count = state["consecutive_deviations"]
-            deviation.deviation_trend_slope = round(
-                state["deviation_trend_slope"], 4
-            )
+            deviation.deviation_trend_slope = round(state["deviation_trend_slope"], 4)
             deviation.cumulative_deviation_days = state["cumulative_deviation_days"]
             deviation.recurring_pattern_flag = state["consecutive_deviations"] >= 3
 
@@ -549,41 +571,38 @@ class ReplayEngine:
         try:
             # Re-acquire the crop (transaction was rolled back)
             crop = (
-                self.db.query(CropInstance)
-                .filter(CropInstance.id == crop.id)
-                .first()
+                self.db.query(CropInstance).filter(CropInstance.id == crop.id).first()
             )
             if not crop:
                 return
 
             # Revert to snapshot if available
-            if snapshot and snapshot.snapshot_data:
-                data = snapshot.snapshot_data
-                crop.stress_score = data.get("stress_score", 0.0)
-                crop.risk_index = data.get("risk_index", 0.0)
-                crop.current_day_number = data.get("current_day_number", 0)
-                crop.stage = data.get("stage")
-                crop.stage_offset_days = data.get("stage_offset_days", 0)
+            with allow_ctis_mutation():
+                if snapshot and snapshot.snapshot_data:
+                    data = snapshot.snapshot_data
+                    crop.stress_score = data.get("stress_score", 0.0)
+                    crop.risk_index = data.get("risk_index", 0.0)
+                    crop.current_day_number = data.get("current_day_number", 0)
+                    crop.stage = data.get("stage")
+                    crop.stage_offset_days = data.get("stage_offset_days", 0)
 
-            # Lock the crop instance
-            crop.state = "RecoveryRequired"
+                # Lock the crop instance
+                crop.state = "RecoveryRequired"
 
-            # Log the failure for admin review
-            error_log = EventLog(
-                event_type="ReplayFailed",
-                source="ReplayEngine",
-                payload={
-                    "crop_instance_id": str(crop.id),
-                    "error": error_msg,
-                    "reverted_to_snapshot": snapshot.id if snapshot else None,
-                },
-            )
-            self.db.add(error_log)
-            self.db.commit()
+                # Log the failure for admin review
+                error_log = EventLog(
+                    event_type="ReplayFailed",
+                    source="ReplayEngine",
+                    payload={
+                        "crop_instance_id": str(crop.id),
+                        "error": error_msg,
+                        "reverted_to_snapshot": snapshot.id if snapshot else None,
+                    },
+                )
+                self.db.add(error_log)
+                self.db.commit()
 
-            logger.error(
-                f"Crop {crop.id} set to RecoveryRequired after replay failure"
-            )
+            logger.error(f"Crop {crop.id} set to RecoveryRequired after replay failure")
 
         except Exception as recovery_error:
             logger.critical(

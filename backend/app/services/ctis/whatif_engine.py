@@ -7,14 +7,16 @@ Clones crop state in an isolated memory context and runs a simulated replay.
 MSDD 1.14 — Deep copy enforcement: no live mutation allowed.
 """
 
-from sqlalchemy.orm import Session
-from uuid import UUID
-from typing import List, Dict, Any, Optional
+import logging
 from copy import deepcopy
 from datetime import datetime
-import logging
+from typing import Any, Dict, List, Optional
+from uuid import UUID
+
+from sqlalchemy.orm import Session
 
 from app.models.crop_instance import CropInstance
+from app.services.ctis.risk_pipeline import RiskPipeline
 from app.services.ctis.stress_engine import StressEngine
 
 logger = logging.getLogger(__name__)
@@ -25,6 +27,7 @@ class WhatIfSimulation:
     Result container for a what-if simulation.
     All data is ephemeral — never persisted.
     """
+
     def __init__(self):
         self.current_state: Dict[str, Any] = {}
         self.projected_state: Dict[str, Any] = {}
@@ -73,6 +76,7 @@ class WhatIfEngine:
     def __init__(self, db: Session):
         self.db = db
         self.stress_engine = StressEngine()
+        self.risk_pipeline = RiskPipeline()
 
     STAGE_PROGRESSION = {
         "wheat": [
@@ -146,10 +150,14 @@ class WhatIfEngine:
             WhatIfSimulation with projected state
         """
         # Load current crop state
-        crop = self.db.query(CropInstance).filter(
-            CropInstance.id == crop_instance_id,
-            CropInstance.is_deleted == False,
-        ).first()
+        crop = (
+            self.db.query(CropInstance)
+            .filter(
+                CropInstance.id == crop_instance_id,
+                CropInstance.is_deleted == False,
+            )
+            .first()
+        )
 
         if not crop:
             raise ValueError(f"Crop instance {crop_instance_id} not found")
@@ -173,10 +181,12 @@ class WhatIfEngine:
         # Apply hypothetical actions
         for action_index, action in enumerate(hypothetical_actions, start=1):
             try:
-                sim_state, breakdown, transition, timeline_warning = self._apply_hypothetical_action(
-                    sim_state,
-                    action,
-                    action_index,
+                sim_state, breakdown, transition, timeline_warning = (
+                    self._apply_hypothetical_action(
+                        sim_state,
+                        action,
+                        action_index,
+                    )
                 )
                 result.action_breakdowns.append(breakdown)
                 if transition:
@@ -202,10 +212,13 @@ class WhatIfEngine:
         result.projected_day_number = int(sim_state["current_day_number"])
         result.projected_stage = str(sim_state.get("stage", "")) or None
         result.deltas = {
-            "stress": round(result.projected_stress - result.current_state["stress"], 4),
+            "stress": round(
+                result.projected_stress - result.current_state["stress"], 4
+            ),
             "risk": round(result.projected_risk - result.current_state["risk"], 4),
             "days": result.projected_day_number - result.current_state["day_number"],
-            "stage_changed": result.current_state.get("stage") != result.projected_stage,
+            "stage_changed": result.current_state.get("stage")
+            != result.projected_stage,
         }
 
         logger.info(
@@ -249,22 +262,31 @@ class WhatIfEngine:
         risk_before = float(state["risk_index"])
 
         state["current_day_number"] = day_before + day_delta
-        stage_after = self._derive_stage(state["crop_type"], state["current_day_number"])
+        stage_after = self._derive_stage(
+            state["crop_type"], state["current_day_number"]
+        )
         state["stage"] = stage_after
 
         impact = self.ACTION_STRESS_IMPACTS.get(action_type, 0.0)
-        stress_context = self._compute_contextual_stress_impact(action_type, action_date, day_delta)
+        stress_context = self._compute_contextual_stress_impact(
+            action_type, action_date, day_delta
+        )
         total_stress_delta = impact + stress_context
         new_stress = max(0.0, min(1.0, stress_before + total_stress_delta))
         state["stress_score"] = float(int(new_stress * 10000)) / 10000
 
         risk_action_impact = self.ACTION_RISK_IMPACTS.get(action_type, 0.0)
         weather_risk = self._approx_weather_risk(action_date)
-        risk_from_stress = self.stress_engine.compute_risk_from_stress(
-            stress_score=new_stress,
+        deviation_penalty = min(abs(state.get("stage_offset_days", 0)) / 7.0, 1.0)
+        risk_result = self.risk_pipeline.compute(
+            stress_score_0_100=state["stress_score"] * 100.0,
             weather_risk=weather_risk,
+            deviation_penalty=deviation_penalty,
+            seasonal_risk_factor=0.0,
         )
-        next_risk = max(0.0, min(1.0, risk_before + (risk_from_stress - risk_before) + risk_action_impact))
+        next_risk = max(
+            0.0, min(1.0, float(risk_result["risk_index"]) + risk_action_impact)
+        )
         state["risk_index"] = round(next_risk, 4)
 
         transition = None
@@ -300,7 +322,9 @@ class WhatIfEngine:
         return state, breakdown, transition, warning
 
     def _derive_stage(self, crop_type: str, day_number: int) -> str:
-        progression = self.STAGE_PROGRESSION.get((crop_type or "").lower(), self.STAGE_PROGRESSION["wheat"])
+        progression = self.STAGE_PROGRESSION.get(
+            (crop_type or "").lower(), self.STAGE_PROGRESSION["wheat"]
+        )
         current_stage = progression[0][1]
         for threshold_day, stage_name in progression:
             if day_number >= threshold_day:
@@ -327,13 +351,21 @@ class WhatIfEngine:
         except ValueError as exc:
             raise ValueError("action_date must be a valid ISO date string") from exc
 
-        current_day = sowing_day.fromordinal(sowing_day.toordinal() + int(state["current_day_number"]))
+        current_day = sowing_day.fromordinal(
+            sowing_day.toordinal() + int(state["current_day_number"])
+        )
         day_delta = (action_day - current_day).days
 
         if day_delta < 0:
-            return 0, f"Action {action_index}: action_date is in the past; timeline advancement set to 0"
+            return (
+                0,
+                f"Action {action_index}: action_date is in the past; timeline advancement set to 0",
+            )
         if day_delta > 365:
-            return 365, f"Action {action_index}: action_date exceeds 365 days; capped at 365"
+            return (
+                365,
+                f"Action {action_index}: action_date exceeds 365 days; capped at 365",
+            )
         return day_delta, None
 
     def _approx_weather_risk(self, action_date: Optional[str]) -> float:
@@ -346,12 +378,20 @@ class WhatIfEngine:
             return 0.2
         return round(0.1 + (day % 10) * 0.03, 4)
 
-    def _compute_contextual_stress_impact(self, action_type: str, action_date: Optional[str], day_delta: int) -> float:
+    def _compute_contextual_stress_impact(
+        self, action_type: str, action_date: Optional[str], day_delta: int
+    ) -> float:
         contextual = 0.0
         if day_delta > 14:
             contextual += 0.01
-        if action_type in {"pesticide", "fungicide"} and self._approx_weather_risk(action_date) > 0.35:
+        if (
+            action_type in {"pesticide", "fungicide"}
+            and self._approx_weather_risk(action_date) > 0.35
+        ):
             contextual += 0.02
-        if action_type == "irrigation" and self._approx_weather_risk(action_date) > 0.35:
+        if (
+            action_type == "irrigation"
+            and self._approx_weather_risk(action_date) > 0.35
+        ):
             contextual -= 0.01
         return contextual

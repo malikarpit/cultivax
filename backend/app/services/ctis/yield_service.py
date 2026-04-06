@@ -7,18 +7,21 @@ Implements Farmer Truth vs ML Truth separation (TDD 4.9).
 MSDD 1.12 | MSDD 4.3
 """
 
-from sqlalchemy.orm import Session
-from uuid import UUID
-from typing import Optional
-from datetime import datetime, timezone
-from datetime import datetime, timezone, timedelta
 import logging
+from datetime import datetime, timedelta, timezone
+from typing import Optional
+from uuid import UUID
 
-from app.models.crop_instance import CropInstance
-from app.models.yield_record import YieldRecord
-from app.models.weather_snapshot import WeatherSnapshot
-from app.schemas.yield_record import YieldSubmission
+from sqlalchemy.orm import Session
+
 from app.api.v1.weather import _region_coords
+from app.models.crop_instance import CropInstance
+from app.models.weather_snapshot import WeatherSnapshot
+from app.models.yield_record import YieldRecord
+from app.schemas.yield_record import YieldSubmission
+from app.services.event_dispatcher.db_dispatcher import DBEventDispatcher
+from app.services.event_dispatcher.event_types import MLEvents
+from app.services.event_dispatcher.mutation_guard import allow_ctis_mutation
 
 logger = logging.getLogger(__name__)
 
@@ -60,19 +63,27 @@ class YieldService:
         4. Create yield record
         5. Transition crop to 'Harvested'
         """
-        crop = self.db.query(CropInstance).filter(
-            CropInstance.id == crop_id,
-            CropInstance.farmer_id == farmer_id,
-            CropInstance.is_deleted == False,
-        ).first()
+        crop = (
+            self.db.query(CropInstance)
+            .filter(
+                CropInstance.id == crop_id,
+                CropInstance.farmer_id == farmer_id,
+                CropInstance.is_deleted == False,
+            )
+            .first()
+        )
 
         if not crop:
             raise LookupError(f"Crop instance {crop_id} not found")
 
-        existing = self.db.query(YieldRecord).filter(
-            YieldRecord.crop_instance_id == crop_id,
-            YieldRecord.is_deleted == False,
-        ).first()
+        existing = (
+            self.db.query(YieldRecord)
+            .filter(
+                YieldRecord.crop_instance_id == crop_id,
+                YieldRecord.is_deleted == False,
+            )
+            .first()
+        )
         if existing:
             raise RuntimeError(
                 "Yield already submitted for this crop. Resubmission is blocked; use /yield/history to review."
@@ -122,9 +133,26 @@ class YieldService:
         )
         self.db.add(yield_record)
 
-        # Transition crop to Harvested
-        crop.state = "Harvested"
-        crop.harvested_at = datetime.now(timezone.utc)
+        # Transition protected state in sanctioned mutation context.
+        with allow_ctis_mutation():
+            crop.state = "Harvested"
+            crop.harvested_at = datetime.now(timezone.utc)
+            self.db.flush()
+
+        DBEventDispatcher(self.db).publish(
+            event_type=MLEvents.CLUSTER_UPDATED,
+            entity_type="YieldRecord",
+            entity_id=yield_record.id,
+            payload={
+                "crop_type": crop.crop_type,
+                "region": crop.region,
+                "season": crop.seasonal_window_category,
+                "delay_days": float(crop.stage_offset_days or 0.0),
+                "yield_value": float(yield_record.ml_yield_value or 0.0),
+                "prospective": True,
+            },
+            partition_key=crop.id,
+        )
 
         self.db.commit()
         self.db.refresh(yield_record)
@@ -138,35 +166,53 @@ class YieldService:
         return yield_record
 
     def get_latest_yield(self, crop_id: UUID, farmer_id: UUID) -> YieldRecord:
-        crop = self.db.query(CropInstance).filter(
-            CropInstance.id == crop_id,
-            CropInstance.farmer_id == farmer_id,
-            CropInstance.is_deleted == False,
-        ).first()
+        crop = (
+            self.db.query(CropInstance)
+            .filter(
+                CropInstance.id == crop_id,
+                CropInstance.farmer_id == farmer_id,
+                CropInstance.is_deleted == False,
+            )
+            .first()
+        )
         if not crop:
             raise LookupError(f"Crop instance {crop_id} not found")
 
-        record = self.db.query(YieldRecord).filter(
-            YieldRecord.crop_instance_id == crop_id,
-            YieldRecord.is_deleted == False,
-        ).order_by(YieldRecord.created_at.desc()).first()
+        record = (
+            self.db.query(YieldRecord)
+            .filter(
+                YieldRecord.crop_instance_id == crop_id,
+                YieldRecord.is_deleted == False,
+            )
+            .order_by(YieldRecord.created_at.desc())
+            .first()
+        )
         if not record:
             raise LookupError("No yield record found for this crop")
         return record
 
     def list_yield_history(self, crop_id: UUID, farmer_id: UUID) -> list[YieldRecord]:
-        crop = self.db.query(CropInstance).filter(
-            CropInstance.id == crop_id,
-            CropInstance.farmer_id == farmer_id,
-            CropInstance.is_deleted == False,
-        ).first()
+        crop = (
+            self.db.query(CropInstance)
+            .filter(
+                CropInstance.id == crop_id,
+                CropInstance.farmer_id == farmer_id,
+                CropInstance.is_deleted == False,
+            )
+            .first()
+        )
         if not crop:
             raise LookupError(f"Crop instance {crop_id} not found")
 
-        return self.db.query(YieldRecord).filter(
-            YieldRecord.crop_instance_id == crop_id,
-            YieldRecord.is_deleted == False,
-        ).order_by(YieldRecord.created_at.desc()).all()
+        return (
+            self.db.query(YieldRecord)
+            .filter(
+                YieldRecord.crop_instance_id == crop_id,
+                YieldRecord.is_deleted == False,
+            )
+            .order_by(YieldRecord.created_at.desc())
+            .all()
+        )
 
     def _compute_verification_score(self, crop: CropInstance) -> tuple[float, float]:
         """
@@ -174,7 +220,7 @@ class YieldService:
         - Stress history
         - Weather conditions during season (7-day rolling average)
         - Seasonal risk category
-        
+
         Returns: (score, weather_risk_recent)
         """
         score = 1.0
@@ -197,16 +243,22 @@ class YieldService:
         recent_cutoff = datetime.now(timezone.utc) - timedelta(days=7)
         defaults = _region_coords(crop.region)
         loc_key = f"geo_{round(defaults['lat'], 2)}_{round(defaults['lng'], 2)}"
-        
-        recent_snapshots = self.db.query(WeatherSnapshot).filter(
-            WeatherSnapshot.location_key == loc_key,
-            WeatherSnapshot.captured_at >= recent_cutoff
-        ).all()
-        
+
+        recent_snapshots = (
+            self.db.query(WeatherSnapshot)
+            .filter(
+                WeatherSnapshot.location_key == loc_key,
+                WeatherSnapshot.captured_at >= recent_cutoff,
+            )
+            .all()
+        )
+
         weather_risk_recent = 0.0
         if recent_snapshots:
-            weather_risk_recent = sum(s.weather_risk_score for s in recent_snapshots) / len(recent_snapshots)
-        
+            weather_risk_recent = sum(
+                s.weather_risk_score for s in recent_snapshots
+            ) / len(recent_snapshots)
+
         # Apply up to 15% penalty for bad weather at harvest time
         score -= weather_risk_recent * 0.15
 

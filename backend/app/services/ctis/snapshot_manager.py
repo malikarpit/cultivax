@@ -7,15 +7,16 @@ Snapshots are taken every N actions to speed up replay recovery.
 MSDD 1.8.2 | TDD 2.3.3
 """
 
-from sqlalchemy.orm import Session
-from uuid import UUID
-from typing import Optional, Dict, Any
-from datetime import datetime, timezone
 import json
 import logging
+from datetime import datetime, timezone
+from typing import Any, Dict, Optional
+from uuid import UUID
 
-from app.models.snapshot import CropInstanceSnapshot
+from sqlalchemy.orm import Session
+
 from app.models.action_log import ActionLog
+from app.models.snapshot import CropInstanceSnapshot
 
 logger = logging.getLogger(__name__)
 
@@ -42,13 +43,19 @@ class SnapshotManager:
         """
         last_snapshot = self._get_latest_snapshot(crop_instance_id)
 
-        last_action_count = last_snapshot.action_count_at_snapshot if last_snapshot else 0
+        last_action_count = (
+            last_snapshot.action_count_at_snapshot if last_snapshot else 0
+        )
 
         # Count actions since last snapshot
-        action_count = self.db.query(ActionLog).filter(
-            ActionLog.crop_instance_id == crop_instance_id,
-            ActionLog.is_deleted == False,
-        ).count()
+        action_count = (
+            self.db.query(ActionLog)
+            .filter(
+                ActionLog.crop_instance_id == crop_instance_id,
+                ActionLog.is_deleted == False,
+            )
+            .count()
+        )
 
         return max(action_count - last_action_count, 0) >= SNAPSHOT_INTERVAL
 
@@ -102,11 +109,15 @@ class SnapshotManager:
 
         Returns the number of invalidated snapshots.
         """
-        snapshots = self.db.query(CropInstanceSnapshot).filter(
-            CropInstanceSnapshot.crop_instance_id == crop_instance_id,
-            CropInstanceSnapshot.action_count_at_snapshot > after_sequence,
-            CropInstanceSnapshot.is_deleted == False,
-        ).all()
+        snapshots = (
+            self.db.query(CropInstanceSnapshot)
+            .filter(
+                CropInstanceSnapshot.crop_instance_id == crop_instance_id,
+                CropInstanceSnapshot.action_count_at_snapshot > after_sequence,
+                CropInstanceSnapshot.is_deleted == False,
+            )
+            .all()
+        )
 
         count = 0
         for snap in snapshots:
@@ -138,7 +149,11 @@ class SnapshotManager:
 
     def get_snapshot_count(self, crop_instance_id: UUID) -> int:
         """Get total number of active snapshots for a crop instance."""
-        return self.db.query(CropInstanceSnapshot).filter(
-            CropInstanceSnapshot.crop_instance_id == crop_instance_id,
-            CropInstanceSnapshot.is_deleted == False,
-        ).count()
+        return (
+            self.db.query(CropInstanceSnapshot)
+            .filter(
+                CropInstanceSnapshot.crop_instance_id == crop_instance_id,
+                CropInstanceSnapshot.is_deleted == False,
+            )
+            .count()
+        )

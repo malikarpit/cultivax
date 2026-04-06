@@ -5,20 +5,19 @@ Enforces valid state transitions for crop instances.
 Every transition emits a StageChanged event.
 """
 
-from typing import Optional
 import logging
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
 
 class InvalidStateTransition(Exception):
     """Raised when an invalid state transition is attempted."""
+
     def __init__(self, current_state: str, new_state: str):
         self.current_state = current_state
         self.new_state = new_state
-        super().__init__(
-            f"Invalid state transition: '{current_state}' → '{new_state}'"
-        )
+        super().__init__(f"Invalid state transition: '{current_state}' → '{new_state}'")
 
 
 # Valid state transitions (MSDD 1.5)
@@ -102,11 +101,13 @@ class CropStateMachine:
         old_state = self._state
         self._state = new_state
 
-        self._history.append({
-            "from": old_state,
-            "to": new_state,
-            "reason": reason,
-        })
+        self._history.append(
+            {
+                "from": old_state,
+                "to": new_state,
+                "reason": reason,
+            }
+        )
 
         logger.info(
             f"State transition: {old_state} → {new_state}"
