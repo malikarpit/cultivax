@@ -12,16 +12,17 @@ Additions:
 - Security event logging for format violations
 """
 
+import json
 import logging
 import re
 import time
-import json
 from typing import Optional
-from app.config import settings
 
 from fastapi import Request, status
 from fastapi.responses import JSONResponse, Response
 from starlette.middleware.base import BaseHTTPMiddleware
+
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -41,18 +42,21 @@ _VALID_KEY_PATTERN = re.compile(
 
 # Paths exempted from mandatory enforcement even if they're POST/PUT/PATCH
 # (Meta sends WhatsApp webhooks without Idempotency-Key)
-_IDEMPOTENCY_EXEMPT_PATHS = frozenset({
-    "/api/v1/whatsapp/webhook",
-    "/api/v1/security/csp-report",
-    "/api/v1/auth/login",
-    "/api/v1/auth/logout",
-    "/api/v1/auth/request-otp",
-    "/api/v1/auth/verify-otp",
-    "/api/v1/auth/refresh",
-})
+_IDEMPOTENCY_EXEMPT_PATHS = frozenset(
+    {
+        "/api/v1/whatsapp/webhook",
+        "/api/v1/security/csp-report",
+        "/api/v1/auth/login",
+        "/api/v1/auth/logout",
+        "/api/v1/auth/request-otp",
+        "/api/v1/auth/verify-otp",
+        "/api/v1/auth/refresh",
+    }
+)
 
 try:
     import redis.asyncio as redis
+
     REDIS_AVAILABLE = True
 except ImportError:
     REDIS_AVAILABLE = False
@@ -129,6 +133,7 @@ class DistributedIdempotencyMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         import os
+
         if os.environ.get("TESTING") == "1":
             return await call_next(request)
 
@@ -147,13 +152,15 @@ class DistributedIdempotencyMiddleware(BaseHTTPMiddleware):
                 content={
                     "success": False,
                     "error": "Missing Idempotency-Key",
-                    "details": [{
-                        "message": (
-                            f"The Idempotency-Key header is required for {request.method} {path}. "
-                            "Generate a UUID4 and include it as 'Idempotency-Key: <uuid4>'. "
-                            "Reuse the same key to safely retry without duplicate side-effects."
-                        )
-                    }],
+                    "details": [
+                        {
+                            "message": (
+                                f"The Idempotency-Key header is required for {request.method} {path}. "
+                                "Generate a UUID4 and include it as 'Idempotency-Key: <uuid4>'. "
+                                "Reuse the same key to safely retry without duplicate side-effects."
+                            )
+                        }
+                    ],
                     "request_id": request_id,
                 },
             )
@@ -165,6 +172,7 @@ class DistributedIdempotencyMiddleware(BaseHTTPMiddleware):
         # --- 2.5a: Format validation ---
         if not _VALID_KEY_PATTERN.match(idempotency_key):
             from app.security.events import log_security_event
+
             request_id = getattr(request.state, "request_id", "unknown")
             log_security_event(
                 "INVALID_IDEMPOTENCY_KEY",
@@ -177,13 +185,15 @@ class DistributedIdempotencyMiddleware(BaseHTTPMiddleware):
                 content={
                     "success": False,
                     "error": "Invalid Idempotency-Key Format",
-                    "details": [{
-                        "message": (
-                            "Idempotency-Key must be a UUID4 "
-                            "(e.g. 550e8400-e29b-41d4-a716-446655440000) "
-                            "or a 32-64 character lowercase hex string."
-                        )
-                    }],
+                    "details": [
+                        {
+                            "message": (
+                                "Idempotency-Key must be a UUID4 "
+                                "(e.g. 550e8400-e29b-41d4-a716-446655440000) "
+                                "or a 32-64 character lowercase hex string."
+                            )
+                        }
+                    ],
                     "request_id": request_id,
                 },
             )
@@ -194,7 +204,10 @@ class DistributedIdempotencyMiddleware(BaseHTTPMiddleware):
             if cached.get("status") == "processing":
                 return JSONResponse(
                     status_code=status.HTTP_409_CONFLICT,
-                    content={"success": False, "error": "Concurrent Request Processing"},
+                    content={
+                        "success": False,
+                        "error": "Concurrent Request Processing",
+                    },
                 )
 
             logger.info(f"Idempotency cache hit for {idempotency_key}")
@@ -224,12 +237,15 @@ class DistributedIdempotencyMiddleware(BaseHTTPMiddleware):
 
                 try:
                     body_str = body_bytes.decode("utf-8")
-                    await self._set_cache(idempotency_key, {
-                        "status": "completed",
-                        "status_code": response.status_code,
-                        "media_type": response.media_type,
-                        "body": body_str,
-                    })
+                    await self._set_cache(
+                        idempotency_key,
+                        {
+                            "status": "completed",
+                            "status_code": response.status_code,
+                            "media_type": response.media_type,
+                            "body": body_str,
+                        },
+                    )
                 except UnicodeDecodeError:
                     # Don't cache binary responses
                     await self._delete_cache(idempotency_key)

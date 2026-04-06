@@ -6,13 +6,14 @@ Critically: converts HTTPExceptions to JSON responses instead of re-raising,
 which would break the BaseHTTPMiddleware call_next stream.
 """
 
-from fastapi import Request, status
-from fastapi.responses import JSONResponse
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.exceptions import HTTPException as StarletteHTTPException
-from fastapi.exceptions import HTTPException as FastAPIHTTPException
-import traceback
 import logging
+import traceback
+
+from fastapi import Request, status
+from fastapi.exceptions import HTTPException as FastAPIHTTPException
+from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.middleware.base import BaseHTTPMiddleware
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,7 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
                     "success": False,
                     "error": detail,
                     "details": [{"message": detail}],
-                    "request_id": request_id
+                    "request_id": request_id,
                 },
             )
         except ValueError as e:
@@ -47,7 +48,7 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
                     "success": False,
                     "error": "Validation Error",
                     "details": [{"message": str(e)}],
-                    "request_id": request_id
+                    "request_id": request_id,
                 },
             )
         except PermissionError as e:
@@ -59,7 +60,7 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
                     "success": False,
                     "error": "Forbidden",
                     "details": [{"message": str(e)}],
-                    "request_id": request_id
+                    "request_id": request_id,
                 },
             )
         except Exception as e:
@@ -71,7 +72,6 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
                     "success": False,
                     "error": "Internal Server Error",
                     "details": [{"message": "An unexpected error occurred"}],
-                    "request_id": request_id
+                    "request_id": request_id,
                 },
             )
-

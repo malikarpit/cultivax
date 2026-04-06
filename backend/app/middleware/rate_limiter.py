@@ -11,9 +11,9 @@ Limits (per minute, configurable in Settings):
   default:  30 req/min (unauthenticated)
 """
 
-import time
 import logging
 import os
+import time
 from collections import defaultdict
 from typing import Dict, Tuple
 
@@ -78,17 +78,18 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if count > limit:
             remaining_seconds = int(WINDOW_SECONDS - (now - window_start))
             logger.warning(
-                f"Rate limit exceeded for key={key} "
-                f"({count}/{limit} req/min)"
+                f"Rate limit exceeded for key={key} " f"({count}/{limit} req/min)"
             )
             return JSONResponse(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 content={
                     "success": False,
                     "error": "Rate Limit Exceeded",
-                    "details": [{
-                        "message": f"Too many requests. Limit: {limit}/min. Retry after {remaining_seconds}s."
-                    }],
+                    "details": [
+                        {
+                            "message": f"Too many requests. Limit: {limit}/min. Retry after {remaining_seconds}s."
+                        }
+                    ],
                 },
                 headers={"Retry-After": str(remaining_seconds)},
             )

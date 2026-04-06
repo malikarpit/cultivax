@@ -28,20 +28,36 @@ class InputSanitizationMiddleware(BaseHTTPMiddleware):
 
     # Dangerous patterns to detect
     XSS_PATTERNS = [
-        re.compile(r'<script[^>]*>.*?</script>', re.IGNORECASE | re.DOTALL),
-        re.compile(r'javascript:', re.IGNORECASE),
-        re.compile(r'on\w+\s*=', re.IGNORECASE),  # onclick, onerror, etc.
-        re.compile(r'<iframe[^>]*>', re.IGNORECASE),
+        re.compile(r"<script[^>]*>.*?</script>", re.IGNORECASE | re.DOTALL),
+        re.compile(r"javascript:", re.IGNORECASE),
+        re.compile(r"on\w+\s*=", re.IGNORECASE),  # onclick, onerror, etc.
+        re.compile(r"<iframe[^>]*>", re.IGNORECASE),
     ]
 
     SQL_KEYWORDS = [
-        'SELECT', 'INSERT', 'UPDATE', 'DELETE', 'DROP', 'CREATE', 'ALTER',
-        'EXEC', 'EXECUTE', 'UNION', 'DECLARE', 'CAST', 'CONVERT',
-        '--', '/*', '*/', 'xp_', 'sp_', 'INFORMATION_SCHEMA'
+        "SELECT",
+        "INSERT",
+        "UPDATE",
+        "DELETE",
+        "DROP",
+        "CREATE",
+        "ALTER",
+        "EXEC",
+        "EXECUTE",
+        "UNION",
+        "DECLARE",
+        "CAST",
+        "CONVERT",
+        "--",
+        "/*",
+        "*/",
+        "xp_",
+        "sp_",
+        "INFORMATION_SCHEMA",
     ]
 
     # Paths to skip sanitization (e.g., documentation endpoints)
-    SKIP_PATHS = ['/health', '/docs', '/redoc', '/openapi.json', '/']
+    SKIP_PATHS = ["/health", "/docs", "/redoc", "/openapi.json", "/"]
 
     async def dispatch(self, request: Request, call_next):
         # Skip sanitization for certain paths
@@ -49,24 +65,25 @@ class InputSanitizationMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         # Skip for non-JSON content types
-        content_type = request.headers.get('content-type', '')
-        if not content_type.startswith('application/json'):
+        content_type = request.headers.get("content-type", "")
+        if not content_type.startswith("application/json"):
             return await call_next(request)
 
         # Process request body for POST/PUT/PATCH
-        if request.method in ['POST', 'PUT', 'PATCH']:
+        if request.method in ["POST", "PUT", "PATCH"]:
             try:
                 # Get request body
                 body = await request.body()
                 if body:
                     import json
+
                     try:
                         data = json.loads(body)
                         # We sanitize_recursive only to trigger the detection logs
                         _ = self._sanitize_recursive(data, request.url.path)
-                        
+
                         # Note: We deliberately DO NOT mutate the request scope anymore.
-                        # Downstream route handlers and Pydantic models are responsible 
+                        # Downstream route handlers and Pydantic models are responsible
                         # for actual strict validation of inputs.
                     except json.JSONDecodeError:
                         # Invalid JSON - let it through for proper error handling
@@ -115,30 +132,42 @@ class InputSanitizationMiddleware(BaseHTTPMiddleware):
         original = value
 
         # 1. Remove null bytes
-        value = value.replace('\x00', '')
+        value = value.replace("\x00", "")
 
         # 2. Check for XSS patterns (detect and log, but don't auto-remove)
         for pattern in self.XSS_PATTERNS:
             if pattern.search(value):
                 from app.security.events import log_security_event
+
                 # Need request_id from somewhere? We don't have access to request directly here in recursive loop.
                 # Just log basic warning or update caller to pass request_id.
                 logger.warning(
                     f"Potential XSS detected - Path: {path}, "
                     f"Pattern: {pattern.pattern}, Value: {value[:100]}"
                 )
-                log_security_event("SUSPICIOUS_INPUT_XSS", f"Pattern: {pattern.pattern}, Value: {value[:30]}", "N/A", path)
+                log_security_event(
+                    "SUSPICIOUS_INPUT_XSS",
+                    f"Pattern: {pattern.pattern}, Value: {value[:30]}",
+                    "N/A",
+                    path,
+                )
 
         # 3. Check for SQL injection patterns (detect and log)
         value_upper = value.upper()
         detected_keywords = [kw for kw in self.SQL_KEYWORDS if kw in value_upper]
         if detected_keywords:
             from app.security.events import log_security_event
+
             logger.warning(
                 f"Potential SQL injection detected - Path: {path}, "
                 f"Keywords: {detected_keywords}, Value: {value[:100]}"
             )
-            log_security_event("SUSPICIOUS_INPUT_SQLI", f"Keywords: {detected_keywords}, Value: {value[:30]}", "N/A", path)
+            log_security_event(
+                "SUSPICIOUS_INPUT_SQLI",
+                f"Keywords: {detected_keywords}, Value: {value[:30]}",
+                "N/A",
+                path,
+            )
 
         # 4. HTML entity encoding for display (preserve original for processing)
         # Note: We log but don't auto-encode to avoid breaking legitimate data

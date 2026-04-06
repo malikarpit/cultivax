@@ -28,17 +28,22 @@ logger = logging.getLogger(__name__)
 # Try to import Redis
 try:
     import redis.asyncio as redis
+
     REDIS_AVAILABLE = True
 except ImportError:
     REDIS_AVAILABLE = False
-    logger.warning("redis package not installed - falling back to in-memory rate limiting")
+    logger.warning(
+        "redis package not installed - falling back to in-memory rate limiting"
+    )
 
 # Paths that require stricter rate limits regardless of user role (anti-brute-force)
-_AUTH_SENSITIVE_PATHS = frozenset({
-    "/api/v1/auth/login",
-    "/api/v1/auth/request-otp",
-    "/api/v1/auth/verify-otp",
-})
+_AUTH_SENSITIVE_PATHS = frozenset(
+    {
+        "/api/v1/auth/login",
+        "/api/v1/auth/request-otp",
+        "/api/v1/auth/verify-otp",
+    }
+)
 
 # Circuit breaker: log CRITICAL if Redis fails more than this many times consecutively
 _REDIS_CIRCUIT_BREAKER_THRESHOLD = 5
@@ -77,7 +82,9 @@ class DistributedRateLimiter:
                 self.use_redis = True
                 logger.info("Distributed rate limiter initialized with Redis")
             except Exception as e:
-                logger.warning(f"Failed to connect to Redis: {e}. Using in-memory fallback.")
+                logger.warning(
+                    f"Failed to connect to Redis: {e}. Using in-memory fallback."
+                )
                 self.use_redis = False
         else:
             logger.info("Using in-memory rate limiter (development mode)")
@@ -153,7 +160,9 @@ class DistributedRateLimiter:
                     f"Last error: {e}"
                 )
             else:
-                logger.error(f"Redis rate limit error ({self._redis_failure_count}x): {e}. Allowing request.")
+                logger.error(
+                    f"Redis rate limit error ({self._redis_failure_count}x): {e}. Allowing request."
+                )
             # Fail open on Redis errors
             return True, 0, limit, math.ceil(now) + window_seconds
 
@@ -220,6 +229,7 @@ class DistributedRateLimitMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         import os
+
         if os.environ.get("TESTING") == "1":
             return await call_next(request)
 
@@ -238,6 +248,7 @@ class DistributedRateLimitMiddleware(BaseHTTPMiddleware):
 
         if not allowed:
             from app.security.events import log_security_event
+
             request_id = getattr(request.state, "request_id", "unknown")
             log_security_event(
                 "RATE_LIMIT_EXCEEDED",
@@ -251,12 +262,14 @@ class DistributedRateLimitMiddleware(BaseHTTPMiddleware):
                 content={
                     "success": False,
                     "error": "Rate Limit Exceeded",
-                    "details": [{
-                        "message": (
-                            f"Too many requests. Limit: {limit} per {window_seconds}s. "
-                            f"Try again after {reset_epoch}."
-                        )
-                    }],
+                    "details": [
+                        {
+                            "message": (
+                                f"Too many requests. Limit: {limit} per {window_seconds}s. "
+                                f"Try again after {reset_epoch}."
+                            )
+                        }
+                    ],
                 },
                 headers={
                     "Retry-After": str(window_seconds),
@@ -294,6 +307,7 @@ class DistributedRateLimitMiddleware(BaseHTTPMiddleware):
         if auth_header.startswith("Bearer "):
             try:
                 from app.security.auth import verify_token
+
                 token = auth_header.split(" ", 1)[1]
                 payload = verify_token(token)
                 if payload:
@@ -314,6 +328,7 @@ class DistributedRateLimitMiddleware(BaseHTTPMiddleware):
         if session_cookie:
             try:
                 from app.security.auth import verify_token
+
                 payload = verify_token(session_cookie)
                 if payload:
                     user_id = payload.get("sub", "unknown")

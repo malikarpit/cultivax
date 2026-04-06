@@ -8,11 +8,13 @@ Implementation: Pure ASGI middleware (not BaseHTTPMiddleware) to avoid
 corrupting the request stream in a stacked middleware chain.
 """
 
-from starlette.types import ASGIApp, Receive, Scope, Send
-from starlette.responses import JSONResponse
 import logging
 
+from starlette.responses import JSONResponse
+from starlette.types import ASGIApp, Receive, Scope, Send
+
 logger = logging.getLogger(__name__)
+
 
 class BodySizeLimiterMiddleware:
     """
@@ -38,8 +40,11 @@ class BodySizeLimiterMiddleware:
 
         # Check Content-Length header for fast rejection
         headers = dict(
-            (k.lower(), v) for k, v in
-            ((h[0].decode("latin-1"), h[1].decode("latin-1")) for h in scope.get("headers", []))
+            (k.lower(), v)
+            for k, v in (
+                (h[0].decode("latin-1"), h[1].decode("latin-1"))
+                for h in scope.get("headers", [])
+            )
         )
         content_length = headers.get("content-length")
         if content_length:
@@ -53,8 +58,12 @@ class BodySizeLimiterMiddleware:
                         content={
                             "success": False,
                             "error": "Payload Too Large",
-                            "details": [{"message": f"Request body exceeds {self.max_upload_size // (1024*1024)}MB limit."}]
-                        }
+                            "details": [
+                                {
+                                    "message": f"Request body exceeds {self.max_upload_size // (1024*1024)}MB limit."
+                                }
+                            ],
+                        },
                     )
                     await response(scope, receive, send)
                     return
@@ -86,8 +95,8 @@ class BodySizeLimiterMiddleware:
                     content={
                         "success": False,
                         "error": "Payload Too Large",
-                        "details": [{"message": str(e)}]
-                    }
+                        "details": [{"message": str(e)}],
+                    },
                 )
                 await response(scope, receive, send)
             else:
