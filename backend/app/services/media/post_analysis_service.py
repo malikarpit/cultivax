@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from app.models.crop_instance import CropInstance
 from app.models.media_file import MediaFile
 from app.models.stress_history import StressHistory
+from app.services.event_dispatcher.mutation_guard import allow_ctis_mutation
 from app.services.notifications import AlertService
 
 logger = logging.getLogger(__name__)
@@ -50,8 +51,10 @@ async def apply_media_analysis_updates(
     stress_delta = (stress_from_pest + stress_from_plant) / 2
 
     current_stress = crop.stress_score or 0.0
-    crop.stress_score = min(current_stress + stress_delta, 100.0)
-    crop.updated_at = datetime.utcnow()
+    with allow_ctis_mutation():
+        crop.stress_score = min(current_stress + stress_delta, 100.0)
+        crop.updated_at = datetime.utcnow()
+        db.flush()
 
     stress_history = StressHistory(
         crop_instance_id=UUID(crop_instance_id),

@@ -5,11 +5,12 @@ Manages ML model version lifecycle: registration, activation,
 deactivation, and querying.
 """
 
-from sqlalchemy.orm import Session
-from uuid import UUID
-from typing import Optional, List
-from datetime import datetime, timezone
 import logging
+from datetime import datetime, timezone
+from typing import List, Optional
+from uuid import UUID
+
+from sqlalchemy.orm import Session
 
 from app.models.ml_model import MLModel
 
@@ -115,7 +116,11 @@ class ModelRegistry:
         elif hasattr(MLModel, "status"):
             deactivation_filters.append(MLModel.status == "active")
 
-        updates = {"is_active": False} if hasattr(MLModel, "is_active") else {"status": "draft"}
+        updates = (
+            {"is_active": False}
+            if hasattr(MLModel, "is_active")
+            else {"status": "draft"}
+        )
         self.db.query(MLModel).filter(*deactivation_filters).update(updates)
 
         if hasattr(model, "is_active"):

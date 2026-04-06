@@ -1,18 +1,25 @@
 """
-ML Risk Predictor — V1 Rule-Based Risk Engine
+ML Risk Predictor — FR-10 Production Inference Path
 
-Predicts risk for a crop instance using rule-based logic.
-Will be replaced with a trained ML model in future iterations.
+Predicts risk for a crop instance.
+- When an active MLModel with a file_path exists: uses InferenceRuntime
+  (joblib artifact) for real model inference.
+- Otherwise: falls back to rule-based heuristics.
+
+Every prediction writes an MLInferenceAudit row (FR-29).
 
 ML Enhancement 2: Confidence Propagation — every output includes
 prediction_value, confidence_score, data_sufficiency_index, model_version.
 
-TDD Section 5.3 | ML Enhancement 2
+TDD Section 5.3 | ML Enhancement 2 | FR-10 | FR-29
 """
 
-from typing import Optional
-from datetime import datetime, timezone
 import logging
+from datetime import datetime, timezone
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    from app.models.ml_model import MLModel
 
 logger = logging.getLogger(__name__)
 
@@ -21,10 +28,10 @@ MODEL_VERSION = "rule-based-v1"
 
 # Stress thresholds for risk classification
 RISK_THRESHOLDS = {
-    "critical": 80.0,   # stress >= 80 → high risk
-    "high": 60.0,       # stress >= 60 → elevated risk
-    "moderate": 40.0,   # stress >= 40 → moderate risk
-    "low": 20.0,        # stress >= 20 → low risk
+    "critical": 80.0,  # stress >= 80 → high risk
+    "high": 60.0,  # stress >= 60 → elevated risk
+    "moderate": 40.0,  # stress >= 40 → moderate risk
+    "low": 20.0,  # stress >= 20 → low risk
 }
 
 # Minimum data points required for reliable prediction
@@ -81,7 +88,9 @@ class RiskPrediction:
             "risk_adjusted": self.risk_adjusted,
             "risk_label": self.risk_label,
             "model_version": self.model_version,
-            "model_status": "stub" if self.model_version.startswith("rule-based") else "active",
+            "model_status": (
+                "stub" if self.model_version.startswith("rule-based") else "active"
+            ),
             "generated_at": self.generated_at,
         }
 
@@ -135,6 +144,7 @@ class RiskPredictor:
         ml_enabled = True
         if db:
             from app.services.feature_flags import is_enabled
+
             ml_enabled = is_enabled(db, "prod.ml_kill_switch", default=True)
 
         if not ml_enabled:
@@ -214,19 +224,45 @@ class RiskPredictor:
             stage=stage,
         )
 
-        # --- Dynamically resolve active model (Audit 31) ---
+        # --- Dynamically resolve active model + run real inference (FR-10) ---
         active_version = MODEL_VERSION
-        inference_source = "fallback_rule_based"
+        inference_source = "rule_based"
         if db and self.is_ml_safe(training_samples=training_samples, db=db):
             try:
+                from app.services.ml.inference_runtime import InferenceRuntime
                 from app.services.ml.model_registry import ModelRegistry
+
                 registry = ModelRegistry(db)
                 active_model = registry.get_active_model("risk_predictor")
-                if active_model:
+                if active_model and getattr(active_model, "file_path", None):
+                    runtime = InferenceRuntime()
+                    artifact = runtime.load(active_model.file_path)
+                    features = {
+                        "stress_score_norm": min(stress_score / 100.0, 1.0),
+                        "risk_index": risk_index,
+                        "stage_offset_days_norm": min(
+                            abs(stage_offset_days) / max(max_allowed_drift, 1), 1.0
+                        ),
+                        "action_count_norm": min(
+                            action_count / max(MIN_DATA_POINTS_FOR_HIGH_CONFIDENCE, 1),
+                            1.0,
+                        ),
+                        "day_norm": min(current_day_number / 120.0, 1.0),
+                    }
+                    inferred_risk, inferred_conf = runtime.predict_risk(
+                        artifact, features
+                    )
+                    risk_probability = inferred_risk
+                    confidence = inferred_conf
                     active_version = f"v{active_model.version}"
                     inference_source = "registry_ml_inference"
+                elif active_model:
+                    active_version = f"v{active_model.version}"
+                    inference_source = "registry_rule_fallback"
             except Exception as e:
-                logger.error(f"Failed to resolve active ML Model, failing over safely: {e}")
+                logger.error(
+                    f"Failed to resolve active ML Model, failing over safely: {e}"
+                )
 
         prediction = RiskPrediction(
             prediction_value=risk_probability,
@@ -234,6 +270,32 @@ class RiskPredictor:
             data_sufficiency_index=data_sufficiency,
             model_version=active_version,
         )
+
+        # --- Write inference audit row (FR-29) ---
+        if db is not None:
+            try:
+                from app.models.ml_inference_audit import MLInferenceAudit
+
+                audit = MLInferenceAudit(
+                    model_version=active_version,
+                    inference_source=inference_source,
+                    features={
+                        "stress_score": stress_score,
+                        "risk_index": risk_index,
+                        "stage_offset_days": stage_offset_days,
+                        "action_count": action_count,
+                        "current_day_number": current_day_number,
+                    },
+                    prediction_value=prediction.prediction_value,
+                    confidence_score=prediction.confidence_score,
+                    risk_label=prediction.risk_label,
+                )
+                db.add(audit)
+                db.commit()
+            except Exception as audit_exc:
+                logger.warning(
+                    f"MLInferenceAudit write failed (non-fatal): {audit_exc}"
+                )
 
         logger.info(
             f"Risk prediction: value={prediction.prediction_value:.3f}, "
@@ -244,9 +306,26 @@ class RiskPredictor:
 
         return prediction
 
-    def _compute_data_sufficiency(
-        self, action_count: int, day_number: int
-    ) -> float:
+    def predict(self, crop, action_count: int = 0, db=None) -> "RiskPrediction":
+        """
+        Convenience wrapper used by tests and API handlers.
+        Accepts a CropInstance ORM object (or mock with matching attributes).
+        """
+        return self.predict_risk(
+            stress_score=getattr(crop, "stress_score", 0.0) or 0.0,
+            risk_index=getattr(crop, "risk_index", 0.0) or 0.0,
+            current_day_number=getattr(crop, "current_day_number", 0) or 0,
+            stage=getattr(crop, "stage", None),
+            stage_offset_days=getattr(crop, "stage_offset_days", 0) or 0,
+            consecutive_deviations=getattr(crop, "metadata_extra", {})
+            and (crop.metadata_extra or {}).get("consecutive_deviations", 0)
+            or 0,
+            action_count=action_count,
+            max_allowed_drift=7,
+            db=db,
+        )
+
+    def _compute_data_sufficiency(self, action_count: int, day_number: int) -> float:
         """
         Compute how much data is available relative to what's expected.
         A crop at day 30 with 0 actions has low sufficiency.

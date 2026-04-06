@@ -8,19 +8,19 @@ Falls back to local file storage when GCS_BUCKET_NAME is not set.
 MSDD 4.6 — 3-month retention policy with scheduled deletion.
 """
 
+import hashlib
+import logging
+import mimetypes
 import os
 import uuid
-import hashlib
-import mimetypes
-from datetime import datetime, timezone, timedelta
-from typing import Optional, Dict
-import logging
+from datetime import datetime, timedelta, timezone
+from typing import Dict, Optional
 
 from sqlalchemy.orm import Session  # type: ignore
 
-from app.models.media_file import MediaFile  # type: ignore
-from app.models.crop_instance import CropInstance  # type: ignore
 from app.config import settings  # type: ignore
+from app.models.crop_instance import CropInstance  # type: ignore
+from app.models.media_file import MediaFile  # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -30,10 +30,10 @@ logger = logging.getLogger(__name__)
 
 # ✅ Whitelist MIME types with magic-byte validation
 ALLOWED_MIMES = {
-    'image/jpeg': [b'\xff\xd8\xff'],  # JPEG magic bytes
-    'image/png': [b'\x89PNG'],  # PNG magic bytes
-    'image/webp': [b'RIFF', b'WEBP'],  # WebP magic bytes
-    'image/gif': [b'GIF8'], # GIF magic bytes
+    "image/jpeg": [b"\xff\xd8\xff"],  # JPEG magic bytes
+    "image/png": [b"\x89PNG"],  # PNG magic bytes
+    "image/webp": [b"RIFF", b"WEBP"],  # WebP magic bytes
+    "image/gif": [b"GIF8"],  # GIF magic bytes
 }
 
 MAX_FILE_SIZE_MB = 10  # Reduced to 10MB default for images
@@ -99,15 +99,20 @@ class CloudStorageClient:
         if cls._client is None:
             try:
                 from google.cloud import storage  # type: ignore
+
                 cls._client = storage.Client()
                 cls._bucket = cls._client.bucket(settings.GCS_BUCKET_NAME)
-                logger.info(f"GCS client initialized for bucket: {settings.GCS_BUCKET_NAME}")
+                logger.info(
+                    f"GCS client initialized for bucket: {settings.GCS_BUCKET_NAME}"
+                )
             except Exception as e:
                 logger.error(f"Failed to initialize GCS client: {e}")
                 raise
 
     @classmethod
-    def upload_blob(cls, destination_path: str, content: bytes, content_type: str) -> str:
+    def upload_blob(
+        cls, destination_path: str, content: bytes, content_type: str
+    ) -> str:
         """
         Upload content to GCS bucket.
 
@@ -128,7 +133,9 @@ class CloudStorageClient:
         return gcs_uri
 
     @classmethod
-    def generate_signed_url(cls, blob_path: str, expiry_minutes: Optional[int] = None) -> str:
+    def generate_signed_url(
+        cls, blob_path: str, expiry_minutes: Optional[int] = None
+    ) -> str:
         """
         Generate a signed URL for downloading a blob.
 
@@ -205,10 +212,10 @@ class UploadService:
         filename: str,
         content: bytes,
         content_type: Optional[str] = None,
-        source_channel: str = 'web',
+        source_channel: str = "web",
         geo_verified: bool = False,
         capture_lat: Optional[float] = None,
-        capture_lng: Optional[float] = None
+        capture_lng: Optional[float] = None,
     ) -> UploadResult:
         """
         Upload a media file for a crop instance.
@@ -245,20 +252,26 @@ class UploadService:
         # ✅ 1. Validate file size and MIME type / extension
         ext = self._get_extension(filename)
         file_type = self._classify_file(ext)
-        guessed_mime = mimetypes.guess_type(filename)[0] or content_type or f"{file_type}/{ext}"
-        
+        guessed_mime = (
+            mimetypes.guess_type(filename)[0] or content_type or f"{file_type}/{ext}"
+        )
+
         self._validate_size(content, file_type)
         self._validate_magic_bytes(content, guessed_mime)
 
         # ✅ 2. Compute checksum for dedup
         checksum = hashlib.sha256(content).hexdigest()
-        
+
         # Check for duplicate
-        existing = self.db.query(MediaFile).filter(
-            MediaFile.crop_instance_id == crop_instance_id,
-            MediaFile.checksum_sha256 == checksum,
-            MediaFile.deleted_at == None
-        ).first()
+        existing = (
+            self.db.query(MediaFile)
+            .filter(
+                MediaFile.crop_instance_id == crop_instance_id,
+                MediaFile.checksum_sha256 == checksum,
+                MediaFile.deleted_at == None,
+            )
+            .first()
+        )
 
         if existing:
             logger.info(
@@ -271,8 +284,9 @@ class UploadService:
                 file_path=existing.storage_path,
                 file_type=existing.file_type,
                 file_size=existing.file_size_bytes or len(content),
-                scheduled_deletion_at=existing.scheduled_deletion_at or (datetime.now(timezone.utc) + timedelta(days=RETENTION_DAYS)),
-                signed_url=self.get_download_url(str(existing.id))
+                scheduled_deletion_at=existing.scheduled_deletion_at
+                or (datetime.now(timezone.utc) + timedelta(days=RETENTION_DAYS)),
+                signed_url=self.get_download_url(str(existing.id)),
             )
             result.is_duplicate = True
             return result
@@ -347,7 +361,9 @@ class UploadService:
 
         if self.use_gcs and media.storage_path.startswith("gs://"):
             # Extract blob path from gs://bucket/path
-            blob_path = media.storage_path.split(f"gs://{settings.GCS_BUCKET_NAME}/", 1)[-1]
+            blob_path = media.storage_path.split(
+                f"gs://{settings.GCS_BUCKET_NAME}/", 1
+            )[-1]
             return CloudStorageClient.generate_signed_url(blob_path)
         else:
             return media.storage_path
@@ -414,7 +430,7 @@ class UploadService:
     def _validate_size(self, content: bytes, file_type: str):
         """Enforce file size limits."""
         size_mb = len(content) / (1024 * 1024)
-        max_size = MAX_FILE_SIZE_MB if file_type == 'image' else MAX_VIDEO_SIZE_MB
+        max_size = MAX_FILE_SIZE_MB if file_type == "image" else MAX_VIDEO_SIZE_MB
         if size_mb > max_size:
             raise ValueError(
                 f"File size ({size_mb:.1f}MB) exceeds maximum "
