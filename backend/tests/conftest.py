@@ -34,6 +34,14 @@ from app.config import settings as app_settings
 from app.security.auth import create_access_token
 from app.models.user import User
 
+# Ensure all new models are registered in Base.metadata before create_all()
+from app.models.official_scheme import OfficialScheme  # noqa: F401
+from app.models.scheme_redirect_log import SchemeRedirectLog  # noqa: F401
+from app.models.dispute_case import DisputeCase  # noqa: F401
+from app.models.sms_delivery_log import SmsDeliveryLog  # noqa: F401
+from app.models.ml_inference_audit import MLInferenceAudit  # noqa: F401
+from app.models.user_consent import UserConsent  # noqa: F401
+
 # Create test engine using the same URL the app now uses
 test_engine = create_engine(
     TEST_DATABASE_URL,
