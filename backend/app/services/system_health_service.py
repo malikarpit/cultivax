@@ -11,11 +11,11 @@ Manages system health monitoring:
 
 import logging
 import time
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Optional
 
-from sqlalchemy.orm import Session
 from sqlalchemy import func, text
+from sqlalchemy.orm import Session
 
 from app.models.system_health import SystemHealth
 
@@ -95,9 +95,7 @@ class SystemHealthService:
         Applies freshness decay: stale records are reported as Unknown.
         """
         records = (
-            self.db.query(SystemHealth)
-            .filter(SystemHealth.is_deleted == False)
-            .all()
+            self.db.query(SystemHealth).filter(SystemHealth.is_deleted == False).all()
         )
 
         now = datetime.now(timezone.utc)
@@ -123,7 +121,11 @@ class SystemHealthService:
 
             entry = {
                 "status": effective_status,
-                "last_checked_at": record.last_checked_at.isoformat() if record.last_checked_at else None,
+                "last_checked_at": (
+                    record.last_checked_at.isoformat()
+                    if record.last_checked_at
+                    else None
+                ),
                 "is_stale": is_stale,
             }
             if admin_detail:
@@ -160,27 +162,47 @@ class SystemHealthService:
 
             thresholds = LATENCY_THRESHOLDS["database"]
             if latency_ms >= thresholds["down"]:
-                return "Down", {"connected": True, "latency_ms": latency_ms, "verdict": "latency_critical"}
+                return "Down", {
+                    "connected": True,
+                    "latency_ms": latency_ms,
+                    "verdict": "latency_critical",
+                }
             elif latency_ms >= thresholds["degraded"]:
-                return "Degraded", {"connected": True, "latency_ms": latency_ms, "verdict": "latency_high"}
+                return "Degraded", {
+                    "connected": True,
+                    "latency_ms": latency_ms,
+                    "verdict": "latency_high",
+                }
 
-            return "Operational", {"connected": True, "latency_ms": latency_ms, "verdict": "ok"}
+            return "Operational", {
+                "connected": True,
+                "latency_ms": latency_ms,
+                "verdict": "ok",
+            }
         except Exception as e:
             return "Down", {"connected": False, "error": str(e)}
 
     def _check_ml(self) -> tuple:
         """ML subsystem readiness + bounded smoke test."""
         try:
-            from app.services.ml.risk_predictor import RiskPredictor, MODEL_VERSION
+            from app.services.ml.risk_predictor import (MODEL_VERSION,
+                                                        RiskPredictor)
+
             predictor = RiskPredictor()
 
             start = time.monotonic()
-            result = predictor.predict_risk(stress_score=0, action_count=1, current_day_number=1)
+            result = predictor.predict_risk(
+                stress_score=0, action_count=1, current_day_number=1
+            )
             latency_ms = round((time.monotonic() - start) * 1000, 2)
 
             thresholds = LATENCY_THRESHOLDS["ml"]
             if latency_ms >= thresholds["down"]:
-                return "Down", {"model_version": MODEL_VERSION, "latency_ms": latency_ms, "verdict": "latency_critical"}
+                return "Down", {
+                    "model_version": MODEL_VERSION,
+                    "latency_ms": latency_ms,
+                    "verdict": "latency_critical",
+                }
             elif latency_ms >= thresholds["degraded"]:
                 return "Degraded", {
                     "model_version": MODEL_VERSION,
@@ -203,10 +225,12 @@ class SystemHealthService:
         """Weather subsystem: check freshness of last successful snapshot."""
         try:
             from app.repositories.weather_repository import WeatherRepository
+
             repo = WeatherRepository(self.db)
 
             # Find the most recent snapshot across all locations
             from app.models.weather_snapshot import WeatherSnapshot
+
             latest = (
                 self.db.query(WeatherSnapshot)
                 .filter(WeatherSnapshot.is_deleted == False)
@@ -215,7 +239,10 @@ class SystemHealthService:
             )
 
             if not latest:
-                return "Degraded", {"source": "no_data", "note": "No weather snapshots found"}
+                return "Degraded", {
+                    "source": "no_data",
+                    "note": "No weather snapshots found",
+                }
 
             now = datetime.now(timezone.utc)
             captured = latest.captured_at
@@ -249,7 +276,8 @@ class SystemHealthService:
                     MediaFile.analysis_status == "pending",
                     MediaFile.is_deleted == False,
                 )
-                .scalar() or 0
+                .scalar()
+                or 0
             )
             failed = (
                 self.db.query(func.count(MediaFile.id))
@@ -257,15 +285,28 @@ class SystemHealthService:
                     MediaFile.analysis_status == "failed",
                     MediaFile.is_deleted == False,
                 )
-                .scalar() or 0
+                .scalar()
+                or 0
             )
 
             if failed > 50:
-                return "Degraded", {"pending": pending, "failed": failed, "verdict": "high_failure_rate"}
+                return "Degraded", {
+                    "pending": pending,
+                    "failed": failed,
+                    "verdict": "high_failure_rate",
+                }
             if pending > 200:
-                return "Degraded", {"pending": pending, "failed": failed, "verdict": "queue_backlog"}
+                return "Degraded", {
+                    "pending": pending,
+                    "failed": failed,
+                    "verdict": "queue_backlog",
+                }
 
-            return "Operational", {"pending": pending, "failed": failed, "verdict": "ok"}
+            return "Operational", {
+                "pending": pending,
+                "failed": failed,
+                "verdict": "ok",
+            }
         except Exception as e:
             return "Degraded", {"error": str(e)}
 
@@ -280,7 +321,8 @@ class SystemHealthService:
                     EventLog.status == "Created",
                     EventLog.is_deleted == False,
                 )
-                .scalar() or 0
+                .scalar()
+                or 0
             )
 
             failed = (
@@ -289,7 +331,8 @@ class SystemHealthService:
                     EventLog.status == "Failed",
                     EventLog.is_deleted == False,
                 )
-                .scalar() or 0
+                .scalar()
+                or 0
             )
 
             # Oldest pending event age
@@ -305,7 +348,9 @@ class SystemHealthService:
             if oldest:
                 if oldest.tzinfo is None:
                     oldest = oldest.replace(tzinfo=timezone.utc)
-                oldest_age_minutes = round((datetime.now(timezone.utc) - oldest).total_seconds() / 60, 1)
+                oldest_age_minutes = round(
+                    (datetime.now(timezone.utc) - oldest).total_seconds() / 60, 1
+                )
 
             if pending > 100 or oldest_age_minutes > 30:
                 return "Degraded", {
@@ -332,7 +377,9 @@ class SystemHealthService:
     # DB persistence
     # -------------------------------------------------------------------
 
-    def _upsert_health(self, subsystem: str, status: str, details: dict, error_message: str = None):
+    def _upsert_health(
+        self, subsystem: str, status: str, details: dict, error_message: str = None
+    ):
         """Insert or update the health record for a subsystem."""
         record = (
             self.db.query(SystemHealth)

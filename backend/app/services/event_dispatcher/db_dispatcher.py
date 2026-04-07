@@ -19,15 +19,15 @@ import hashlib
 import json
 import logging
 from datetime import datetime, timezone
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 from uuid import UUID, uuid4
 
-from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
+from sqlalchemy.orm import Session
 
 from app.models.event_log import EventLog
-from app.services.event_dispatcher.interface import EventDispatcherInterface
 from app.services.event_dispatcher.handlers import get_handler
+from app.services.event_dispatcher.interface import EventDispatcherInterface
 
 logger = logging.getLogger(__name__)
 
@@ -85,9 +85,9 @@ class DBEventDispatcher(EventDispatcherInterface):
         event_hash = self._compute_event_hash(event_type, entity_id, payload)
 
         # Check for duplicate
-        existing = self.db.query(EventLog).filter(
-            EventLog.event_hash == event_hash
-        ).first()
+        existing = (
+            self.db.query(EventLog).filter(EventLog.event_hash == event_hash).first()
+        )
         if existing:
             logger.info(f"Duplicate event skipped: {event_hash[:12]}...")
             return existing.id
@@ -120,9 +120,9 @@ class DBEventDispatcher(EventDispatcherInterface):
         Process pending events using SELECT FOR UPDATE SKIP LOCKED.
         Processes in FIFO order per partition_key.
         """
-        pending_count = self.db.query(EventLog).filter(
-            EventLog.status == "Created"
-        ).count()
+        pending_count = (
+            self.db.query(EventLog).filter(EventLog.status == "Created").count()
+        )
         effective_batch_size = batch_size
         if pending_count > QUEUE_BACKPRESSURE_THRESHOLD:
             effective_batch_size = min(MAX_BACKPRESSURE_BATCH_SIZE, batch_size * 3)
@@ -134,16 +134,20 @@ class DBEventDispatcher(EventDispatcherInterface):
         # Get oldest pending events, locking rows
         # Filter: next_retry_at is NULL or next_retry_at <= now()
         now = datetime.now(timezone.utc)
-        events = self.db.query(EventLog).filter(
-            EventLog.status == "Created",
-            or_(
-                EventLog.next_retry_at.is_(None),
-                EventLog.next_retry_at <= now
+        events = (
+            self.db.query(EventLog)
+            .filter(
+                EventLog.status == "Created",
+                or_(EventLog.next_retry_at.is_(None), EventLog.next_retry_at <= now),
             )
-        ).order_by(
-            EventLog.priority.desc(),     # Higher priority first
-            EventLog.created_at.asc(),    # Then oldest first (FIFO)
-        ).limit(effective_batch_size).with_for_update(skip_locked=True).all()
+            .order_by(
+                EventLog.priority.desc(),  # Higher priority first
+                EventLog.created_at.asc(),  # Then oldest first (FIFO)
+            )
+            .limit(effective_batch_size)
+            .with_for_update(skip_locked=True)
+            .all()
+        )
 
         processed_count = 0
         for event in events:
@@ -182,11 +186,14 @@ class DBEventDispatcher(EventDispatcherInterface):
 
             except Exception as e:
                 import traceback
+
                 error_trace = traceback.format_exc()
-                
+
                 event.retry_count += 1
                 event.last_failed_at = datetime.now(timezone.utc)
-                event.last_error = error_trace[:2000] if len(error_trace) > 2000 else error_trace
+                event.last_error = (
+                    error_trace[:2000] if len(error_trace) > 2000 else error_trace
+                )
 
                 # Record failure for circuit breaker
                 self._record_failure(event.event_type)
@@ -201,12 +208,19 @@ class DBEventDispatcher(EventDispatcherInterface):
                     # Exponential backoff: base=5s, multiplier=2, max=300s (5mins)
                     import random
                     from datetime import timedelta
+
                     base_delay = 5
-                    delay_seconds = min(base_delay * (2 ** (event.retry_count - 1)), 300)
+                    delay_seconds = min(
+                        base_delay * (2 ** (event.retry_count - 1)), 300
+                    )
                     jitter = random.uniform(0.8, 1.2)
                     final_delay = int(delay_seconds * jitter)
-                    event.next_retry_at = datetime.now(timezone.utc) + timedelta(seconds=final_delay)
-                    logger.warning(f"Event {event.id} retry {event.retry_count}. Waiting {final_delay}s. Error: {e}")
+                    event.next_retry_at = datetime.now(timezone.utc) + timedelta(
+                        seconds=final_delay
+                    )
+                    logger.warning(
+                        f"Event {event.id} retry {event.retry_count}. Waiting {final_delay}s. Error: {e}"
+                    )
 
         self.db.commit()
         return processed_count
@@ -219,9 +233,13 @@ class DBEventDispatcher(EventDispatcherInterface):
         On startup, any events left in 'Processing' status indicate the server
         crashed mid-processing. These are safely reset for re-processing.
         """
-        stale_events = db.query(EventLog).filter(
-            EventLog.status == "Processing",
-        ).all()
+        stale_events = (
+            db.query(EventLog)
+            .filter(
+                EventLog.status == "Processing",
+            )
+            .all()
+        )
 
         reset_count = 0
         for event in stale_events:
@@ -296,9 +314,7 @@ class DBEventDispatcher(EventDispatcherInterface):
         """Check if an event has exceeded its max processing age."""
         if not event.created_at:
             return False
-        max_age = EVENT_MAX_AGE_OVERRIDES.get(
-            event.event_type, DEFAULT_MAX_AGE_MINUTES
-        )
+        max_age = EVENT_MAX_AGE_OVERRIDES.get(event.event_type, DEFAULT_MAX_AGE_MINUTES)
         age_minutes = (
             datetime.now(timezone.utc) - event.created_at.replace(tzinfo=timezone.utc)
         ).total_seconds() / 60
@@ -352,4 +368,3 @@ class DBEventDispatcher(EventDispatcherInterface):
         if event_type in cls._circuit_state:
             cls._circuit_state[event_type]["consecutive_failures"] = 0
             cls._circuit_state[event_type]["open"] = False
-

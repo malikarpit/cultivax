@@ -7,11 +7,12 @@ Max 3 alerts per crop per 24h (configurable per alert type).
 MSDD Enhancement Sec 14
 """
 
-from sqlalchemy.orm import Session
-from uuid import UUID
-from typing import Optional, List
-from datetime import datetime, timezone, timedelta
 import logging
+from datetime import datetime, timedelta, timezone
+from typing import List, Optional
+from uuid import UUID
+
+from sqlalchemy.orm import Session
 
 from app.models.alert import Alert
 
@@ -51,9 +52,7 @@ class AlertService:
     ) -> Optional[Alert]:
         """Generate an alert with throttle check."""
         if not self._can_send_alert(crop_instance_id, alert_type):
-            logger.info(
-                f"Alert throttled for crop {crop_instance_id}: {alert_type}"
-            )
+            logger.info(f"Alert throttled for crop {crop_instance_id}: {alert_type}")
             return None
 
         expires_at = None
@@ -79,10 +78,14 @@ class AlertService:
 
     def acknowledge_alert(self, alert_id: UUID) -> Optional[Alert]:
         """Mark an alert as acknowledged."""
-        alert = self.db.query(Alert).filter(
-            Alert.id == alert_id,
-            Alert.is_deleted == False,
-        ).first()
+        alert = (
+            self.db.query(Alert)
+            .filter(
+                Alert.id == alert_id,
+                Alert.is_deleted == False,
+            )
+            .first()
+        )
         if alert:
             alert.is_acknowledged = True
             alert.acknowledged_at = datetime.now(timezone.utc)
@@ -127,12 +130,16 @@ class AlertService:
             return 0
 
         now = datetime.now(timezone.utc)
-        alerts = self.db.query(Alert).filter(
-            Alert.id.in_(alert_ids),
-            Alert.user_id == user_id,
-            Alert.is_deleted == False,
-            Alert.is_acknowledged == False,
-        ).all()
+        alerts = (
+            self.db.query(Alert)
+            .filter(
+                Alert.id.in_(alert_ids),
+                Alert.user_id == user_id,
+                Alert.is_deleted == False,
+                Alert.is_acknowledged == False,
+            )
+            .all()
+        )
 
         for alert in alerts:
             alert.is_acknowledged = True
@@ -145,18 +152,26 @@ class AlertService:
         now = datetime.now(timezone.utc)
         stale_ack_threshold = now - timedelta(days=30)
 
-        expired = self.db.query(Alert).filter(
-            Alert.is_deleted == False,
-            Alert.expires_at.isnot(None),
-            Alert.expires_at < now,
-        ).all()
+        expired = (
+            self.db.query(Alert)
+            .filter(
+                Alert.is_deleted == False,
+                Alert.expires_at.isnot(None),
+                Alert.expires_at < now,
+            )
+            .all()
+        )
 
-        stale_ack = self.db.query(Alert).filter(
-            Alert.is_deleted == False,
-            Alert.is_acknowledged == True,
-            Alert.acknowledged_at.isnot(None),
-            Alert.acknowledged_at < stale_ack_threshold,
-        ).all()
+        stale_ack = (
+            self.db.query(Alert)
+            .filter(
+                Alert.is_deleted == False,
+                Alert.is_acknowledged == True,
+                Alert.acknowledged_at.isnot(None),
+                Alert.acknowledged_at < stale_ack_threshold,
+            )
+            .all()
+        )
 
         for alert in [*expired, *stale_ack]:
             alert.is_deleted = True
@@ -164,16 +179,93 @@ class AlertService:
 
         return len(expired) + len(stale_ack)
 
-    def _can_send_alert(
-        self, crop_instance_id: UUID, alert_type: str
-    ) -> bool:
+    def _can_send_alert(self, crop_instance_id: UUID, alert_type: str) -> bool:
         """Check throttle: max alerts per crop per window."""
         window_start = datetime.now(timezone.utc) - timedelta(
             hours=THROTTLE_WINDOW_HOURS
         )
-        count = self.db.query(Alert).filter(
-            Alert.crop_instance_id == crop_instance_id,
-            Alert.created_at >= window_start,
-            Alert.is_deleted == False,
-        ).count()
+        count = (
+            self.db.query(Alert)
+            .filter(
+                Alert.crop_instance_id == crop_instance_id,
+                Alert.created_at >= window_start,
+                Alert.is_deleted == False,
+            )
+            .count()
+        )
         return count < MAX_ALERTS_PER_CROP
+
+    # ------------------------------------------------------------------
+    # NFR-11 — SMS delivery for critical unacknowledged alerts
+    # ------------------------------------------------------------------
+
+    def send_critical_sms_for_unacknowledged(
+        self,
+        min_urgency: str = "High",
+        stale_minutes: int = 30,
+    ) -> int:
+        """
+        Find unacknowledged Critical/High alerts older than `stale_minutes`
+        and dispatch an SMS to the owner (NFR-11).
+        Returns the number of SMS messages sent.
+        """
+        from app.models.user import User
+        from app.services.notifications.sms_provider import send_sms_with_log
+
+        urgency_priority = {"Low": 0, "Medium": 1, "High": 2, "Critical": 3}
+        min_level = urgency_priority.get(min_urgency, 2)
+
+        cutoff = datetime.now(timezone.utc) - timedelta(minutes=stale_minutes)
+
+        eligible_alerts = (
+            self.db.query(Alert)
+            .filter(
+                Alert.is_deleted == False,
+                Alert.is_acknowledged == False,
+                Alert.created_at <= cutoff,
+                Alert.urgency_level.in_(
+                    [k for k, v in urgency_priority.items() if v >= min_level]
+                ),
+            )
+            .all()
+        )
+
+        sent = 0
+        for alert in eligible_alerts:
+            try:
+                user = self.db.query(User).filter(User.id == alert.user_id).first()
+                if not user or not getattr(user, "phone", None):
+                    continue
+
+                message = (
+                    f"[CultivaX Alert] {alert.urgency_level}: {alert.message[:120]}"
+                )
+                success = send_sms_with_log(
+                    db=self.db,
+                    user_id=alert.user_id,
+                    phone=user.phone,
+                    message=message,
+                    template=alert.alert_type,
+                )
+                if success:
+                    sent += 1
+            except Exception as exc:
+                logger.warning(f"SMS dispatch failed for alert {alert.id}: {exc}")
+
+        logger.info(
+            f"SMS dispatched for {sent}/{len(eligible_alerts)} unacknowledged critical alerts"
+        )
+        return sent
+
+    def send_sms_for_alert(self, alert: Alert, phone: str) -> bool:
+        """Send a single SMS for a given alert. Returns True on success."""
+        from app.services.notifications.sms_provider import send_sms_with_log
+
+        message = f"[CultivaX Alert] {alert.urgency_level}: {alert.message[:120]}"
+        return send_sms_with_log(
+            db=self.db,
+            user_id=alert.user_id,
+            phone=phone,
+            message=message,
+            template=alert.alert_type,
+        )

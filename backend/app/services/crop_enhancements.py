@@ -9,14 +9,14 @@ Remaining enhancement implementations:
   - Projected harvest date computation
 """
 
-import math
 import logging
+import math
 from datetime import date, timedelta
 from typing import Dict, List, Optional, Tuple
 from uuid import UUID
 
-from sqlalchemy.orm import Session  # type: ignore
 from sqlalchemy import func  # type: ignore
+from sqlalchemy.orm import Session  # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -40,8 +40,9 @@ def batch_apply_trust_decay(db: Session) -> dict:
     Returns:
         {"decayed_count": int, "providers": list of dicts}
     """
-    from app.models.service_provider import ServiceProvider
     from datetime import datetime, timezone
+
+    from app.models.service_provider import ServiceProvider
 
     cutoff = datetime.now(timezone.utc) - timedelta(days=INACTIVITY_THRESHOLD_DAYS)
 
@@ -57,18 +58,22 @@ def batch_apply_trust_decay(db: Session) -> dict:
 
     results = []
     for provider in inactive_providers:
-        months_inactive = (datetime.now(timezone.utc) - provider.updated_at).days / 30.44
+        months_inactive = (
+            datetime.now(timezone.utc) - provider.updated_at
+        ).days / 30.44
         decay = math.pow(DECAY_FACTOR_PER_MONTH, months_inactive)
         old_score = provider.trust_score or 0.5
         new_score = round(old_score * decay, 4)
 
         provider.trust_score = max(0.1, new_score)  # Floor at 0.1
-        results.append({
-            "provider_id": str(provider.id),
-            "old_score": old_score,
-            "new_score": provider.trust_score,
-            "months_inactive": round(months_inactive, 1),
-        })
+        results.append(
+            {
+                "provider_id": str(provider.id),
+                "old_score": old_score,
+                "new_score": provider.trust_score,
+                "months_inactive": round(months_inactive, 1),
+            }
+        )
 
     db.commit()
     logger.info(f"Trust decay applied to {len(results)} inactive providers")
@@ -134,12 +139,12 @@ def compute_exposure_fairness(
 
 # Different growth stages have different stress sensitivity
 STAGE_ALPHA = {
-    "germination": 0.3,    # Low sensitivity — early days
+    "germination": 0.3,  # Low sensitivity — early days
     "seedling": 0.4,
-    "vegetative": 0.5,     # Moderate
-    "flowering": 0.7,      # High — critical stage
+    "vegetative": 0.5,  # Moderate
+    "flowering": 0.7,  # High — critical stage
     "maturity": 0.6,
-    "harvest": 0.3,        # Low — near end
+    "harvest": 0.3,  # Low — near end
 }
 
 DEFAULT_ALPHA = 0.5

@@ -6,14 +6,15 @@ Computes daily prioritized recommendations for crop management actions.
 Patch Module 2, Sec 15
 """
 
-from sqlalchemy.orm import Session
-from uuid import UUID
-from typing import List, Optional
-from datetime import datetime, timezone, timedelta
 import logging
+from datetime import datetime, timedelta, timezone
+from typing import List, Optional
+from uuid import UUID
 
-from app.models.recommendation import Recommendation
+from sqlalchemy.orm import Session
+
 from app.models.crop_instance import CropInstance
+from app.models.recommendation import Recommendation
 
 logger = logging.getLogger(__name__)
 
@@ -34,9 +35,7 @@ class RecommendationEngine:
     def __init__(self, db: Session):
         self.db = db
 
-    def compute_recommendations(
-        self, crop_instance_id: UUID
-    ) -> List[Recommendation]:
+    def compute_recommendations(self, crop_instance_id: UUID) -> List[Recommendation]:
         """
         Compute prioritized recommendations for a crop instance.
 
@@ -44,10 +43,14 @@ class RecommendationEngine:
             score = urgency * stage_criticality + risk_index * 0.4
                     + days_until_deadline * -0.1
         """
-        crop = self.db.query(CropInstance).filter(
-            CropInstance.id == crop_instance_id,
-            CropInstance.is_deleted == False,
-        ).first()
+        crop = (
+            self.db.query(CropInstance)
+            .filter(
+                CropInstance.id == crop_instance_id,
+                CropInstance.is_deleted == False,
+            )
+            .first()
+        )
 
         if not crop:
             return []
@@ -56,21 +59,17 @@ class RecommendationEngine:
 
         # Generate recommendations based on crop state
         if crop.state == "Active":
-            recommendations.extend(
-                self._generate_active_recommendations(crop)
-            )
+            recommendations.extend(self._generate_active_recommendations(crop))
         elif crop.state == "AtRisk":
-            recommendations.extend(
-                self._generate_risk_recommendations(crop)
-            )
+            recommendations.extend(self._generate_risk_recommendations(crop))
         elif crop.state == "ReadyToHarvest":
-            recommendations.extend(
-                self._generate_harvest_recommendations(crop)
-            )
+            recommendations.extend(self._generate_harvest_recommendations(crop))
 
         # Sort by priority and limit
         recommendations.sort(key=lambda r: r.priority_rank, reverse=True)
-        return [r for i, r in enumerate(recommendations) if i < MAX_DAILY_RECOMMENDATIONS]
+        return [
+            r for i, r in enumerate(recommendations) if i < MAX_DAILY_RECOMMENDATIONS
+        ]
 
     def _generate_active_recommendations(
         self, crop: CropInstance
@@ -80,26 +79,30 @@ class RecommendationEngine:
         stress = float(crop.stress_score or 0.0)
 
         if stress > 0.5:
-            recs.append(Recommendation(
-                crop_instance_id=crop.id,
-                recommendation_type="irrigation",
-                priority_rank=self._compute_priority("irrigation", stress, crop),
-                message_key="stress_high_irrigate",
-                message_parameters={"stress_level": f"{stress:.0%}"},
-                basis="Stress score elevated above 50%, irrigation may reduce stress",
-                status="active",
-            ))
+            recs.append(
+                Recommendation(
+                    crop_instance_id=crop.id,
+                    recommendation_type="irrigation",
+                    priority_rank=self._compute_priority("irrigation", stress, crop),
+                    message_key="stress_high_irrigate",
+                    message_parameters={"stress_level": f"{stress:.0%}"},
+                    basis="Stress score elevated above 50%, irrigation may reduce stress",
+                    status="active",
+                )
+            )
 
         if stress > 0.3:
-            recs.append(Recommendation(
-                crop_instance_id=crop.id,
-                recommendation_type="general",
-                priority_rank=self._compute_priority("general", stress, crop),
-                message_key="monitor_stress",
-                message_parameters={"stress_level": f"{stress:.0%}"},
-                basis="Stress score elevated — monitor closely",
-                status="active",
-            ))
+            recs.append(
+                Recommendation(
+                    crop_instance_id=crop.id,
+                    recommendation_type="general",
+                    priority_rank=self._compute_priority("general", stress, crop),
+                    message_key="monitor_stress",
+                    message_parameters={"stress_level": f"{stress:.0%}"},
+                    basis="Stress score elevated — monitor closely",
+                    status="active",
+                )
+            )
 
         return recs
 
@@ -144,17 +147,19 @@ class RecommendationEngine:
         score = urgency * stage_criticality + risk_score * 0.4
         return int(score * 100)
 
-    def get_recommendations(
-        self, crop_instance_id: UUID
-    ) -> List[Recommendation]:
+    def get_recommendations(self, crop_instance_id: UUID) -> List[Recommendation]:
         """Get active recommendations for a crop."""
-        return self.db.query(Recommendation).filter(
-            Recommendation.crop_instance_id == crop_instance_id,
-            Recommendation.status == "active",
-            Recommendation.is_deleted == False,
-        ).order_by(Recommendation.priority_rank.desc()).limit(
-            MAX_DAILY_RECOMMENDATIONS
-        ).all()
+        return (
+            self.db.query(Recommendation)
+            .filter(
+                Recommendation.crop_instance_id == crop_instance_id,
+                Recommendation.status == "active",
+                Recommendation.is_deleted == False,
+            )
+            .order_by(Recommendation.priority_rank.desc())
+            .limit(MAX_DAILY_RECOMMENDATIONS)
+            .all()
+        )
 
     def refresh_recommendations(
         self,
@@ -167,11 +172,15 @@ class RecommendationEngine:
         """
         now = datetime.now(timezone.utc)
 
-        existing_active = self.db.query(Recommendation).filter(
-            Recommendation.crop_instance_id == crop_instance_id,
-            Recommendation.status == "active",
-            Recommendation.is_deleted == False,
-        ).all()
+        existing_active = (
+            self.db.query(Recommendation)
+            .filter(
+                Recommendation.crop_instance_id == crop_instance_id,
+                Recommendation.status == "active",
+                Recommendation.is_deleted == False,
+            )
+            .all()
+        )
 
         for rec in existing_active:
             rec.status = "expired"
@@ -207,11 +216,15 @@ class RecommendationEngine:
         reason: Optional[str] = None,
     ) -> Recommendation:
         """Update recommendation status to dismissed or acted."""
-        rec = self.db.query(Recommendation).filter(
-            Recommendation.id == recommendation_id,
-            Recommendation.crop_instance_id == crop_instance_id,
-            Recommendation.is_deleted == False,
-        ).first()
+        rec = (
+            self.db.query(Recommendation)
+            .filter(
+                Recommendation.id == recommendation_id,
+                Recommendation.crop_instance_id == crop_instance_id,
+                Recommendation.is_deleted == False,
+            )
+            .first()
+        )
 
         if not rec:
             raise ValueError("Recommendation not found")
@@ -233,11 +246,15 @@ class RecommendationEngine:
 
     def refresh_for_active_crops(self) -> int:
         """Generate recommendations for all non-archived active crop instances."""
-        crops = self.db.query(CropInstance).filter(
-            CropInstance.is_deleted == False,
-            CropInstance.is_archived == False,
-            CropInstance.state.in_(["Active", "AtRisk", "ReadyToHarvest"]),
-        ).all()
+        crops = (
+            self.db.query(CropInstance)
+            .filter(
+                CropInstance.is_deleted == False,
+                CropInstance.is_archived == False,
+                CropInstance.state.in_(["Active", "AtRisk", "ReadyToHarvest"]),
+            )
+            .all()
+        )
 
         refreshed = 0
         for crop in crops:

@@ -5,9 +5,9 @@ Business logic for land parcel CRUD operations.
 Includes polygon area calculation and centroid computation.
 """
 
-import math
 import logging
-from typing import Optional, List
+import math
+from typing import List, Optional
 from uuid import UUID
 
 from sqlalchemy.orm import Session
@@ -64,7 +64,9 @@ class LandParcelService:
         )
         return parcel
 
-    def list_parcels(self, farmer_id: UUID, include_deleted: bool = False) -> List[LandParcel]:
+    def list_parcels(
+        self, farmer_id: UUID, include_deleted: bool = False
+    ) -> List[LandParcel]:
         """List all parcels for a farmer."""
         query = self.db.query(LandParcel).filter(LandParcel.farmer_id == farmer_id)
         if not include_deleted:

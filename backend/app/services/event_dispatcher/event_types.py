@@ -12,9 +12,12 @@ Usage:
 
 class CTISEvents:
     """Crop Timeline Intelligence System events."""
+
     ACTION_LOGGED = "ctis.action_logged"
+    CROP_STATE_CHANGE_REQUESTED = "ctis.crop_state_change_requested"
+    CROP_METRICS_UPDATE_REQUESTED = "ctis.crop_metrics_update_requested"
     REPLAY_TRIGGERED = "ctis.replay_triggered"
-    REPLAY_REQUESTED = "ctis.replay_requested"   # FX-EVENTS-P1-0005: admin force-replay
+    REPLAY_REQUESTED = "ctis.replay_requested"  # FX-EVENTS-P1-0005: admin force-replay
     REPLAY_COMPLETED = "ctis.replay_completed"
     REPLAY_FAILED = "ctis.replay_failed"
     STAGE_CHANGED = "ctis.stage_changed"
@@ -31,6 +34,7 @@ class CTISEvents:
 
 class SOEEvents:
     """Service Orchestration Ecosystem events."""
+
     SERVICE_REQUESTED = "soe.service_requested"
     PROVIDER_CONTACTED = "soe.provider_contacted"
     REQUEST_ACCEPTED = "soe.request_accepted"
@@ -46,6 +50,7 @@ class SOEEvents:
 
 class MLEvents:
     """Machine Learning subsystem events."""
+
     RISK_COMPUTED = "ml.risk_computed"
     MEDIA_ANALYZED = "ml.media_analyzed"
     CLUSTER_UPDATED = "ml.cluster_updated"
@@ -56,6 +61,7 @@ class MLEvents:
 
 class AdminEvents:
     """Administrative action events."""
+
     USER_ROLE_CHANGED = "admin.user_role_changed"
     PROVIDER_VERIFIED = "admin.provider_verified"
     PROVIDER_SUSPENDED = "admin.provider_suspended"
@@ -67,6 +73,7 @@ class AdminEvents:
 
 class NotificationEvents:
     """Notification and alert events."""
+
     ALERT_GENERATED = "notification.alert_generated"
     ALERT_DELIVERED = "notification.alert_delivered"
     ALERT_ACKNOWLEDGED = "notification.alert_acknowledged"

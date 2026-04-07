@@ -7,7 +7,7 @@ TDD Section 3.3.
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 from uuid import UUID
 
 
@@ -25,14 +25,14 @@ class EventDispatcherInterface(ABC):
     ) -> UUID:
         """
         Publish an event to the event store.
-        
+
         Args:
             event_type: Type of event (ActionLogged, ReplayTriggered, etc.)
             entity_type: What entity this event is about (crop_instance, user, etc.)
             entity_id: ID of the entity
             payload: Event payload data
             partition_key: Key for FIFO ordering (defaults to entity_id)
-        
+
         Returns:
             event_id: UUID of the created event
         """
@@ -42,7 +42,7 @@ class EventDispatcherInterface(ABC):
     def process_pending(self, batch_size: int = 10) -> int:
         """
         Process pending events in partition-key FIFO order.
-        
+
         Returns:
             Number of events processed
         """

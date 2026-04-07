@@ -8,30 +8,35 @@ TDD Section 3.5–3.12.
 
 import asyncio
 import logging
-from typing import Callable, Optional, Dict
+from typing import Callable, Dict, Optional
+
 from sqlalchemy.orm import Session  # type: ignore
 
-from app.models.event_log import EventLog  # type: ignore
 from app.models.crop_instance import CropInstance
+from app.models.event_log import EventLog  # type: ignore
 # ReplayEngine is imported lazily inside handler functions to avoid circular import:
 # replay_engine → weather.py → weather_service → db_dispatcher → handlers → replay_engine
-from app.services.ctis.state_machine import (  # type: ignore
-    CropStateMachine,
-    get_transition_event_payload,
-    InvalidStateTransition,
-)
-from app.services.recommendations.recommendation_engine import RecommendationEngine
+from app.services.ctis.state_machine import (CropStateMachine,  # type: ignore
+                                             InvalidStateTransition,
+                                             get_transition_event_payload)
+from app.services.event_dispatcher.mutation_guard import allow_ctis_mutation
 from app.services.notifications import AlertService
+from app.services.recommendations.recommendation_engine import \
+    RecommendationEngine
 
 logger = logging.getLogger(__name__)
 
 
 def _generate_replay_alerts(db: Session, crop_instance_id, source_event_id=None):
     """Generate alerts based on replayed crop risk/stress state."""
-    crop = db.query(CropInstance).filter(
-        CropInstance.id == crop_instance_id,
-        CropInstance.is_deleted == False,
-    ).first()
+    crop = (
+        db.query(CropInstance)
+        .filter(
+            CropInstance.id == crop_instance_id,
+            CropInstance.is_deleted == False,
+        )
+        .first()
+    )
     if not crop:
         return
 
@@ -44,7 +49,10 @@ def _generate_replay_alerts(db: Session, crop_instance_id, source_event_id=None)
             severity="high",
             urgency_level="High",
             message="Crop stress is high. Immediate corrective action recommended.",
-            details={"stress_score": float(crop.stress_score or 0.0), "state": crop.state},
+            details={
+                "stress_score": float(crop.stress_score or 0.0),
+                "state": crop.state,
+            },
             source_event_id=source_event_id,
             expires_in_hours=24,
         )
@@ -83,7 +91,8 @@ def handle_action_logged(db: Session, event: EventLog):
     Handle ActionLogged event — trigger replay for the crop instance.
     Wired in Day 13: ActionLogged → ReplayTriggered pipeline.
     """
-    from app.services.ctis.replay_engine import ReplayEngine  # lazy to avoid circular import
+    from app.services.ctis.replay_engine import \
+        ReplayEngine  # lazy to avoid circular import
 
     logger.info(f"Processing ActionLogged for entity {event.entity_id}")
 
@@ -116,7 +125,8 @@ def handle_action_logged(db: Session, event: EventLog):
 
 def handle_replay_triggered(db: Session, event: EventLog):
     """Handle ReplayTriggered event — run full or incremental replay."""
-    from app.services.ctis.replay_engine import ReplayEngine  # lazy to avoid circular import
+    from app.services.ctis.replay_engine import \
+        ReplayEngine  # lazy to avoid circular import
 
     logger.info(f"Processing ReplayTriggered for entity {event.entity_id}")
 
@@ -139,6 +149,59 @@ def handle_replay_triggered(db: Session, event: EventLog):
     except Exception as e:
         logger.error(f"Replay failed for crop {crop_instance_id}: {e}")
         raise
+
+
+def handle_crop_state_change_requested(db: Session, event: EventLog):
+    """Handle state transition requests for CropInstance entities."""
+    logger.info(f"Processing CropStateChangeRequested for entity {event.entity_id}")
+    payload = event.payload or {}
+
+    target_state = payload.get("target_state")
+    if not target_state:
+        raise ValueError("target_state is required")
+
+    crop = (
+        db.query(CropInstance)
+        .filter(
+            CropInstance.id == event.entity_id,
+            CropInstance.is_deleted == False,
+        )
+        .first()
+    )
+    if not crop:
+        return
+
+    with allow_ctis_mutation():
+        crop.state = str(target_state)
+
+
+def handle_crop_metrics_update_requested(db: Session, event: EventLog):
+    """Handle explicit CTIS metrics updates in controlled handler context."""
+    logger.info(f"Processing CropMetricsUpdateRequested for entity {event.entity_id}")
+    payload = event.payload or {}
+
+    crop = (
+        db.query(CropInstance)
+        .filter(
+            CropInstance.id == event.entity_id,
+            CropInstance.is_deleted == False,
+        )
+        .first()
+    )
+    if not crop:
+        return
+
+    with allow_ctis_mutation():
+        if "stage" in payload:
+            crop.stage = payload.get("stage")
+        if "stress_score" in payload:
+            crop.stress_score = float(payload.get("stress_score") or 0.0)
+        if "risk_index" in payload:
+            crop.risk_index = float(payload.get("risk_index") or 0.0)
+        if "current_day_number" in payload:
+            crop.current_day_number = int(payload.get("current_day_number") or 0)
+        if "stage_offset_days" in payload:
+            crop.stage_offset_days = int(payload.get("stage_offset_days") or 0)
 
 
 def handle_stage_changed(db: Session, event: EventLog):
@@ -166,10 +229,14 @@ def handle_stress_updated(db: Session, event: EventLog):
     if stress_score < 70.0 or not event.entity_id:
         return
 
-    crop = db.query(CropInstance).filter(
-        CropInstance.id == event.entity_id,
-        CropInstance.is_deleted == False,
-    ).first()
+    crop = (
+        db.query(CropInstance)
+        .filter(
+            CropInstance.id == event.entity_id,
+            CropInstance.is_deleted == False,
+        )
+        .first()
+    )
     if not crop:
         return
 
@@ -195,10 +262,14 @@ def handle_media_analyzed(db: Session, event: EventLog):
     if not event.entity_id or (not pest_detected and pest_risk < 0.7):
         return
 
-    crop = db.query(CropInstance).filter(
-        CropInstance.id == event.entity_id,
-        CropInstance.is_deleted == False,
-    ).first()
+    crop = (
+        db.query(CropInstance)
+        .filter(
+            CropInstance.id == event.entity_id,
+            CropInstance.is_deleted == False,
+        )
+        .first()
+    )
     if not crop:
         return
 
@@ -219,17 +290,23 @@ def handle_weather_updated(db: Session, event: EventLog):
     """Handle WeatherUpdated event — feed weather data into stress model."""
     logger.info(f"Processing WeatherUpdated for entity {event.entity_id}")
     payload = event.payload or {}
-    message = payload.get("message") or payload.get("advisory") or "Weather advisory issued."
+    message = (
+        payload.get("message") or payload.get("advisory") or "Weather advisory issued."
+    )
     severity = (payload.get("severity") or "medium").lower()
-    urgency = (payload.get("urgency_level") or "Medium")
+    urgency = payload.get("urgency_level") or "Medium"
     crop_id = payload.get("crop_instance_id") or event.entity_id
     if not crop_id:
         return
 
-    crop = db.query(CropInstance).filter(
-        CropInstance.id == crop_id,
-        CropInstance.is_deleted == False,
-    ).first()
+    crop = (
+        db.query(CropInstance)
+        .filter(
+            CropInstance.id == crop_id,
+            CropInstance.is_deleted == False,
+        )
+        .first()
+    )
     if not crop:
         return
 
@@ -246,23 +323,49 @@ def handle_weather_updated(db: Session, event: EventLog):
     )
 
 
-from app.services.event_dispatcher.event_types import CTISEvents, MLEvents, NotificationEvents
+def handle_cluster_updated(db: Session, event: EventLog):
+    """Handle prospective regional cluster updates from new yield submissions."""
+    logger.info(f"Processing ClusterUpdated for entity {event.entity_id}")
+    payload = event.payload or {}
+    if not payload.get("prospective", False):
+        return
+
+    from app.services.ctis.regional_cluster_service import \
+        RegionalClusterService
+
+    RegionalClusterService(db).update_from_yield(
+        crop_type=str(payload.get("crop_type")),
+        region=str(payload.get("region")),
+        season=payload.get("season"),
+        delay_days=float(payload.get("delay_days", 0.0)),
+        yield_value=float(payload.get("yield_value", 0.0)),
+    )
+
+
+from app.services.event_dispatcher.event_types import (CTISEvents, MLEvents,
+                                                       NotificationEvents)
 
 # Event type → handler mapping
 _HANDLER_MAP: Dict[str, Callable] = {
     CTISEvents.ACTION_LOGGED: handle_action_logged,
+    CTISEvents.CROP_STATE_CHANGE_REQUESTED: handle_crop_state_change_requested,
+    CTISEvents.CROP_METRICS_UPDATE_REQUESTED: handle_crop_metrics_update_requested,
     CTISEvents.REPLAY_TRIGGERED: handle_replay_triggered,
     CTISEvents.STAGE_CHANGED: handle_stage_changed,
     CTISEvents.STRESS_UPDATED: handle_stress_updated,
+    MLEvents.CLUSTER_UPDATED: handle_cluster_updated,
     MLEvents.MEDIA_ANALYZED: handle_media_analyzed,
     NotificationEvents.WEATHER_UPDATED: handle_weather_updated,
     # Admin-triggered replay from force-replay endpoint
     "ctis.replay_requested": handle_replay_triggered,
     # Fallback to legacy names for safe transitions of in-flight queued events
     "ActionLogged": handle_action_logged,
+    "ctis.crop_state_change_requested": handle_crop_state_change_requested,
+    "ctis.crop_metrics_update_requested": handle_crop_metrics_update_requested,
     "ReplayTriggered": handle_replay_triggered,
     "StageChanged": handle_stage_changed,
     "StressUpdated": handle_stress_updated,
+    "ml.cluster_updated": handle_cluster_updated,
     "MediaAnalyzed": handle_media_analyzed,
     "WeatherUpdated": handle_weather_updated,
     # Additional namespaced aliases for ML events published pre-taxonomy fix
