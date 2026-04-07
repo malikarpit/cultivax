@@ -9,19 +9,20 @@ GET   /api/v1/offline-sync/anomalies          — farmer's own abuse flags
 Audit 15 — Full rewrite with proper schemas, GET endpoints, error handling.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
-from uuid import UUID
-from typing import Optional
-from datetime import datetime, timezone
 import logging
+from datetime import datetime, timezone
+from typing import Optional
+from uuid import UUID
 
-from app.database import get_db
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.orm import Session
+
 from app.api.deps import get_current_user, require_role
-from app.models.user import User
-from app.models.crop_instance import CropInstance
-from app.models.action_log import ActionLog
+from app.database import get_db
 from app.models.abuse_flag import AbuseFlag
+from app.models.action_log import ActionLog
+from app.models.crop_instance import CropInstance
+from app.models.user import User
 from app.schemas.sync import OfflineSyncRequest, OfflineSyncResponse
 from app.services.ctis.sync_service import SyncService
 
@@ -31,6 +32,7 @@ router = APIRouter(prefix="/offline-sync", tags=["Offline Sync"])
 
 
 # ── POST — Sync offline actions ──
+
 
 @router.post(
     "/",
@@ -89,6 +91,7 @@ async def submit_offline_sync(
 
 # ── GET — Preview sync for a crop ──
 
+
 @router.get("/preview/{crop_id}")
 async def preview_offline_actions(
     crop_id: UUID,
@@ -99,20 +102,28 @@ async def preview_offline_actions(
     Preview: show what has previously synced offline for a crop.
     (Useful for mobile client to display pending before submitting)
     """
-    crop = db.query(CropInstance).filter(
-        CropInstance.id == crop_id,
-        CropInstance.farmer_id == current_user.id,
-        CropInstance.is_deleted == False,
-    ).first()
+    crop = (
+        db.query(CropInstance)
+        .filter(
+            CropInstance.id == crop_id,
+            CropInstance.farmer_id == current_user.id,
+            CropInstance.is_deleted == False,
+        )
+        .first()
+    )
 
     if not crop:
         raise HTTPException(status_code=404, detail="Crop not found")
 
-    offline_count = db.query(ActionLog).filter(
-        ActionLog.crop_instance_id == crop_id,
-        ActionLog.source == "offline",
-        ActionLog.is_deleted == False,
-    ).count()
+    offline_count = (
+        db.query(ActionLog)
+        .filter(
+            ActionLog.crop_instance_id == crop_id,
+            ActionLog.source == "offline",
+            ActionLog.is_deleted == False,
+        )
+        .count()
+    )
 
     return {
         "crop_id": str(crop_id),
@@ -124,6 +135,7 @@ async def preview_offline_actions(
 
 # ── GET — Sync history for a crop ──
 
+
 @router.get("/history/{crop_id}")
 async def get_sync_history(
     crop_id: UUID,
@@ -134,11 +146,15 @@ async def get_sync_history(
     """
     Get offline-synced actions for a crop, newest first.
     """
-    crop = db.query(CropInstance).filter(
-        CropInstance.id == crop_id,
-        CropInstance.farmer_id == current_user.id,
-        CropInstance.is_deleted == False,
-    ).first()
+    crop = (
+        db.query(CropInstance)
+        .filter(
+            CropInstance.id == crop_id,
+            CropInstance.farmer_id == current_user.id,
+            CropInstance.is_deleted == False,
+        )
+        .first()
+    )
 
     if not crop:
         raise HTTPException(status_code=404, detail="Crop not found")
@@ -160,7 +176,9 @@ async def get_sync_history(
             "action_id": str(a.id),
             "action_type": a.action_type,
             "category": a.category,
-            "effective_date": a.effective_date.isoformat() if a.effective_date else None,
+            "effective_date": (
+                a.effective_date.isoformat() if a.effective_date else None
+            ),
             "local_seq_no": a.local_seq_no,
             "synced_at": a.server_timestamp.isoformat() if a.server_timestamp else None,
             "idempotency_key": a.idempotency_key,
@@ -170,6 +188,7 @@ async def get_sync_history(
 
 
 # ── GET — Farmer's own anomaly flags ──
+
 
 @router.get("/anomalies")
 async def get_sync_anomalies(
@@ -234,10 +253,14 @@ async def sync_batch_for_crop(
     MSDD API-0103 / TDD-8-C0018
     """
     # Validate crop ownership before processing
-    crop = db.query(CropInstance).filter(
-        CropInstance.id == crop_id,
-        CropInstance.is_deleted == False,
-    ).first()
+    crop = (
+        db.query(CropInstance)
+        .filter(
+            CropInstance.id == crop_id,
+            CropInstance.is_deleted == False,
+        )
+        .first()
+    )
     if not crop:
         raise HTTPException(status_code=404, detail="Crop not found")
     if crop.farmer_id != current_user.id:
@@ -259,4 +282,3 @@ async def sync_batch_for_crop(
         db.rollback()
         logger.error(f"sync-batch failed for crop {crop_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Sync operation failed")
-

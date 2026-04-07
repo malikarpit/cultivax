@@ -23,24 +23,24 @@ from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session  # type: ignore
 
+from app.api.v1.router import api_router
 from app.config import settings
-from app.database import get_db
+from app.core.logging_config import setup_structured_logging
+from app.database import SessionLocal, get_db
+from app.middleware.body_size_limiter import BodySizeLimiterMiddleware
+from app.middleware.correlation_id import CorrelationIdMiddleware
+from app.middleware.distributed_rate_limiter import \
+    DistributedRateLimitMiddleware
 from app.middleware.error_handler import ErrorHandlerMiddleware
 from app.middleware.idempotency import DistributedIdempotencyMiddleware
-from app.middleware.rate_limiter import RateLimitMiddleware
-from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.middleware.input_sanitization import InputSanitizationMiddleware
-from app.middleware.distributed_rate_limiter import DistributedRateLimitMiddleware
-from app.middleware.correlation_id import CorrelationIdMiddleware
+from app.middleware.rate_limiter import RateLimitMiddleware
 from app.middleware.request_logging import RequestLoggingMiddleware
-from app.middleware.body_size_limiter import BodySizeLimiterMiddleware
-from app.api.v1.router import api_router
-from app.database import SessionLocal
-from app.services.event_dispatcher.db_dispatcher import DBEventDispatcher
-from app.security.production_validator import ProductionSecurityValidator
-from app.security.admin_api_key import require_admin_api_key
 from app.middleware.response_envelope import ResponseEnvelopeMiddleware
-from app.core.logging_config import setup_structured_logging
+from app.middleware.security_headers import SecurityHeadersMiddleware
+from app.security.admin_api_key import require_admin_api_key
+from app.security.production_validator import ProductionSecurityValidator
+from app.services.event_dispatcher.db_dispatcher import DBEventDispatcher
 
 # Enable structured logging (Observability)
 setup_structured_logging(app_name=settings.APP_NAME, environment=settings.APP_ENV)
@@ -65,24 +65,8 @@ app = FastAPI(
 
 # Middleware Registration (Order matters: add_middleware inserts at index 0, so the LAST added is the OUTERMOST)
 
-# 9. Security headers (Closest to app)
+# 8. Security headers (Closest to app)
 app.add_middleware(SecurityHeadersMiddleware)
-
-# 8. CORS
-cors_config = {
-    "allow_origins": settings.cors_origins_list,
-    "allow_credentials": True,
-    "allow_methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    "allow_headers": ["*"],
-}
-if settings.APP_ENV == "production":
-    cors_config["allow_methods"] = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
-    cors_config["allow_headers"] = [
-        "Authorization", "Content-Type", "X-API-Key", "X-Signature", 
-        "X-Timestamp", "Idempotency-Key", "X-Request-ID"
-    ]
-    logger.info("Using strict CORS policy for production")
-app.add_middleware(CORSMiddleware, **cors_config)
 
 # 7. Input sanitization (logging only)
 app.add_middleware(InputSanitizationMiddleware)
@@ -113,6 +97,33 @@ app.add_middleware(CorrelationIdMiddleware)
 # 1. Error handler (Outermost wrapper - catches EVERYTHING)
 app.add_middleware(ErrorHandlerMiddleware)
 
+# 0. CORS (Absolute outermost)
+cors_origins = settings.cors_origins_list
+logger.info("CORS allow_origins configured: %s", cors_origins)
+if not cors_origins:
+    logger.warning("CORS allow_origins is empty. Browser clients will fail cross-origin requests.")
+
+cors_config = {
+    "allow_origins": cors_origins,
+    "allow_credentials": True,
+    "allow_methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    "allow_headers": ["*"],
+}
+if settings.APP_ENV == "production":
+    cors_config["allow_methods"] = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+    cors_config["allow_headers"] = [
+        "Authorization",
+        "Content-Type",
+        "X-API-Key",
+        "X-Signature",
+        "X-Timestamp",
+        "Idempotency-Key",
+        "X-Request-ID",
+    ]
+    logger.info("Using strict CORS policy for production")
+
+app.add_middleware(CORSMiddleware, **cors_config)
+
 # Register API routers
 app.include_router(api_router)
 
@@ -120,8 +131,8 @@ app.include_router(api_router)
 # These run INSIDE the ASGI app before middleware sees the response,
 # preventing the BaseHTTPMiddleware call_next stream-breaking issue.
 from fastapi import Request
-from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 
@@ -136,7 +147,7 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
             "success": False,
             "error": detail,
             "details": [{"message": detail}],
-            "request_id": request_id
+            "request_id": request_id,
         },
     )
 
@@ -145,16 +156,20 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     """Convert Pydantic validation errors to structured JSON."""
     request_id = getattr(request.state, "request_id", "unknown")
-    errors = [{"field": ".".join(str(l) for l in e["loc"]), "message": e["msg"]} for e in exc.errors()]
+    errors = [
+        {"field": ".".join(str(l) for l in e["loc"]), "message": e["msg"]}
+        for e in exc.errors()
+    ]
     return JSONResponse(
         status_code=422,
         content={
             "success": False,
             "error": "Validation Error",
             "details": errors,
-            "request_id": request_id
+            "request_id": request_id,
         },
     )
+
 
 # --- Background Tasks ---
 _event_processor_task: Optional[asyncio.Task] = None
@@ -200,6 +215,7 @@ async def start_event_processor():
     # Launch background health polling loop
     async def _health_polling_loop():
         from app.services.system_health_service import SystemHealthService
+
         while not _shutdown_event.is_set():
             try:
                 health_db = SessionLocal()
@@ -212,13 +228,17 @@ async def start_event_processor():
             except Exception as exc:
                 logger.error(f"Background health check error: {exc}")
             try:
-                await asyncio.wait_for(_shutdown_event.wait(), timeout=HEALTH_CHECK_INTERVAL)
+                await asyncio.wait_for(
+                    _shutdown_event.wait(), timeout=HEALTH_CHECK_INTERVAL
+                )
             except asyncio.TimeoutError:
                 pass  # normal — interval elapsed
 
     global _health_check_task
     _health_check_task = asyncio.create_task(_health_polling_loop())
-    logger.info(f"Background health polling task created (interval={HEALTH_CHECK_INTERVAL}s)")
+    logger.info(
+        f"Background health polling task created (interval={HEALTH_CHECK_INTERVAL}s)"
+    )
 
 
 @app.on_event("shutdown")
@@ -227,7 +247,10 @@ async def stop_event_processor():
     global _event_processor_task, _health_check_task
 
     _shutdown_event.set()
-    for task, name in [(_event_processor_task, "event processor"), (_health_check_task, "health polling")]:
+    for task, name in [
+        (_event_processor_task, "event processor"),
+        (_health_check_task, "health polling"),
+    ]:
         if task and not task.done():
             logger.info(f"Waiting for {name} to stop...")
             try:
@@ -248,6 +271,7 @@ async def health_check(db: Session = Depends(get_db)):
     """
     try:
         from app.services.system_health_service import SystemHealthService
+
         service = SystemHealthService(db)
         # Public endpoint returns redacted coarse summary (no details/errors)
         summary = service.get_status_summary(admin_detail=False)
@@ -287,18 +311,24 @@ async def run_cron_tasks(
 
     Requires: X-Admin-Key header (ADMIN_SECRET_KEY env var).
     """
-    from app.services.cron import run_scheduled_tasks
     from app.security.blockchain_audit import log_to_blockchain
+    from app.services.cron import run_scheduled_tasks
 
     if cadence and cadence not in ("hourly", "daily", "weekly"):
         from fastapi import HTTPException
-        raise HTTPException(status_code=400, detail="cadence must be one of: hourly, daily, weekly")
+
+        raise HTTPException(
+            status_code=400, detail="cadence must be one of: hourly, daily, weekly"
+        )
 
     result = await run_scheduled_tasks(db, cadence=cadence, force=force)
 
     log_to_blockchain(
         action="admin_cron_run",
-        details={"run_id": result.get("run_id"), "overall_status": result.get("overall_status")},
+        details={
+            "run_id": result.get("run_id"),
+            "overall_status": result.get("overall_status"),
+        },
     )
 
     return result
@@ -314,8 +344,8 @@ async def trigger_health_check(
 
     Requires: X-API-Key header for authentication
     """
-    from app.services.system_health_service import SystemHealthService
     from app.security.blockchain_audit import log_to_blockchain
+    from app.services.system_health_service import SystemHealthService
 
     service = SystemHealthService(db)
     result = await service.check_all()

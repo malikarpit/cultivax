@@ -105,8 +105,7 @@ async def list_supported_locales():
     """List all supported locales."""
     return {
         "locales": [
-            {"code": code, "name": name}
-            for code, name in SUPPORTED_LOCALES.items()
+            {"code": code, "name": name} for code, name in SUPPORTED_LOCALES.items()
         ],
         "default": "en",
     }

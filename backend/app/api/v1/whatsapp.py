@@ -34,7 +34,10 @@ router = APIRouter(prefix="/whatsapp", tags=["WhatsApp"])
 # Signature verification
 # ──────────────────────────────────────────────────────────────────────────────
 
-def _verify_meta_signature(payload: bytes, signature_header: Optional[str], secret: str) -> bool:
+
+def _verify_meta_signature(
+    payload: bytes, signature_header: Optional[str], secret: str
+) -> bool:
     """
     Verify the X-Hub-Signature-256 header from Meta.
 
@@ -43,7 +46,7 @@ def _verify_meta_signature(payload: bytes, signature_header: Optional[str], secr
     """
     if not signature_header or not signature_header.startswith("sha256="):
         return False
-    provided_sig = signature_header[len("sha256="):]
+    provided_sig = signature_header[len("sha256=") :]
     expected_sig = hmac.new(
         secret.encode("utf-8"),
         payload,
@@ -55,6 +58,7 @@ def _verify_meta_signature(payload: bytes, signature_header: Optional[str], secr
 # ──────────────────────────────────────────────────────────────────────────────
 # Webhook verification (GET) — Meta sends this during app setup
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 @router.get(
     "/webhook",
@@ -77,7 +81,11 @@ async def webhook_challenge(
 
     if hub_mode == "subscribe" and hub_verify_token == verify_token:
         logger.info("WhatsApp webhook challenge verified successfully")
-        return int(hub_challenge) if hub_challenge and hub_challenge.isdigit() else hub_challenge
+        return (
+            int(hub_challenge)
+            if hub_challenge and hub_challenge.isdigit()
+            else hub_challenge
+        )
 
     raise HTTPException(status_code=403, detail="Webhook verification failed")
 
@@ -85,6 +93,7 @@ async def webhook_challenge(
 # ──────────────────────────────────────────────────────────────────────────────
 # Webhook event receiver (POST)
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 @router.post(
     "/webhook",
@@ -157,7 +166,9 @@ async def _process_message(message: dict, db: Session) -> None:
     from_number = message.get("from", "")
     msg_id = message.get("id", "")
 
-    logger.info(f"WhatsApp message received: type={msg_type} from={from_number} id={msg_id}")
+    logger.info(
+        f"WhatsApp message received: type={msg_type} from={from_number} id={msg_id}"
+    )
 
     if msg_type == "text":
         text = message.get("text", {}).get("body", "").strip().upper()
@@ -171,6 +182,8 @@ async def _process_message(message: dict, db: Session) -> None:
         elif text.startswith("HELP") or "मदद" in text:
             logger.info(f"Help command from {from_number}")
         else:
-            logger.info(f"Unrecognized WhatsApp command from {from_number}: {text[:50]}")
+            logger.info(
+                f"Unrecognized WhatsApp command from {from_number}: {text[:50]}"
+            )
     else:
         logger.debug(f"Unhandled WhatsApp message type: {msg_type}")

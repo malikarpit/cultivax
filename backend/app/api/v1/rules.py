@@ -12,19 +12,21 @@ POST /api/v1/rules/{rule_id}/deprecate
 MSDD 1.4 — rule_version_applied tracking
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Body
-from sqlalchemy.orm import Session
-from uuid import UUID
-from typing import Optional
-from pydantic import BaseModel
 from datetime import date, datetime, timezone
+from typing import Optional
+from uuid import UUID
 
-from app.database import get_db
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
 from app.api.deps import get_current_user, require_role
-from app.models.user import User
-from app.models.crop_rule_template import CropRuleTemplate
+from app.database import get_db
 from app.models.admin_audit import AdminAuditLog
+from app.models.crop_rule_template import CropRuleTemplate
+from app.models.user import User
 from app.services.admin_audit import create_audit_entry
+from app.services.ctis.template_governance import TemplateGovernanceService
 
 router = APIRouter(prefix="/rules", tags=["Crop Rules"])
 
@@ -45,7 +47,7 @@ class RuleCreateRequest(BaseModel):
 
 
 class RuleResponse(BaseModel):
-    id: str
+    id: UUID
     crop_type: str
     variety: Optional[str]
     region: Optional[str]
@@ -53,11 +55,11 @@ class RuleResponse(BaseModel):
     effective_from_date: date
     status: str
     validation_errors: Optional[list] = None
-    approved_by: Optional[str] = None
+    approved_by: Optional[UUID] = None
     approved_at: Optional[datetime] = None
     description: Optional[str]
     created_at: datetime
-    created_by: Optional[str] = None
+    created_by: Optional[UUID] = None
 
     class Config:
         from_attributes = True
@@ -84,15 +86,20 @@ async def list_rules(
         query = query.filter(CropRuleTemplate.region == region)
     if rule_status:
         query = query.filter(CropRuleTemplate.status == rule_status)
-        
+
     total = query.count()
-    rules = query.order_by(CropRuleTemplate.created_at.desc()).offset((page - 1) * per_page).limit(per_page).all()
-    
+    rules = (
+        query.order_by(CropRuleTemplate.created_at.desc())
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+        .all()
+    )
+
     return {
         "items": [RuleResponse.model_validate(r) for r in rules],
         "total": total,
         "page": page,
-        "per_page": per_page
+        "per_page": per_page,
     }
 
 
@@ -122,7 +129,7 @@ async def create_rule(
         drift_limits=data.drift_limits or {},
         description=data.description,
         created_by=current_user.id,
-        status="draft"
+        status="draft",
     )
     db.add(rule)
     db.commit()
@@ -141,36 +148,16 @@ async def validate_rule(
     current_user: User = Depends(get_current_user),
 ):
     """Validate a draft rule template semantics. Moves to validated if success."""
+    svc = TemplateGovernanceService(db)
+    try:
+        svc.validate_template(rule_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Rule not found")
+
     rule = db.query(CropRuleTemplate).filter(CropRuleTemplate.id == rule_id).first()
     if not rule:
         raise HTTPException(status_code=404, detail="Rule not found")
-        
-    if rule.status not in ["draft", "validated"]:
-        raise HTTPException(status_code=400, detail="Can only validate draft templates")
-        
-    errors = []
-    if not rule.stage_definitions or len(rule.stage_definitions) == 0:
-        errors.append("Stage definitions are empty")
-        
-    # Semantic verification
-    last_day = -1
-    for s in rule.stage_definitions:
-        start_day = s.get("start_day", -1)
-        if start_day <= last_day:
-            errors.append(f"Stage sequence monotonically increasing validation failed near day {start_day}")
-        last_day = start_day
-        
-    if "water_threshold" not in rule.risk_parameters:
-        errors.append("Missing required risk parameter: water_threshold")
-        
-    if errors:
-        rule.validation_errors = errors
-        rule.status = "draft"
-    else:
-        rule.validation_errors = []
-        rule.status = "validated"
-        
-    db.commit()
+
     db.refresh(rule)
     return RuleResponse.model_validate(rule)
 
@@ -186,41 +173,47 @@ async def approve_rule(
     current_user: User = Depends(get_current_user),
 ):
     """Approve a validated rule template. Replaces active."""
+    svc = TemplateGovernanceService(db)
+    try:
+        approve_result = svc.approve_template(rule_id, current_user.id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Rule not found")
+
+    if not approve_result.get("approved"):
+        error = str(approve_result.get("error") or "Approval failed")
+        if "Dual-approval" in error:
+            raise HTTPException(status_code=403, detail=error)
+        raise HTTPException(status_code=400, detail=error)
+
     rule = db.query(CropRuleTemplate).filter(CropRuleTemplate.id == rule_id).first()
     if not rule:
         raise HTTPException(status_code=404, detail="Rule not found")
-        
-    if rule.status != "validated":
-        raise HTTPException(status_code=400, detail="Only validated rules can be approved")
-        
-    if str(rule.created_by) == str(current_user.id):
-        raise HTTPException(status_code=403, detail="Dual-admin required: Cannot self-approve created templates")
-        
-    # Transactional Deprecation of previous active
-    active_in_scope = db.query(CropRuleTemplate).filter(
-        CropRuleTemplate.crop_type == rule.crop_type,
-        CropRuleTemplate.region == rule.region,
-        CropRuleTemplate.variety == rule.variety,
-        CropRuleTemplate.status == "active",
-        CropRuleTemplate.id != rule_id
-    ).all()
-    
+
+    # Deprecate any previously active template in the same scope.
+    active_in_scope = (
+        db.query(CropRuleTemplate)
+        .filter(
+            CropRuleTemplate.crop_type == rule.crop_type,
+            CropRuleTemplate.region == rule.region,
+            CropRuleTemplate.variety == rule.variety,
+            CropRuleTemplate.status == "active",
+            CropRuleTemplate.id != rule_id,
+        )
+        .all()
+    )
+
     for old_active in active_in_scope:
         old_active.status = "deprecated"
-        
-    rule.status = "active"
-    rule.approved_by = current_user.id
-    rule.approved_at = datetime.now(timezone.utc)
-    
+
     create_audit_entry(
         db=db,
         admin_id=current_user.id,
         action="rule_approved",
         entity_type="crop_rule_template",
         entity_id=rule_id,
-        after_value={"crop_type": rule.crop_type}
+        after_value={"crop_type": rule.crop_type},
     )
-    
+
     db.commit()
     db.refresh(rule)
     return RuleResponse.model_validate(rule)
@@ -238,24 +231,30 @@ async def deprecate_rule(
     current_user: User = Depends(get_current_user),
 ):
     """Deprecate an active or validated template."""
+    svc = TemplateGovernanceService(db)
+    try:
+        result = svc.deprecate_template(rule_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Rule not found")
+
+    if not result.get("deprecated"):
+        raise HTTPException(
+            status_code=400, detail=result.get("error") or "Deprecation failed"
+        )
+
     rule = db.query(CropRuleTemplate).filter(CropRuleTemplate.id == rule_id).first()
     if not rule:
         raise HTTPException(status_code=404, detail="Rule not found")
-        
-    if rule.status == "deprecated":
-        raise HTTPException(status_code=400, detail="Already deprecated")
-        
-    rule.status = "deprecated"
-    
+
     create_audit_entry(
         db=db,
         admin_id=current_user.id,
         action="rule_deprecated",
         entity_type="crop_rule_template",
         entity_id=rule_id,
-        reason=reason
+        reason=reason,
     )
-    
+
     db.commit()
     db.refresh(rule)
     return RuleResponse.model_validate(rule)

@@ -11,23 +11,27 @@ import sys
 import traceback
 from datetime import datetime, timezone
 
+
 class JSONFormatter(logging.Formatter):
     """
     Format log records as JSON objects.
     """
+
     def __init__(self, **kwargs):
         super().__init__()
         self.default_kwargs = kwargs
 
     def format(self, record: logging.LogRecord) -> str:
         log_obj = {
-            "timestamp": datetime.fromtimestamp(record.created, tz=timezone.utc).isoformat(),
+            "timestamp": datetime.fromtimestamp(
+                record.created, tz=timezone.utc
+            ).isoformat(),
             "level": record.levelname,
             "name": record.name,
             "message": record.getMessage(),
             "module": record.module,
             "line": record.lineno,
-            **self.default_kwargs
+            **self.default_kwargs,
         }
 
         # Add correlation ID if present in the record attributes
@@ -40,7 +44,10 @@ class JSONFormatter(logging.Formatter):
 
         return json.dumps(log_obj)
 
-def setup_structured_logging(app_name: str, environment: str = "development", log_level: int = logging.INFO):
+
+def setup_structured_logging(
+    app_name: str, environment: str = "development", log_level: int = logging.INFO
+):
     """
     Initializes root logger to use JSON formatting.
     """
@@ -54,7 +61,7 @@ def setup_structured_logging(app_name: str, environment: str = "development", lo
     handler = logging.StreamHandler(sys.stdout)
     formatter = JSONFormatter(app=app_name, env=environment)
     handler.setFormatter(formatter)
-    
+
     root_logger.addHandler(handler)
 
     # Prevent uvicorn access logs from duplicating or looking messy.
@@ -62,7 +69,7 @@ def setup_structured_logging(app_name: str, environment: str = "development", lo
     uvicorn_access_logger = logging.getLogger("uvicorn.access")
     uvicorn_access_logger.handlers = []
     uvicorn_access_logger.propagate = True
-    
+
     # Do the same for general uvicorn
     uvicorn_logger = logging.getLogger("uvicorn")
     uvicorn_logger.handlers = []

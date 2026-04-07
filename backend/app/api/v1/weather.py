@@ -8,19 +8,20 @@ GET /api/v1/weather?lat={lat}&lng={lng}
 GET /api/v1/weather/risk?crop_id={id}
 """
 
+import logging
+from datetime import datetime, timedelta, timezone
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from uuid import UUID
-from datetime import datetime, timezone, timedelta
 
-from app.database import get_db
 from app.api.deps import get_current_user
-from app.models.user import User
+from app.database import get_db
 from app.models.crop_instance import CropInstance
 from app.models.land_parcel import LandParcel
+from app.models.user import User
+from app.schemas.weather import WeatherDataSchema, WeatherRiskResponse
 from app.services.weather.weather_service import WeatherService
-from app.schemas.weather import WeatherRiskResponse, WeatherDataSchema
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -29,8 +30,8 @@ router = APIRouter(prefix="/weather", tags=["Weather"])
 
 @router.get("/", response_model=WeatherRiskResponse)
 async def get_weather(
-    lat: float = Query(..., ge=-90, le=90, description="Latitude"),
-    lng: float = Query(..., ge=-180, le=180, description="Longitude"),
+    lat: float | None = Query(None, ge=-90, le=90, description="Latitude"),
+    lng: float | None = Query(None, ge=-180, le=180, description="Longitude"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -41,6 +42,12 @@ async def get_weather(
     weather_service = WeatherService()
 
     try:
+        # Fallback to user region default if coordinates missing
+        if lat is None or lng is None:
+            defaults = _region_coords(current_user.region)
+            lat = lat if lat is not None else defaults.get("lat", 28.61)
+            lng = lng if lng is not None else defaults.get("lng", 77.23)
+
         # Resolve weather risk using the new db-backed service
         result = await weather_service.get_weather_risk(
             db=db,
@@ -85,9 +92,7 @@ async def get_crop_weather_risk(
     coordinate_source = "region_fallback"
     if hasattr(crop, "land_parcel_id") and crop.land_parcel_id:
         parcel = (
-            db.query(LandParcel)
-            .filter(LandParcel.id == crop.land_parcel_id)
-            .first()
+            db.query(LandParcel).filter(LandParcel.id == crop.land_parcel_id).first()
         )
         if parcel and parcel.gps_coordinates:
             centroid = parcel.gps_coordinates.get("centroid", {})
@@ -109,16 +114,16 @@ async def get_crop_weather_risk(
             latitude=lat,
             longitude=lng,
         )
-        
+
         # Add context about the coordinate resolution strategy back into the payload
         result["coordinate_source"] = coordinate_source
-        
+
         # Inject custom crop impact metadata into the response
         risk = result.get("weather_risk_score", 0.0)
         result["crop_impact"] = _crop_impact_text(risk, crop.crop_type, crop.stage)
 
         return result
-        
+
     except Exception as e:
         logger.error(f"Weather crop API failed: {e}")
         raise HTTPException(status_code=503, detail="Weather service unavailable.")
@@ -159,11 +164,7 @@ def _crop_impact_text(risk: float, crop_type: str, stage: str) -> str:
         return f"Moderate conditions for {crop}{stage_text}. Monitor closely."
     elif risk < 0.6:
         return (
-            f"Elevated risk for {crop}{stage_text}. "
-            f"Consider protective measures."
+            f"Elevated risk for {crop}{stage_text}. " f"Consider protective measures."
         )
     else:
-        return (
-            f"High risk for {crop}{stage_text}! "
-            f"Immediate attention recommended."
-        )
+        return f"High risk for {crop}{stage_text}! " f"Immediate attention recommended."

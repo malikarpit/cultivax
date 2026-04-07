@@ -5,14 +5,15 @@ What-If Simulation endpoint for testing hypothetical actions.
 POST /api/v1/crops/{crop_id}/simulate
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
 from uuid import UUID
 
-from app.database import get_db
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+
 from app.api.deps import get_current_user, require_role
-from app.models.user import User
+from app.database import get_db
 from app.models.crop_instance import CropInstance
+from app.models.user import User
 from app.schemas.simulation import SimulationRequest, SimulationResponse
 from app.services.ctis.whatif_engine import WhatIfEngine
 
@@ -38,10 +39,14 @@ async def simulate_crop(
     Only the crop owner may simulate.
     """
     # Ownership check — farmer can only simulate their own crops
-    crop = db.query(CropInstance).filter(
-        CropInstance.id == crop_id,
-        CropInstance.is_deleted == False,
-    ).first()
+    crop = (
+        db.query(CropInstance)
+        .filter(
+            CropInstance.id == crop_id,
+            CropInstance.is_deleted == False,
+        )
+        .first()
+    )
     if not crop:
         raise HTTPException(status_code=404, detail="Crop not found")
     if crop.farmer_id != current_user.id:
@@ -84,5 +89,6 @@ async def what_if_crop(
     The MSDD names this endpoint 'what-if' (MSDD-8-C0024 / API-0104).
     Delegates directly to simulate_crop.
     """
-    return await simulate_crop(crop_id=crop_id, request=request, db=db, current_user=current_user)
-
+    return await simulate_crop(
+        crop_id=crop_id, request=request, db=db, current_user=current_user
+    )

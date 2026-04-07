@@ -5,14 +5,15 @@ Yield submission endpoint for crop harvest recording.
 POST /api/v1/crops/{crop_id}/yield
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
 from uuid import UUID
 
-from app.database import get_db
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+
 from app.api.deps import get_current_user, require_role
+from app.database import get_db
 from app.models.user import User
-from app.schemas.yield_record import YieldSubmission, YieldResponse
+from app.schemas.yield_record import YieldResponse, YieldSubmission
 from app.services.ctis.yield_service import YieldService
 
 router = APIRouter(prefix="/crops", tags=["Yield"])

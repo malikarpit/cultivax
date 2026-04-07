@@ -12,17 +12,19 @@ MSDD 2.7 — Service Request Lifecycle
 TDD-8-C0033, TDD-8-C0034 — complete and review endpoints
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
 from uuid import UUID
 
-from app.database import get_db
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+
 from app.api.deps import get_current_user, require_role
-from app.models.user import User
+from app.database import get_db
 from app.models.service_provider import ServiceProvider
 from app.models.service_request import ServiceRequest
-from app.schemas.service_request import ServiceRequestCreate, ServiceRequestResponse
+from app.models.user import User
 from app.schemas.common import PaginatedResponse
+from app.schemas.service_request import (ServiceRequestCreate,
+                                         ServiceRequestResponse)
 from app.services.soe.request_service import RequestService
 
 router = APIRouter(prefix="/service-requests", tags=["Service Requests"])
@@ -30,10 +32,14 @@ router = APIRouter(prefix="/service-requests", tags=["Service Requests"])
 
 def _resolve_provider_profile(db: Session, user: User) -> ServiceProvider:
     """Resolve provider profile from authenticated provider user."""
-    provider = db.query(ServiceProvider).filter(
-        ServiceProvider.user_id == user.id,
-        ServiceProvider.is_deleted == False,
-    ).first()
+    provider = (
+        db.query(ServiceProvider)
+        .filter(
+            ServiceProvider.user_id == user.id,
+            ServiceProvider.is_deleted == False,
+        )
+        .first()
+    )
     if not provider:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -53,10 +59,14 @@ def _resolve_request_for_provider(
     provider_id: UUID,
 ) -> ServiceRequest:
     """Load request and ensure it is assigned to the acting provider profile."""
-    request = db.query(ServiceRequest).filter(
-        ServiceRequest.id == request_id,
-        ServiceRequest.is_deleted == False,
-    ).first()
+    request = (
+        db.query(ServiceRequest)
+        .filter(
+            ServiceRequest.id == request_id,
+            ServiceRequest.is_deleted == False,
+        )
+        .first()
+    )
     if not request:
         raise HTTPException(status_code=404, detail="Service request not found")
     if request.provider_id != provider_id:
@@ -86,6 +96,7 @@ async def create_service_request(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+
 @router.get(
     "/",
     response_model=PaginatedResponse[ServiceRequestResponse],
@@ -100,7 +111,11 @@ async def list_service_requests(
     query = db.query(ServiceRequest).filter(ServiceRequest.is_deleted == False)
 
     is_farmer = current_user.role == "farmer"
-    provider = db.query(ServiceProvider).filter(ServiceProvider.user_id == current_user.id).first()
+    provider = (
+        db.query(ServiceProvider)
+        .filter(ServiceProvider.user_id == current_user.id)
+        .first()
+    )
 
     if is_farmer:
         query = query.filter(ServiceRequest.farmer_id == current_user.id)
@@ -112,20 +127,29 @@ async def list_service_requests(
     from app.models.service_review import ServiceReview
 
     total = query.count()
-    items = query.order_by(ServiceRequest.created_at.desc()).offset((page - 1) * per_page).limit(per_page).all()
+    items = (
+        query.order_by(ServiceRequest.created_at.desc())
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+        .all()
+    )
 
     reviewed_ids = set()
     if items:
-        reviewed_reqs = db.query(ServiceReview.request_id).filter(
-            ServiceReview.request_id.in_([r.id for r in items]),
-            ServiceReview.is_deleted == False
-        ).all()
+        reviewed_reqs = (
+            db.query(ServiceReview.request_id)
+            .filter(
+                ServiceReview.request_id.in_([r.id for r in items]),
+                ServiceReview.is_deleted == False,
+            )
+            .all()
+        )
         reviewed_ids = {r[0] for r in reviewed_reqs}
 
     enriched = []
     for req in items:
         base = ServiceRequestResponse.model_validate(req).dict()
-        
+
         # Capability Mapping
         status = req.status
         is_my_prov = provider and req.provider_id == provider.id
@@ -134,9 +158,11 @@ async def list_service_requests(
         base["can_decline"] = status == "Pending" and is_my_prov
         base["can_start"] = status == "Accepted" and is_my_prov
         base["can_complete"] = status == "InProgress" and is_my_prov
-        base["can_cancel"] = status in ["Pending", "Accepted"] and (is_farmer or is_my_prov)
+        base["can_cancel"] = status in ["Pending", "Accepted"] and (
+            is_farmer or is_my_prov
+        )
         base["has_reviewed"] = req.id in reviewed_ids
-        
+
         enriched.append(ServiceRequestResponse(**base))
 
     return PaginatedResponse(
@@ -204,7 +230,11 @@ async def complete_service_request(
 
 
 @router.put("/{request_id}/decline", dependencies=[Depends(require_role(["provider"]))])
-async def decline_service_request(request_id: UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def decline_service_request(
+    request_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     provider = _resolve_provider_profile(db, current_user)
     _resolve_request_for_provider(db, request_id, provider.id)
     service = RequestService(db)
@@ -216,12 +246,21 @@ async def decline_service_request(request_id: UUID, db: Session = Depends(get_db
     except LookupError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
+
 @router.put("/{request_id}/cancel")
-async def cancel_service_request(request_id: UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    request = db.query(ServiceRequest).filter(
-        ServiceRequest.id == request_id,
-        ServiceRequest.is_deleted == False,
-    ).first()
+async def cancel_service_request(
+    request_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    request = (
+        db.query(ServiceRequest)
+        .filter(
+            ServiceRequest.id == request_id,
+            ServiceRequest.is_deleted == False,
+        )
+        .first()
+    )
     if not request:
         raise HTTPException(status_code=404, detail="Service request not found")
 
@@ -231,7 +270,9 @@ async def cancel_service_request(request_id: UUID, db: Session = Depends(get_db)
     elif current_user.role == "provider":
         provider = _resolve_provider_profile(db, current_user)
         if request.provider_id != provider.id:
-            raise HTTPException(status_code=403, detail="You are not assigned to this request")
+            raise HTTPException(
+                status_code=403, detail="You are not assigned to this request"
+            )
     elif current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Not allowed")
 
@@ -244,8 +285,13 @@ async def cancel_service_request(request_id: UUID, db: Session = Depends(get_db)
     except LookupError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
+
 @router.put("/{request_id}/start", dependencies=[Depends(require_role(["provider"]))])
-async def start_service_request(request_id: UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def start_service_request(
+    request_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     provider = _resolve_provider_profile(db, current_user)
     _resolve_request_for_provider(db, request_id, provider.id)
     service = RequestService(db)
@@ -257,8 +303,13 @@ async def start_service_request(request_id: UUID, db: Session = Depends(get_db),
     except LookupError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
+
 @router.put("/{request_id}/fail", dependencies=[Depends(require_role(["provider"]))])
-async def fail_service_request(request_id: UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def fail_service_request(
+    request_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     provider = _resolve_provider_profile(db, current_user)
     _resolve_request_for_provider(db, request_id, provider.id)
     service = RequestService(db)
@@ -312,8 +363,8 @@ async def review_service_request(
 
     MSDD API-0128 / TDD-8-C0034
     """
-    from app.schemas.service_review import ReviewCreate
     from app.api.v1.reviews import submit_review
+    from app.schemas.service_review import ReviewCreate
 
     # Merge path param into body
     review_data = ReviewCreate(
