@@ -4,9 +4,10 @@ Offline Sync Schemas
 Pydantic models for the offline sync request/response.
 """
 
-from pydantic import BaseModel, Field, field_validator
-from typing import Optional, List
 from enum import Enum
+from typing import List, Optional
+
+from pydantic import BaseModel, Field, field_validator
 
 
 class ActionTypeEnum(str, Enum):
@@ -33,6 +34,7 @@ class ActionTypeEnum(str, Enum):
 
 class OfflineAction(BaseModel):
     """Single offline-queued action."""
+
     crop_instance_id: str
     action_type: str
     action_effective_date: str  # ISO format
@@ -55,12 +57,14 @@ class OfflineAction(BaseModel):
 
 class OfflineSyncRequest(BaseModel):
     """Offline sync batch request."""
+
     device_id: str = Field(..., min_length=1)
     session_id: str = Field(..., min_length=1)
     actions: List[OfflineAction] = Field(..., min_length=1, max_length=500)
 
 
 # ── Response detail models ──
+
 
 class SyncedActionDetail(BaseModel):
     action_id: str
@@ -96,6 +100,7 @@ class AnomalyDetail(BaseModel):
 
 class OfflineSyncResponse(BaseModel):
     """Full response from offline sync."""
+
     synced: int
     failed: int
     warnings: int

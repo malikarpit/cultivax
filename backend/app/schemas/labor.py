@@ -5,10 +5,11 @@ Pydantic schemas for Labor resource CRUD operations.
 MSDD Section 2.6.
 """
 
-from pydantic import BaseModel, Field
+from datetime import datetime
 from typing import Optional
 from uuid import UUID
-from datetime import datetime
+
+from pydantic import BaseModel, Field
 
 
 class LaborCreate(BaseModel):
@@ -21,6 +22,7 @@ class LaborCreate(BaseModel):
     sub_region: Optional[str] = None
     is_available: bool = True
 
+
 class LaborUpdate(BaseModel):
     labor_type: Optional[str] = Field(None, min_length=1)
     description: Optional[str] = None
@@ -29,6 +31,7 @@ class LaborUpdate(BaseModel):
     hourly_rate: Optional[float] = Field(None, ge=0)
     region: Optional[str] = Field(None, min_length=1)
     sub_region: Optional[str] = None
+
 
 class LaborAvailabilityUpdate(BaseModel):
     is_available: bool

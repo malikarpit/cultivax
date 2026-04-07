@@ -5,19 +5,20 @@ Pydantic schemas for land parcel CRUD operations.
 Supports GPS boundary polygons for plot mapping.
 """
 
-from pydantic import BaseModel, Field, field_validator
-from typing import Optional, List
-from uuid import UUID
 from datetime import datetime
+from typing import List, Optional
+from uuid import UUID
+
+from pydantic import BaseModel, Field, field_validator
 
 
 class GPSCoordinates(BaseModel):
     """GPS coordinates with optional boundary polygon."""
+
     lat: float = Field(..., ge=-90, le=90, description="Latitude")
     lng: float = Field(..., ge=-180, le=180, description="Longitude")
     boundary_polygon: Optional[List[List[float]]] = Field(
-        None,
-        description="Array of [lat, lng] pairs forming a closed polygon"
+        None, description="Array of [lat, lng] pairs forming a closed polygon"
     )
 
     @field_validator("boundary_polygon")
@@ -43,6 +44,7 @@ class GPSCoordinates(BaseModel):
 
 class SoilInfo(BaseModel):
     """Soil composition data."""
+
     primary: Optional[str] = None  # alluvial | black | red | laterite | sandy | clay
     ph: Optional[float] = Field(None, ge=0, le=14)
     organic_matter: Optional[str] = None  # low | medium | high
@@ -50,6 +52,7 @@ class SoilInfo(BaseModel):
 
 class LandParcelCreate(BaseModel):
     """Schema for creating a new land parcel."""
+
     parcel_name: str = Field(..., min_length=1, max_length=255)
     region: str = Field(..., min_length=1, max_length=200)
     sub_region: Optional[str] = Field(None, max_length=200)
@@ -58,13 +61,13 @@ class LandParcelCreate(BaseModel):
     soil_type: Optional[SoilInfo] = None
     gps_coordinates: GPSCoordinates
     irrigation_source: Optional[str] = Field(
-        None,
-        pattern="^(canal|tubewell|rainfed|drip|sprinkler|mixed)$"
+        None, pattern="^(canal|tubewell|rainfed|drip|sprinkler|mixed)$"
     )
 
 
 class LandParcelUpdate(BaseModel):
     """Schema for updating a land parcel."""
+
     parcel_name: Optional[str] = Field(None, min_length=1, max_length=255)
     region: Optional[str] = Field(None, max_length=200)
     sub_region: Optional[str] = Field(None, max_length=200)
@@ -73,13 +76,13 @@ class LandParcelUpdate(BaseModel):
     soil_type: Optional[SoilInfo] = None
     gps_coordinates: Optional[GPSCoordinates] = None
     irrigation_source: Optional[str] = Field(
-        None,
-        pattern="^(canal|tubewell|rainfed|drip|sprinkler|mixed)$"
+        None, pattern="^(canal|tubewell|rainfed|drip|sprinkler|mixed)$"
     )
 
 
 class LandParcelResponse(BaseModel):
     """Schema for land parcel API response."""
+
     id: UUID
     farmer_id: UUID
     parcel_name: str

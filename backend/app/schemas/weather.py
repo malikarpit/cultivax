@@ -2,9 +2,11 @@
 Pydantic schemas for Weather API and Models.
 """
 
-from pydantic import BaseModel, Field
-from typing import Optional, List, Literal
 from datetime import datetime
+from typing import List, Literal, Optional
+
+from pydantic import BaseModel, Field
+
 
 class WeatherAlertItem(BaseModel):
     code: str
@@ -12,6 +14,7 @@ class WeatherAlertItem(BaseModel):
     message: str
     starts_at: Optional[datetime] = None
     ends_at: Optional[datetime] = None
+
 
 class WeatherDataSchema(BaseModel):
     temperature_c: float = Field(alias="temperature")
@@ -27,6 +30,7 @@ class WeatherDataSchema(BaseModel):
     class Config:
         populate_by_name = True
         alias_generator = None
+
 
 class WeatherRiskResponse(BaseModel):
     weather_data: WeatherDataSchema

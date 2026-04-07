@@ -5,10 +5,11 @@ Pydantic schemas for Service Request lifecycle.
 Separated from service_provider.py per workflow.md Day 6.
 """
 
-from pydantic import BaseModel
+from datetime import datetime
 from typing import Optional
 from uuid import UUID
-from datetime import datetime
+
+from pydantic import BaseModel
 
 
 class ServiceRequestCreate(BaseModel):

@@ -4,13 +4,14 @@ SOE Schemas
 Schemas for Service Providers, Equipment, Service Requests, and Reviews.
 """
 
-from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Any
+from datetime import date, datetime
+from typing import Any, Dict, List, Optional
 from uuid import UUID
-from datetime import datetime, date
 
+from pydantic import BaseModel, Field
 
 # === Provider Schemas ===
+
 
 class ProviderCreate(BaseModel):
     business_name: Optional[str] = None
@@ -20,6 +21,7 @@ class ProviderCreate(BaseModel):
     service_radius_km: Optional[float] = None
     crop_specializations: List[str] = []
     description: Optional[str] = None
+
 
 class ProviderUpdate(BaseModel):
     business_name: Optional[str] = None
@@ -57,11 +59,13 @@ class ProviderRankedResponse(ProviderResponse):
     distance_km: Optional[float] = None
     ranking_meta: Dict[str, Any] = {}
 
+
 class PaginatedRankedResponse(BaseModel):
     items: List[ProviderRankedResponse]
     total: int
     page: int
     limit: int
+
 
 class ProviderFilter(BaseModel):
     region: Optional[str] = None
@@ -70,8 +74,8 @@ class ProviderFilter(BaseModel):
     is_verified: Optional[bool] = None
 
 
-
 # === Service Request Schemas ===
+
 
 class ServiceRequestCreate(BaseModel):
     provider_id: UUID
@@ -101,6 +105,7 @@ class ServiceRequestResponse(BaseModel):
 
 
 # === Review Schemas ===
+
 
 class ReviewCreate(BaseModel):
     request_id: UUID

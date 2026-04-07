@@ -5,14 +5,21 @@ Pydantic schemas for user registration, login, JWT tokens,
 OTP authentication, session management, and user preferences.
 """
 
-from pydantic import BaseModel, Field, field_validator
-from typing import Optional, Dict, Any, List
-from uuid import UUID
-from datetime import datetime
 import re
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+from uuid import UUID
+
+from pydantic import BaseModel, Field, field_validator
 
 SUPPORTED_LANGUAGES = ["en", "hi", "ta", "te", "mr"]
-ALLOWED_ACCESSIBILITY_KEYS = {"largeText", "highContrast", "reducedMotion", "theme", "sidebarPinned"}
+ALLOWED_ACCESSIBILITY_KEYS = {
+    "largeText",
+    "highContrast",
+    "reducedMotion",
+    "theme",
+    "sidebarPinned",
+}
 
 
 class UserCreate(BaseModel):
@@ -42,7 +49,9 @@ class UserCreate(BaseModel):
 class UserLogin(BaseModel):
     phone: str = Field(..., min_length=10, max_length=20)
     password: str = Field(..., min_length=1)
-    device_fingerprint: Optional[str] = Field(None, description="Client device fingerprint for session tracking")
+    device_fingerprint: Optional[str] = Field(
+        None, description="Client device fingerprint for session tracking"
+    )
 
 
 class UserResponse(BaseModel):
@@ -72,6 +81,7 @@ class UserUpdate(BaseModel):
 
 class UserPreferencesUpdate(BaseModel):
     """Schema for PATCH /auth/me — update language and accessibility settings only."""
+
     preferred_language: Optional[str] = Field(
         None,
         description=f"BCP-47 language code. Supported: {SUPPORTED_LANGUAGES}",
@@ -85,21 +95,28 @@ class UserPreferencesUpdate(BaseModel):
     @classmethod
     def validate_language(cls, v: Optional[str]) -> Optional[str]:
         if v is not None and v not in SUPPORTED_LANGUAGES:
-            raise ValueError(f"Unsupported language '{v}'. Must be one of: {SUPPORTED_LANGUAGES}")
+            raise ValueError(
+                f"Unsupported language '{v}'. Must be one of: {SUPPORTED_LANGUAGES}"
+            )
         return v
 
     @field_validator("accessibility_settings")
     @classmethod
-    def validate_a11y_keys(cls, v: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    def validate_a11y_keys(
+        cls, v: Optional[Dict[str, Any]]
+    ) -> Optional[Dict[str, Any]]:
         if v is not None:
             bad_keys = set(v.keys()) - ALLOWED_ACCESSIBILITY_KEYS
             if bad_keys:
-                raise ValueError(f"Invalid accessibility keys: {bad_keys}. Allowed: {ALLOWED_ACCESSIBILITY_KEYS}")
+                raise ValueError(
+                    f"Invalid accessibility keys: {bad_keys}. Allowed: {ALLOWED_ACCESSIBILITY_KEYS}"
+                )
         return v
 
 
 class UserPreferencesResponse(BaseModel):
     """Response after PATCH /auth/me — preference fields only."""
+
     id: UUID
     preferred_language: str
     accessibility_settings: Dict[str, Any]
@@ -113,6 +130,7 @@ class TokenResponse(BaseModel):
     """Response for login/register — tokens are set in HttpOnly cookies.
     The access_token and refresh_token fields are kept for backward
     compatibility during the transition period but will be deprecated."""
+
     access_token: Optional[str] = None
     refresh_token: Optional[str] = None
     token_type: str = "bearer"
@@ -121,19 +139,23 @@ class TokenResponse(BaseModel):
 
 class LoginResponse(BaseModel):
     """Cookie-based login response. Tokens are in HttpOnly cookies, not body."""
+
     message: str = "Login successful"
     user: UserResponse
 
 
 # --- OTP Schemas ---
 
+
 class OTPRequest(BaseModel):
     """Request to send an OTP to a phone number."""
+
     phone: str = Field(..., min_length=10, max_length=20)
 
 
 class OTPVerify(BaseModel):
     """Verify an OTP code for phone-based login."""
+
     phone: str = Field(..., min_length=10, max_length=20)
     otp: str = Field(..., min_length=6, max_length=6, pattern=r"^\d{6}$")
     device_fingerprint: Optional[str] = None
@@ -141,6 +163,7 @@ class OTPVerify(BaseModel):
 
 class OTPResponse(BaseModel):
     """Response after requesting OTP."""
+
     message: str
     expires_in_seconds: int = 300  # 5 minutes
     # In development, we include the OTP for testing
@@ -149,8 +172,10 @@ class OTPResponse(BaseModel):
 
 # --- Session Schemas ---
 
+
 class SessionInfo(BaseModel):
     """Information about an active session."""
+
     id: UUID
     device_fingerprint: Optional[str]
     ip_address: Optional[str]
@@ -165,5 +190,6 @@ class SessionInfo(BaseModel):
 
 class ActiveSessionsResponse(BaseModel):
     """List of active sessions for a user."""
+
     sessions: List[SessionInfo]
     total: int

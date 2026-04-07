@@ -5,7 +5,6 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
-
 ALLOWED_ACTION_TYPES = {
     "irrigation",
     "fertilizer",

@@ -4,13 +4,14 @@ CTIS Schemas
 Pydantic schemas for Crop Instance, Action Log, and Yield Record.
 """
 
-from pydantic import BaseModel, Field
-from typing import Optional, Dict, Any, List
-from uuid import UUID
 from datetime import date, datetime
+from typing import Any, Dict, List, Optional
+from uuid import UUID
 
+from pydantic import BaseModel, Field
 
 # === Crop Instance Schemas ===
+
 
 class CropInstanceCreate(BaseModel):
     crop_type: str = Field(..., min_length=1, max_length=100)
@@ -52,6 +53,8 @@ class CropInstanceResponse(BaseModel):
     land_parcel_id: Optional[UUID]
     region: str
     sub_region: Optional[str]
+    rule_template_id: Optional[UUID]
+    rule_template_version: Optional[int]
     stage_offset_days: int
     max_allowed_drift: int
     created_at: datetime
@@ -69,6 +72,7 @@ class CropListFilter(BaseModel):
 
 
 # === Action Log Schemas ===
+
 
 class ActionLogCreate(BaseModel):
     action_type: str = Field(..., min_length=1, max_length=100)
@@ -136,6 +140,7 @@ class ActionLogListResponse(BaseModel):
 
 
 # === Yield Record Schemas ===
+
 
 class YieldSubmission(BaseModel):
     reported_yield: float = Field(..., gt=0)

@@ -5,10 +5,11 @@ Pydantic schemas for Yield submission and response.
 Separated from crop_instance.py per workflow.md Day 6.
 """
 
-from pydantic import BaseModel, Field, ConfigDict, model_validator
+from datetime import date, datetime
 from typing import Any, Optional
 from uuid import UUID
-from datetime import date, datetime
+
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class YieldSubmission(BaseModel):
@@ -29,9 +30,15 @@ class YieldSubmission(BaseModel):
     def map_legacy_fields(cls, values: Any):
         if not isinstance(values, dict):
             return values
-        if values.get("reported_yield") is None and values.get("yield_quantity_kg") is not None:
+        if (
+            values.get("reported_yield") is None
+            and values.get("yield_quantity_kg") is not None
+        ):
             values["reported_yield"] = values["yield_quantity_kg"]
-        if values.get("moisture_pct") is None and values.get("moisture_content_pct") is not None:
+        if (
+            values.get("moisture_pct") is None
+            and values.get("moisture_content_pct") is not None
+        ):
             values["moisture_pct"] = values["moisture_content_pct"]
         return values
 

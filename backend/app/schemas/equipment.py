@@ -4,11 +4,12 @@ Equipment Schemas
 Pydantic schemas for Equipment CRUD operations.
 """
 
-from pydantic import BaseModel, Field
-from typing import Optional, List
-from uuid import UUID
 from datetime import datetime
 from enum import Enum
+from typing import List, Optional
+from uuid import UUID
+
+from pydantic import BaseModel, Field
 
 
 class EquipmentType(str, Enum):
