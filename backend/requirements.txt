@@ -43,3 +43,6 @@ redis>=5.0.1
 numpy==1.26.3
 opencv-python-headless==4.9.0.80
 Pillow==10.2.0
+
+# Notifications
+twilio==8.10.0

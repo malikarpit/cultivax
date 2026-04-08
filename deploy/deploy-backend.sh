@@ -72,12 +72,12 @@ gcloud run deploy "${SERVICE_NAME}" \
   --platform=managed \
   --allow-unauthenticated \
   --port=8000 \
-  --memory=512Mi \
-  --cpu=1 \
-  --min-instances=0 \
-  --max-instances=4 \
-  --timeout=60 \
-  --concurrency=80 \
+  --memory=1Gi \
+  --cpu=2 \
+  --min-instances=1 \
+  --max-instances=12 \
+  --timeout=120 \
+  --concurrency=120 \
   --add-cloudsql-instances="${CONNECTION_NAME}" \
   --set-env-vars="\
 APP_ENV=production,\

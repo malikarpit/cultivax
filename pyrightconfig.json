@@ -1,4 +1,5 @@
 {
+  "extraPaths": ["backend"],
   "executionEnvironments": [
     {
       "root": "backend",
