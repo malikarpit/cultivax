@@ -20,10 +20,48 @@ interface ApiOptions {
   headers?: Record<string, string>;
 }
 
+type ApiErrorCode = 'network' | 'http' | 'auth' | 'session';
+
+export class ApiError extends Error {
+  status?: number;
+  code: ApiErrorCode;
+
+  constructor(message: string, code: ApiErrorCode, status?: number) {
+    super(message);
+    this.name = 'ApiError';
+    this.code = code;
+    this.status = status;
+  }
+}
+
+function makeApiError(input: unknown, code: ApiErrorCode, status?: number): ApiError {
+  const fallbackMessage = code === 'network'
+    ? 'Unable to reach backend. Verify http://localhost:8000 is running and CORS allows http://localhost:3000.'
+    : 'Request failed';
+
+  const message = input instanceof Error
+    ? input.message
+    : (typeof input === 'string' && input.trim().length > 0 ? input : fallbackMessage);
+
+  if (code === 'network') {
+    const normalized = message.toLowerCase();
+    if (
+      normalized.includes('failed to fetch') ||
+      normalized.includes('network request failed') ||
+      normalized.includes('load failed')
+    ) {
+      return new ApiError(fallbackMessage, code, status);
+    }
+  }
+
+  return new ApiError(message, code, status);
+}
+
 export async function api<T = any>(
   endpoint: string,
   options: ApiOptions = {}
 ): Promise<T> {
+  const method = options.method || 'GET';
   const isFormData = options.body instanceof FormData;
   const headers: Record<string, string> = {
     ...(!isFormData && { 'Content-Type': 'application/json' }),
@@ -36,28 +74,49 @@ export async function api<T = any>(
     delete headers['Content-Type'];
   }
 
-  const response = await fetch(`${API_URL}${endpoint}`, {
-    method: options.method || 'GET',
-    headers,
-    credentials: 'include',
-    body: isFormData ? options.body : (options.body ? JSON.stringify(options.body) : undefined),
-  });
+  // Auto-generate Idempotency-Key for all mutating requests (POST/PUT/PATCH)
+  // This satisfies the backend middleware requirement and prevents double-submissions
+  if (['POST', 'PUT', 'PATCH'].includes(method) && !headers['Idempotency-Key']) {
+    headers['Idempotency-Key'] = crypto.randomUUID();
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}${endpoint}`, {
+      method,
+      headers,
+      credentials: 'include',
+      body: isFormData ? options.body : (options.body ? JSON.stringify(options.body) : undefined),
+    });
+  } catch (error) {
+    throw makeApiError(error, 'network');
+  }
 
   // Handle 401 — attempt silent token refresh
   if (response.status === 401 && !endpoint.includes('/auth/refresh')) {
     const refreshed = await attemptTokenRefresh();
     if (refreshed) {
-      // Retry the original request
-      const retryResponse = await fetch(`${API_URL}${endpoint}`, {
-        method: options.method || 'GET',
-        headers,
-        credentials: 'include',
-        body: options.body ? JSON.stringify(options.body) : undefined,
-      });
+      // Retry the original request with a fresh idempotency key
+      const retryHeaders = { ...headers, 'Idempotency-Key': crypto.randomUUID() };
+      let retryResponse: Response;
+      try {
+        retryResponse = await fetch(`${API_URL}${endpoint}`, {
+          method,
+          headers: retryHeaders,
+          credentials: 'include',
+          body: options.body ? JSON.stringify(options.body) : undefined,
+        });
+      } catch (error) {
+        throw makeApiError(error, 'network');
+      }
 
       if (!retryResponse.ok) {
         const error = await retryResponse.json().catch(() => ({ detail: 'Request failed after refresh' }));
-        throw new Error(error.detail || `API error: ${retryResponse.status}`);
+        throw makeApiError(
+          error.detail || `API error: ${retryResponse.status}`,
+          retryResponse.status === 401 ? 'auth' : 'http',
+          retryResponse.status,
+        );
       }
 
       const retryJson = await retryResponse.json();
@@ -66,16 +125,25 @@ export async function api<T = any>(
       }
       return retryJson;
     }
-    // Refresh failed — redirect to login
-    if (typeof window !== 'undefined') {
+    // Refresh failed
+    if (typeof window !== 'undefined' && !endpoint.includes('/auth/me')) {
       window.location.href = '/login';
     }
-    throw new Error('Session expired. Please log in again.');
+    throw makeApiError('Session expired. Please log in again.', 'session', 401);
   }
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ detail: 'Network error' }));
-    throw new Error(error.detail || `API error: ${response.status}`);
+    // Surface the first detail message for 422 validation errors
+    const detail = error.detail
+      || (Array.isArray(error.details) && error.details[0]?.message)
+      || error.error
+      || `API error: ${response.status}`;
+    throw makeApiError(
+      detail,
+      response.status === 401 ? 'auth' : 'http',
+      response.status,
+    );
   }
 
   const json = await response.json();

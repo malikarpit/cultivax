@@ -11,7 +11,8 @@
  * All token management now happens via HttpOnly cookies.
  */
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+import { apiGet, apiPost } from './api';
+
 const USER_KEY = 'cultivax_user_cache';
 
 /**
@@ -20,15 +21,10 @@ const USER_KEY = 'cultivax_user_cache';
  */
 export async function verifySession(): Promise<any | null> {
   try {
-    const response = await fetch(`${API_URL}/api/v1/auth/me`, {
-      credentials: 'include',
-    });
-
-    if (!response.ok) return null;
-
-    const user = await response.json();
+    const user = await apiGet('/api/v1/auth/me');
+    
     // Cache user data for instant access (non-sensitive data only)
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && user) {
       sessionStorage.setItem(USER_KEY, JSON.stringify(user));
     }
     return user;
@@ -70,10 +66,7 @@ export function clearCachedUser(): void {
  */
 export async function performLogout(): Promise<void> {
   try {
-    await fetch(`${API_URL}/api/v1/auth/logout`, {
-      method: 'POST',
-      credentials: 'include',
-    });
+    await apiPost('/api/v1/auth/logout', {});
   } catch {
     // Logout request failed — still clear client cache
   }

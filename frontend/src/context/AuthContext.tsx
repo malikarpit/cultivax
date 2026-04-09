@@ -27,6 +27,7 @@ import {
   performLogout,
 } from '@/lib/auth';
 import { apiPost, apiPatch } from '@/lib/api';
+import { offlineQueue } from '@/services/offlineQueue';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -97,6 +98,20 @@ function hydrateSettings(userObj: User) {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Handle Background Sync Messages from Service Worker
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'SYNC_OFFLINE_ACTIONS') {
+        console.log('[App] Received sync trigger from Service Worker');
+        offlineQueue.init().then(() => offlineQueue.syncActions()).catch(console.error);
+      }
+    };
+    if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', handleMessage);
+      return () => navigator.serviceWorker.removeEventListener('message', handleMessage);
+    }
+  }, []);
 
   // Verify session on mount (reads HttpOnly cookie via /auth/me)
   useEffect(() => {
@@ -186,10 +201,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    */
   const updatePreferences = useCallback(async (prefs: PreferenceUpdate) => {
     const updated = await apiPatch<User>('/api/v1/auth/me', prefs);
-    setUser((prev) => prev ? { ...prev, ...updated } : prev);
-    setCachedUser({ ...user, ...updated });
-    hydrateSettings({ ...user, ...updated } as User);
-  }, [user]);
+    setUser((prev) => {
+      if (!prev) return prev;
+      const merged = { ...prev, ...updated };
+      setCachedUser(merged);
+      hydrateSettings(merged);
+      return merged;
+    });
+  }, []);
 
   return (
     <AuthContext.Provider

@@ -89,7 +89,27 @@ export class OfflineQueueService {
       const request = store.add(action);
 
       request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve(action.id);
+      request.onsuccess = () => {
+        this.registerBackgroundSync().catch(e => console.debug('Sync register skipped:', e));
+        
+        // Optimistic UI update using SWR mutate
+        import('swr').then(({ mutate }) => {
+          const actionsUrl = `/api/v1/crops/${crop_id}/actions`;
+          mutate(actionsUrl, (currentData: any) => {
+            const optimisticAction = {
+              id: action.id, // temporary id
+              action_type: action.action_type,
+              action_date: action.action_effective_date, // assuming backend uses action_date
+              description: `[Offline] ${action.action_type}`,
+              status: 'pending_sync',
+              created_at: new Date().toISOString()
+            };
+            return currentData ? [optimisticAction, ...currentData] : [optimisticAction];
+          }, { revalidate: false }).catch(console.error);
+        });
+
+        resolve(action.id);
+      };
     });
   }
 
@@ -132,7 +152,7 @@ export class OfflineQueueService {
   /**
    * Sync queued actions to server.
    */
-  async syncActions(apiBaseUrl: string, authToken: string): Promise<{
+  async syncActions(): Promise<{
     synced: number;
     failed: number;
     errors: Record<string, string>;
@@ -155,6 +175,7 @@ export class OfflineQueueService {
     let synced = 0;
     let failed = 0;
     const errors: Record<string, string> = {};
+    const { apiPost } = await import('@/lib/api'); // Dynamic import to avoid circular dependency issues if any
 
     for (const [cropId, cropActions] of Array.from(byCrop.entries())) {
       try {
@@ -163,31 +184,18 @@ export class OfflineQueueService {
           await this.updateActionStatus(action.id, 'syncing');
         }
 
-        // Call sync API
-        const response = await fetch(`${apiBaseUrl}/api/v1/offline-sync`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${authToken}`
-          },
-          body: JSON.stringify({
-            device_id: this.deviceId,
-            session_id: this.sessionId,
-            actions: cropActions.map((a: QueuedAction) => ({
-              crop_instance_id: a.crop_id,
-              action_type: a.action_type,
-              action_effective_date: a.action_effective_date,
-              local_seq_no: a.local_seq_no,
-              metadata: a.metadata || {}
-            }))
-          })
+        // Call sync API using the shared api client
+        const result = await apiPost<any>('/api/v1/offline-sync', {
+          device_id: this.deviceId,
+          session_id: this.sessionId,
+          actions: cropActions.map((a: QueuedAction) => ({
+            crop_instance_id: a.crop_id,
+            action_type: a.action_type,
+            action_effective_date: a.action_effective_date,
+            local_seq_no: a.local_seq_no,
+            metadata: a.metadata || {}
+          }))
         });
-
-        if (!response.ok) {
-          throw new Error(`API error: ${response.statusText}`);
-        }
-
-        const result = await response.json();
 
         // Mark synced actions
         if (result.synced_actions) {
@@ -221,9 +229,9 @@ export class OfflineQueueService {
 
         // Handle duplicates (from idempotency)
         if (result.warnings && result.warnings.some((w: string) => w.includes('Duplicate'))) {
-             // In real app, match the exact duplicate action from warnings.
-             // For now we'll fetch success locally to prevent resync
-             // the backend returns the successfully synced count anyway.
+          // In real app, match the exact duplicate action from warnings.
+          // For now we'll fetch success locally to prevent resync
+          // the backend returns the successfully synced count anyway.
         }
 
       } catch (error) {
@@ -269,6 +277,24 @@ export class OfflineQueueService {
 
       getRequest.onerror = () => reject(getRequest.error);
     });
+  }
+
+  /**
+   * Register for Background Sync API if supported.
+   * This tells the Service Worker to wake up and sync when internet is restored.
+   */
+  private async registerBackgroundSync(): Promise<void> {
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+      try {
+        const registration = await navigator.serviceWorker.ready;
+        if ('sync' in registration) {
+          // @ts-ignore - SyncManager types often missing in standard TS dom lib
+          await registration.sync.register('cultivax-sync');
+        }
+      } catch (error) {
+        console.warn('Background sync registration failed:', error);
+      }
+    }
   }
 
   /**

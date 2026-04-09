@@ -71,10 +71,7 @@ export const useOfflineActions = (options: UseOfflineActionsOptions = {}) => {
     setLastSyncError(null);
 
     try {
-      const authToken = localStorage.getItem('token') || '';
-      const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || '';
-
-      const result = await offlineQueue.syncActions(apiBaseUrl, authToken);
+      const result = await offlineQueue.syncActions();
 
       if (result.failed === 0 && result.synced > 0) {
         setLastSyncTime(new Date().toISOString());
