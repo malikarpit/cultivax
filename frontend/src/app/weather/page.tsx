@@ -26,6 +26,7 @@ import clsx from 'clsx';
 import { useAuth } from '@/context/AuthContext';
 import { weatherApi } from '@/services/weather';
 import { WeatherRiskResponse } from '@/types/weather';
+import { apiGet } from '@/lib/api';
 
 /* ─── Mock Data ──────────────────────────────────────────── */
 
@@ -49,13 +50,20 @@ const SOIL_MOISTURE_DATA = [
   { day: 'Sun', actual: null, projected: 18 },
 ];
 
-const FORECAST = [
-  { day: 'TUE', icon: Sun, iconColor: 'text-m3-secondary', high: 34, low: 22 },
-  { day: 'WED', icon: Droplets, iconColor: 'text-m3-primary', high: 28, low: 19, active: true },
-  { day: 'THU', icon: Cloud, iconColor: 'text-m3-primary', high: 24, low: 17 },
-  { day: 'FRI', icon: Wind, iconColor: 'text-m3-on-surface-variant', high: 26, low: 18 },
-  { day: 'SAT', icon: Sun, iconColor: 'text-m3-secondary', high: 31, low: 21 },
-];
+import type { LucideIcon } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+
+/* ─── WMO code → icon + color ───────────────────────────────── */
+function wmoToIcon(code: number): { Icon: LucideIcon; color: string } {
+  if (code === 0 || code === 1) return { Icon: Sun, color: 'text-m3-secondary' };
+  if (code === 2 || code === 3) return { Icon: Cloud, color: 'text-m3-on-surface-variant' };
+  if (code >= 51 && code <= 67) return { Icon: CloudRain, color: 'text-m3-primary' };
+  if (code >= 71 && code <= 77) return { Icon: CloudSnow, color: 'text-m3-primary' };
+  if (code >= 80 && code <= 82) return { Icon: Droplets, color: 'text-m3-primary' };
+  if (code >= 95) return { Icon: CloudLightning, color: 'text-m3-error' };
+  return { Icon: CloudSun, color: 'text-m3-primary' };
+}
+
 
 /* ─── Growth Gauge SVG ───────────────────────────────────── */
 
@@ -89,6 +97,7 @@ function GrowthGauge({ percent, color, label }: { percent: number; color: string
 /* ─── Page Component ─────────────────────────────────────── */
 
 export default function WeatherDashboardPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [alertDismissed, setAlertDismissed] = useState(false);
   const [weatherData, setWeatherData] = useState<WeatherRiskResponse | null>(null);
@@ -96,10 +105,10 @@ export default function WeatherDashboardPage() {
   const [errorLocal, setErrorLocal] = useState<string | null>(null);
 
   useEffect(() => {
-    // Determine default coords based on user region if we wanted to, or fallback to Delhi
-    const fetchWeather = async (lat = 28.61, lng = 77.23) => {
+    // Let the backend decide default coords based on user region profile
+    const fetchWeather = async () => {
       try {
-        const res = await weatherApi.getWeatherByCoords(lat, lng);
+        const res = await apiGet<WeatherRiskResponse>('/api/v1/weather');
         setWeatherData(res);
       } catch (err: any) {
         setErrorLocal(err.message || 'Failed to fetch weather');
@@ -118,20 +127,50 @@ export default function WeatherDashboardPage() {
           try {
             const res = await weatherApi.getWeatherByCoords(pos.coords.latitude, pos.coords.longitude);
             setWeatherData(res);
-            setAlertDismissed(false); // Reset alerts so they show up
+            setAlertDismissed(false);
           } catch(err: any) {
             setErrorLocal(err.message);
           } finally {
             setLoading(false);
           }
         },
-        (err) => {
+        () => {
           alert("Location access denied or unavailable.");
           setLoading(false);
         }
       );
     }
   };
+
+  // Derive real forecast + rainfall from API response
+  const forecastItems = (weatherData?.weather_data?.forecast_3d || []).slice(0, 5).map(
+    (day: any, idx: number) => {
+      const { Icon, color } = wmoToIcon(day.weather_code ?? 0);
+      const dayStr = new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' }).toLowerCase();
+      const dateLabel = String(t(`weather.day_${dayStr}`, new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()));
+      return { day: dateLabel, Icon, iconColor: color, high: Math.round(day.temp_max ?? 0), low: Math.round(day.temp_min ?? 0), active: idx === 0, precipitation_mm: day.precipitation_mm };
+    }
+  );
+
+  const rainfallData = (weatherData?.weather_data?.forecast_3d || []).slice(0, 7).map((day: any) => ({
+    day: new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase().slice(0, 3),
+    mm: day.precipitation_mm ?? 0,
+  }));
+
+  // Use real data if available, otherwise fallback placeholders
+  const displayForecast = forecastItems.length > 0 ? forecastItems : [
+    { day: 'MON', Icon: Sun, iconColor: 'text-m3-secondary', high: 34, low: 22, active: true },
+    { day: 'TUE', Icon: Cloud, iconColor: 'text-m3-on-surface-variant', high: 28, low: 19, active: false },
+    { day: 'WED', Icon: CloudRain, iconColor: 'text-m3-primary', high: 24, low: 17, active: false },
+    { day: 'THU', Icon: Wind, iconColor: 'text-m3-on-surface-variant', high: 26, low: 18, active: false },
+    { day: 'FRI', Icon: Sun, iconColor: 'text-m3-secondary', high: 31, low: 21, active: false },
+  ];
+
+  const displayRainfall = rainfallData.length > 0 ? rainfallData : [
+    { day: 'MON', mm: 1.2 }, { day: 'TUE', mm: 4.8 }, { day: 'WED', mm: 0.5 },
+    { day: 'THU', mm: 0.2 }, { day: 'FRI', mm: 6.2 }, { day: 'SAT', mm: 2.8 }, { day: 'SUN', mm: 0.9 },
+  ];
+
 
   const activeAlerts = weatherData?.alerts || [];
   const currentTemp = weatherData ? Math.round(weatherData.weather_data.temperature) : 32;
@@ -144,9 +183,9 @@ export default function WeatherDashboardPage() {
     <div className="animate-fade-in space-y-8">
       {/* ═══ Header Action ═══ */}
       <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-bold">Weather Intelligence</h2>
+          <h2 className="text-2xl font-bold">{t('weather.weather_intelligence')}</h2>
           <button onClick={handleLocateMe} disabled={loading} className="bg-m3-primary/10 hover:bg-m3-primary/20 text-m3-primary text-sm font-bold px-4 py-2 rounded-xl transition-colors">
-            {loading ? 'Locating...' : 'Use My GPS Location'}
+            {loading ? 'Locating...' : t('weather.use_gps', 'Use My GPS Location')}
           </button>
       </div>
 
@@ -167,9 +206,7 @@ export default function WeatherDashboardPage() {
           <button
             onClick={() => setAlertDismissed(true)}
             className="text-m3-on-surface hover:text-m3-error transition-colors px-4 py-1 text-sm font-bold uppercase tracking-widest font-mono"
-          >
-            Dismiss
-          </button>
+          >{t('weather.dismiss')}</button>
         </div>
       ))}
 
@@ -183,11 +220,11 @@ export default function WeatherDashboardPage() {
               <div>
                 <div className="flex items-center gap-3">
                     <span className="mono-label tracking-[0.2em] uppercase">
-                    Current Conditions • {user?.region || 'Delhi'}
+                    {t('weather.current_conditions', 'Current Conditions')} • {String(t('region.' + (user?.region || 'Delhi').toLowerCase().replace(/ /g, '_'), user?.region || 'Delhi'))}
                     </span>
                     {weatherData && (
                         <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${weatherData.is_fallback ? 'bg-orange-500/10 text-orange-500 border border-orange-500/20' : 'bg-m3-primary/10 text-m3-primary border border-m3-primary/20'}`}>
-                            {weatherData.is_fallback ? 'Fallback' : 'Live'}
+                            {weatherData.is_fallback ? 'Fallback' : t('weather.live', 'LIVE')}
                         </span>
                     )}
                 </div>
@@ -196,7 +233,7 @@ export default function WeatherDashboardPage() {
                 </h1>
                 <p className="text-m3-on-surface-variant mt-1 font-medium capitalize flex items-center gap-2">
                   {currentDesc}. 
-                  {weatherData && weatherData.weather_risk_score > 0.5 && <span className="text-orange-400">High Risk Detected</span>}
+                  {weatherData && weatherData.weather_risk_score > 0.5 && <span className="text-orange-400">{t('weather.high_risk_detected')}</span>}
                 </p>
               </div>
               <Cloud className="w-16 h-16 text-m3-primary opacity-60" />
@@ -205,23 +242,23 @@ export default function WeatherDashboardPage() {
             {/* Metric Grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-auto">
               <div className="bg-m3-surface-container-low rounded-xl p-4 transition-colors hover:bg-m3-surface-container">
-                <span className="mono-label block mb-1 text-m3-on-surface-variant">Humidity</span>
+                <span className="mono-label block mb-1 text-m3-on-surface-variant">{t('weather.humidity')}</span>
                 <span className="font-mono text-xl md:text-2xl font-bold">{currentHum}%</span>
               </div>
               <div className="bg-m3-surface-container-low rounded-xl p-4 transition-colors hover:bg-m3-surface-container">
-                <span className="mono-label block mb-1 text-m3-on-surface-variant">Wind Speed</span>
+                <span className="mono-label block mb-1 text-m3-on-surface-variant">{t('weather.wind_speed')}</span>
                 <span className="font-mono text-xl md:text-2xl font-bold text-m3-secondary">
-                  {currentWind}<span className="text-sm font-normal ml-1">km/h</span>
+                  {currentWind}<span className="text-sm font-normal ml-1">{t('weather.km_h')}</span>
                 </span>
               </div>
               <div className="bg-m3-surface-container-low rounded-xl p-4 transition-colors hover:bg-m3-surface-container">
-                <span className="mono-label block mb-1 text-m3-on-surface-variant">Risk Score</span>
+                <span className="mono-label block mb-1 text-m3-on-surface-variant">{t('weather.risk_score')}</span>
                 <span className={`font-mono text-xl md:text-2xl font-bold ${weatherData?.weather_risk_score && weatherData.weather_risk_score > 0.5 ? 'text-m3-error' : 'text-m3-primary'}`}>
                     {weatherData ? Math.round(weatherData.weather_risk_score * 100) : '--'}
                 </span>
               </div>
               <div className="bg-m3-surface-container-low rounded-xl p-4 transition-colors hover:bg-m3-surface-container">
-                <span className="mono-label block mb-1 text-m3-on-surface-variant">Data Source</span>
+                <span className="mono-label block mb-1 text-m3-on-surface-variant">{t('weather.data_source')}</span>
                 <span className="font-mono text-lg font-bold capitalize pt-1 block truncate">
                     {weatherData?.source || 'Loading...'}
                 </span>
@@ -232,31 +269,26 @@ export default function WeatherDashboardPage() {
 
         {/* 5-Day Forecast */}
         <section className="lg:col-span-4 space-y-4">
-          <h3 className="text-sm font-bold uppercase tracking-widest text-m3-on-surface-variant ml-2">
-            5-Day Outlook
-          </h3>
+          <h3 className="text-sm font-bold uppercase tracking-widest text-m3-on-surface-variant ml-2">{t('weather.forecast_5_day', '5-Day Outlook')}</h3>
           <div className="space-y-3">
-            {FORECAST.map((day) => {
-              const Icon = day.icon;
-              return (
-                <div
-                  key={day.day}
-                  className={clsx(
-                    'glass-card rounded-xl p-4 flex items-center justify-between transition-colors',
-                    day.active
-                      ? 'bg-m3-surface-container-high border-m3-primary/20'
-                      : 'hover:bg-m3-surface-container-high'
-                  )}
-                >
-                  <span className="w-12 font-semibold text-sm">{day.day}</span>
-                  <Icon className={clsx('w-5 h-5', day.iconColor)} />
-                  <div className="flex gap-4 font-mono text-sm">
-                    <span className="text-m3-on-surface font-bold">{day.high}°</span>
-                    <span className="text-m3-on-surface-variant">{day.low}°</span>
-                  </div>
+            {displayForecast.map((day, idx) => (
+              <div
+                key={idx}
+                className={clsx(
+                  'glass-card rounded-xl p-4 flex items-center justify-between transition-colors',
+                  day.active
+                    ? 'bg-m3-surface-container-high border-m3-primary/20'
+                    : 'hover:bg-m3-surface-container-high'
+                )}
+              >
+                <span className="w-12 font-semibold text-sm">{day.day}</span>
+                <day.Icon className={clsx('w-5 h-5', day.iconColor)} />
+                <div className="flex gap-4 font-mono text-sm">
+                  <span className="text-m3-on-surface font-bold">{day.high}°</span>
+                  <span className="text-m3-on-surface-variant">{day.low}°</span>
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
         </section>
       </div>
@@ -266,12 +298,13 @@ export default function WeatherDashboardPage() {
         {/* Historical Rainfall */}
         <section className="glass-card rounded-3xl p-8 border border-m3-outline-variant/10">
           <div className="flex justify-between items-center mb-8">
-            <h3 className="font-bold text-lg text-m3-on-surface">Historical Rainfall</h3>
-            <span className="mono-label">Last 7 Days (mm)</span>
+            <h3 className="font-bold text-lg text-m3-on-surface">{t('weather.historical_rainfall')}</h3>
+            <span className="mono-label">{t('weather.last_7_days_mm')}</span>
           </div>
           <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={RAINFALL_DATA} barCategoryGap="15%">
+              <BarChart data={displayRainfall} barCategoryGap="15%">
+
                 <CartesianGrid strokeDasharray="3 3" stroke="#2f3445" vertical={false} />
                 <XAxis
                   dataKey="day"
@@ -314,14 +347,12 @@ export default function WeatherDashboardPage() {
         {/* Soil Moisture Projection */}
         <section className="glass-card rounded-3xl p-8 border border-m3-outline-variant/10 relative">
           <div className="flex justify-between items-center mb-8">
-            <h3 className="font-bold text-lg text-m3-on-surface">Soil Moisture Projection</h3>
+            <h3 className="font-bold text-lg text-m3-on-surface">{t('weather.soil_moisture_projection')}</h3>
             <div className="flex gap-3">
               <span className="inline-flex items-center gap-1.5 text-[10px] text-m3-on-surface-variant font-mono">
-                <span className="w-2 h-2 rounded-full bg-m3-primary" /> ACTUAL
-              </span>
+                <span className="w-2 h-2 rounded-full bg-m3-primary" />{t('weather.actual')}</span>
               <span className="inline-flex items-center gap-1.5 text-[10px] text-m3-on-surface-variant font-mono">
-                <span className="w-2 h-2 rounded-full border border-dashed border-m3-primary/50" /> PROJECTION
-              </span>
+                <span className="w-2 h-2 rounded-full border border-dashed border-m3-primary/50" />{t('weather.projection')}</span>
             </div>
           </div>
 
@@ -383,8 +414,8 @@ export default function WeatherDashboardPage() {
 
           {/* Growth Gauges overlay */}
           <div className="absolute bottom-6 right-6 flex items-center gap-6 bg-m3-surface-container-lowest/80 backdrop-blur px-6 py-4 rounded-2xl border border-m3-outline-variant/10">
-            <GrowthGauge percent={72} color="#5af0b3" label="Satur." />
-            <GrowthGauge percent={45} color="#ffb95f" label="Growth" />
+            <GrowthGauge percent={72} color="#5af0b3" label={t('weather.label.satur')} />
+            <GrowthGauge percent={45} color="#ffb95f" label={t('weather.label.growth')} />
           </div>
         </section>
       </div>
@@ -394,45 +425,45 @@ export default function WeatherDashboardPage() {
         <div className="glass-card p-6 rounded-2xl border border-m3-outline-variant/10 flex flex-col justify-between">
           <div>
             <Zap className="w-6 h-6 text-m3-primary mb-2" />
-            <h5 className="mono-label font-bold">Solar Efficiency</h5>
+            <h5 className="mono-label font-bold">{t('weather.solar_efficiency')}</h5>
           </div>
           <div className="mt-4">
             <p className="font-mono text-2xl font-bold">94%</p>
-            <p className="text-[10px] text-m3-primary mt-1 uppercase">Optimal Production</p>
+            <p className="text-[10px] text-m3-primary mt-1 uppercase">{t('weather.optimal_production')}</p>
           </div>
         </div>
 
         <div className="glass-card p-6 rounded-2xl border border-m3-outline-variant/10 flex flex-col justify-between">
           <div>
             <Thermometer className="w-6 h-6 text-m3-secondary mb-2" />
-            <h5 className="mono-label font-bold">Leaf Temperature</h5>
+            <h5 className="mono-label font-bold">{t('weather.leaf_temperature')}</h5>
           </div>
           <div className="mt-4">
-            <p className="font-mono text-2xl font-bold">29.4°C</p>
-            <p className="text-[10px] text-m3-on-surface-variant mt-1 uppercase">Nominal Range</p>
+            <p className="font-mono text-2xl font-bold">{t('weather.29_4_c')}</p>
+            <p className="text-[10px] text-m3-on-surface-variant mt-1 uppercase">{t('weather.nominal_range')}</p>
           </div>
         </div>
 
         <div className="glass-card p-6 rounded-2xl border border-m3-outline-variant/10 flex flex-col justify-between">
           <div>
             <Gauge className="w-6 h-6 text-m3-primary mb-2" />
-            <h5 className="mono-label font-bold">Air Pressure</h5>
+            <h5 className="mono-label font-bold">{t('weather.air_pressure')}</h5>
           </div>
           <div className="mt-4">
             <p className="font-mono text-2xl font-bold">
-              1014 <span className="text-xs">hPa</span>
+              1014 <span className="text-xs">{t('weather.hpa')}</span>
             </p>
-            <p className="text-[10px] text-m3-on-surface-variant mt-1 uppercase">Stable Conditions</p>
+            <p className="text-[10px] text-m3-on-surface-variant mt-1 uppercase">{t('weather.stable_conditions')}</p>
           </div>
         </div>
 
         <div className="glass-card p-6 rounded-2xl border border-m3-outline-variant/10 flex flex-col justify-between">
           <div>
             <ShieldCheck className="w-6 h-6 text-m3-primary mb-2" />
-            <h5 className="mono-label font-bold">Audit Status</h5>
+            <h5 className="mono-label font-bold">{t('weather.audit_status')}</h5>
           </div>
           <div className="mt-4">
-            <p className="text-sm font-semibold text-m3-on-surface">Climate Compliance Met</p>
+            <p className="text-sm font-semibold text-m3-on-surface">{t('weather.climate_compliance_met')}</p>
             <div className="w-full bg-m3-surface-container-highest h-1 rounded-full mt-2 overflow-hidden">
               <div className="h-full bg-m3-primary w-full rounded-full" />
             </div>

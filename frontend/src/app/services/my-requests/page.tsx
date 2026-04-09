@@ -8,8 +8,10 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import Badge from '@/components/Badge';
 import Link from 'next/link';
 import clsx from 'clsx';
+import { useTranslation } from 'react-i18next';
 
 export default function FarmerMyRequestsPage() {
+  const { t } = useTranslation();
   const api = useApi();
   const { data, loading, error, refetch } = useFetch('/api/v1/service-requests?per_page=50');
   const requests = data?.items || [];
@@ -59,15 +61,15 @@ export default function FarmerMyRequestsPage() {
     <ProtectedRoute requiredRole="farmer">
       <div className="animate-fade-in max-w-5xl mx-auto py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-extrabold text-m3-on-surface">My Service Requests</h1>
-          <p className="text-m3-on-surface-variant mt-2">Manage your requested agricultural services and provider engagements.</p>
+          <h1 className="text-3xl font-extrabold text-m3-on-surface">{t('services.my-requests.my_service_requests')}</h1>
+          <p className="text-m3-on-surface-variant mt-2">{t('services.my-requests.manage_your_requested_agricultural')}</p>
         </div>
 
         {error && (
           <div className="card p-5 mb-6 border border-red-500/20 flex items-center gap-3">
             <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0" />
             <div>
-              <p className="text-sm font-medium text-red-400">Failed to load requests</p>
+              <p className="text-sm font-medium text-red-400">{t('services.my-requests.failed_to_load_requests')}</p>
               <p className="text-xs text-cultivax-text-muted">{error}</p>
             </div>
           </div>
@@ -86,13 +88,9 @@ export default function FarmerMyRequestsPage() {
         ) : requests.length === 0 ? (
           <div className="glass-card text-center py-16 rounded-2xl border border-m3-outline-variant/10">
             <Clock className="w-12 h-12 text-m3-on-surface-variant mx-auto mb-4 opacity-40" />
-            <p className="text-lg font-semibold text-m3-on-surface">No Service Requests Found</p>
-            <p className="text-m3-on-surface-variant text-sm mt-2 max-w-md mx-auto">
-              You haven't requested any services yet. Need help on the farm? Browse our trusted providers.
-            </p>
-            <Link href="/services" className="btn-primary mt-6 inline-block">
-              Browse Providers
-            </Link>
+            <p className="text-lg font-semibold text-m3-on-surface">{t('services.my-requests.no_service_requests_found')}</p>
+            <p className="text-m3-on-surface-variant text-sm mt-2 max-w-md mx-auto">{t('services.my-requests.you_haven_t_requested')}</p>
+            <Link href="/services" className="btn-primary mt-6 inline-block">{t('services.my-requests.browse_providers')}</Link>
           </div>
         ) : (
           <div className="space-y-4">
@@ -122,7 +120,7 @@ export default function FarmerMyRequestsPage() {
                 <div className="flex items-center gap-4">
                   {req.agreed_price && (
                     <div className="text-right">
-                      <p className="text-[10px] uppercase font-bold tracking-wider text-m3-on-surface-variant">Agreed Price</p>
+                      <p className="text-[10px] uppercase font-bold tracking-wider text-m3-on-surface-variant">{t('services.my-requests.agreed_price')}</p>
                       <p className="font-mono font-bold text-m3-primary">{req.agreed_price} INR</p>
                     </div>
                   )}
@@ -144,15 +142,11 @@ export default function FarmerMyRequestsPage() {
                       onClick={() => setReviewReqId(req.id)}
                       className="px-4 py-2 text-sm font-semibold rounded-lg bg-m3-primary text-m3-on-primary hover:bg-m3-primary/90 transition-colors flex items-center gap-2"
                     >
-                      <Star className="w-4 h-4" />
-                      Leave Review
-                    </button>
+                      <Star className="w-4 h-4" />{t('services.my-requests.leave_review')}</button>
                   )}
                   {req.status === 'Completed' && req.has_reviewed && (
                     <div className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-cultivax-primary/10 text-cultivax-primary border border-cultivax-primary/20 text-xs font-semibold">
-                      <CheckCircle2 className="w-4 h-4" />
-                      Reviewed
-                    </div>
+                      <CheckCircle2 className="w-4 h-4" />{t('services.my-requests.reviewed')}</div>
                   )}
                 </div>
               </div>
@@ -171,12 +165,12 @@ export default function FarmerMyRequestsPage() {
             >
               <X className="w-5 h-5" />
             </button>
-            <h2 className="text-xl font-bold text-m3-on-surface mb-2">Leave a Review</h2>
-            <p className="text-sm text-m3-on-surface-variant mb-6">How was the service provided?</p>
+            <h2 className="text-xl font-bold text-m3-on-surface mb-2">{t('services.my-requests.leave_a_review')}</h2>
+            <p className="text-sm text-m3-on-surface-variant mb-6">{t('services.my-requests.how_was_the_service')}</p>
 
             <div className="space-y-5">
               <div>
-                <label className="block text-sm font-medium text-m3-on-surface mb-2">Rating</label>
+                <label className="block text-sm font-medium text-m3-on-surface mb-2">{t('services.my-requests.rating')}</label>
                 <div className="flex items-center gap-2">
                   {[1, 2, 3, 4, 5].map((star) => (
                     <button
@@ -200,7 +194,7 @@ export default function FarmerMyRequestsPage() {
                 <textarea
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
-                  placeholder="Share details of your experience..."
+                  placeholder={t('services.my-requests.share_details_of_your')}
                   className="w-full bg-m3-surface-container-highest border border-m3-outline-variant/30 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-m3-primary/50 text-m3-on-surface resize-none h-24"
                 />
               </div>
@@ -212,13 +206,13 @@ export default function FarmerMyRequestsPage() {
                   onChange={(e) => setComplaintCategory(e.target.value)}
                   className="w-full bg-m3-surface-container-highest border border-m3-outline-variant/30 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-m3-primary/50 text-m3-on-surface appearance-none"
                 >
-                  <option value="">No Complaint</option>
-                  <option value="late_arrival">Late Arrival</option>
-                  <option value="poor_quality">Poor Quality</option>
-                  <option value="overcharging">Overcharging</option>
-                  <option value="damage">Caused Damage</option>
-                  <option value="no_show">No Show</option>
-                  <option value="other">Other</option>
+                  <option value="">{t('services.my-requests.no_complaint')}</option>
+                  <option value="late_arrival">{t('services.my-requests.late_arrival')}</option>
+                  <option value="poor_quality">{t('services.my-requests.poor_quality')}</option>
+                  <option value="overcharging">{t('services.my-requests.overcharging')}</option>
+                  <option value="damage">{t('services.my-requests.caused_damage')}</option>
+                  <option value="no_show">{t('services.my-requests.no_show')}</option>
+                  <option value="other">{t('services.my-requests.other')}</option>
                 </select>
               </div>
 
@@ -226,9 +220,7 @@ export default function FarmerMyRequestsPage() {
                 <button
                   onClick={() => setReviewReqId(null)}
                   className="px-5 py-2.5 rounded-xl font-medium text-sm border border-m3-outline-variant/30 text-m3-on-surface hover:bg-m3-surface-container-highest transition-colors"
-                >
-                  Cancel
-                </button>
+                >{t('services.my-requests.cancel')}</button>
                 <button
                   onClick={handleSubmitReview}
                   disabled={api.loading}

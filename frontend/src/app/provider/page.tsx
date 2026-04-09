@@ -18,8 +18,10 @@ import StatCard from '@/components/StatCard';
 import Badge from '@/components/Badge';
 import TrustRing from '@/components/TrustRing';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import { useTranslation } from 'react-i18next';
 
 export default function ProviderDashboardPage() {
+  const { t } = useTranslation();
   const api = useApi();
   // Fetch real provider stats from API
   const { data: stats, loading, error } = useFetch('/api/v1/dashboard/stats');
@@ -42,7 +44,7 @@ export default function ProviderDashboardPage() {
   return (
     <ProtectedRoute requiredRole={["provider", "admin"]}>
     <div className="animate-fade-in">
-      <h1 className="text-2xl font-bold mb-6">Provider Dashboard</h1>
+      <h1 className="text-2xl font-bold mb-6">{t('provider.provider_dashboard')}</h1>
 
       {/* Stats */}
       {loading ? (
@@ -58,7 +60,7 @@ export default function ProviderDashboardPage() {
         <div className="card p-5 mb-6 border border-red-500/20 flex items-center gap-3">
           <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0" />
           <div>
-            <p className="text-sm font-medium text-red-400">Failed to load provider stats</p>
+            <p className="text-sm font-medium text-red-400">{t('provider.failed_to_load_provider')}</p>
             <p className="text-xs text-cultivax-text-muted">{error}</p>
           </div>
         </div>
@@ -66,19 +68,19 @@ export default function ProviderDashboardPage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
           <StatCard
             icon={Clock}
-            label="Pending Requests"
+            label={t('provider.label.pending_requests')}
             value={stats?.pending_requests ?? 0}
             color={stats?.pending_requests > 0 ? 'amber' : 'default'}
           />
           <StatCard
             icon={ShoppingBag}
-            label="Active Jobs"
+            label={t('provider.label.active_jobs')}
             value={stats?.active_jobs ?? 0}
             color="blue"
           />
           <StatCard
             icon={CheckCircle2}
-            label="Completed"
+            label={t('provider.label.completed')}
             value={stats?.completed_jobs ?? 0}
             trend={stats?.completed_jobs > 0 ? `${stats.completed_jobs} total` : undefined}
             trendDirection="up"
@@ -86,7 +88,7 @@ export default function ProviderDashboardPage() {
           />
           <StatCard
             icon={Star}
-            label="Trust Score"
+            label={t('provider.label.trust_score')}
             value={stats?.trust_score ? stats.trust_score.toFixed(1) : '—'}
             color="green"
           />
@@ -98,7 +100,7 @@ export default function ProviderDashboardPage() {
         <div className="lg:col-span-2 space-y-6">
           {/* Incoming Requests */}
           <div className="card">
-            <h3 className="text-base font-semibold mb-4">Incoming Service Requests</h3>
+            <h3 className="text-base font-semibold mb-4">{t('provider.incoming_service_requests')}</h3>
             {reqLoading ? (
               <div className="space-y-3">
                 {[1, 2, 3].map((i) => (
@@ -162,7 +164,7 @@ export default function ProviderDashboardPage() {
             ) : (
               <div className="text-center py-8">
                 <CheckCircle2 className="w-8 h-8 text-cultivax-text-muted mx-auto mb-2 opacity-40" />
-                <p className="text-sm text-cultivax-text-muted">No pending requests</p>
+                <p className="text-sm text-cultivax-text-muted">{t('provider.no_pending_requests')}</p>
               </div>
             )}
           </div>
@@ -170,16 +172,15 @@ export default function ProviderDashboardPage() {
           {/* Revenue Summary */}
           <div className="card">
             <h3 className="text-base font-semibold mb-4 flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-cultivax-primary" /> Performance
-            </h3>
+              <TrendingUp className="w-4 h-4 text-cultivax-primary" />{t('provider.performance')}</h3>
             <div className="grid grid-cols-2 gap-4">
               <div className="p-4 rounded-xl bg-cultivax-elevated/50 text-center">
                 <p className="text-2xl font-bold text-cultivax-text-primary">{stats?.completed_jobs ?? 0}</p>
-                <p className="text-xs text-cultivax-text-muted mt-1">Jobs Completed</p>
+                <p className="text-xs text-cultivax-text-muted mt-1">{t('provider.jobs_completed')}</p>
               </div>
               <div className="p-4 rounded-xl bg-cultivax-elevated/50 text-center">
                 <p className="text-2xl font-bold text-cultivax-text-primary">{stats?.active_jobs ?? 0}</p>
-                <p className="text-xs text-cultivax-text-muted mt-1">Active Now</p>
+                <p className="text-xs text-cultivax-text-muted mt-1">{t('provider.active_now')}</p>
               </div>
             </div>
           </div>
@@ -188,7 +189,7 @@ export default function ProviderDashboardPage() {
         {/* Right (1/3) */}
         <div className="space-y-6">
           <div className="card text-center">
-            <h3 className="text-base font-semibold mb-4">Your Trust Score</h3>
+            <h3 className="text-base font-semibold mb-4">{t('provider.your_trust_score')}</h3>
             <TrustRing
               score={stats?.trust_score ? stats.trust_score / 10 : 0}
               size={120}
@@ -203,13 +204,11 @@ export default function ProviderDashboardPage() {
 
           {/* Service Regions */}
           <div className="card">
-            <h3 className="text-base font-semibold mb-3">Service Coverage</h3>
+            <h3 className="text-base font-semibold mb-3">{t('provider.service_coverage')}</h3>
             <p className="text-sm text-cultivax-text-secondary">
               {stats?.region || 'Coverage area not set'}
             </p>
-            <p className="text-xs text-cultivax-text-muted mt-2">
-              Manage your service area from Settings
-            </p>
+            <p className="text-xs text-cultivax-text-muted mt-2">{t('provider.manage_your_service_area')}</p>
           </div>
         </div>
       </div>

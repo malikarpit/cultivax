@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { useAuth } from '@/context/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 const LANGUAGE_LABELS: Record<string, string> = {
   en: 'English',
@@ -32,6 +33,7 @@ const ROLE_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 export default function ProfilePage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const router = useRouter();
 
@@ -66,10 +68,8 @@ export default function ProfilePage() {
       <div className="max-w-2xl mx-auto">
         {/* Page header */}
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-cultivax-text-primary">My Profile</h1>
-          <p className="text-sm text-cultivax-text-muted mt-1">
-            View and manage your account information
-          </p>
+          <h1 className="text-2xl font-bold text-cultivax-text-primary">{t('profile.my_profile')}</h1>
+          <p className="text-sm text-cultivax-text-muted mt-1">{t('profile.view_and_manage_your')}</p>
         </div>
 
         {/* Avatar + name card */}
@@ -99,21 +99,19 @@ export default function ProfilePage() {
 
         {/* Info card */}
         <div className="card mb-6">
-          <h3 className="text-sm font-semibold text-cultivax-text-muted uppercase tracking-wider mb-2">
-            Account Details
-          </h3>
-          <InfoRow icon={Phone} label="Phone" value={user.phone} id="profile-phone" />
-          <InfoRow icon={Mail} label="Email" value={user.email || 'Not set'} id="profile-email" />
-          <InfoRow icon={MapPin} label="Region" value={user.region || 'Not set'} id="profile-region" />
+          <h3 className="text-sm font-semibold text-cultivax-text-muted uppercase tracking-wider mb-2">{t('profile.account_details')}</h3>
+          <InfoRow icon={Phone} label={t('profile.label.phone')} value={user.phone} id="profile-phone" />
+          <InfoRow icon={Mail} label={t('profile.label.email')} value={user.email || 'Not set'} id="profile-email" />
+          <InfoRow icon={MapPin} label={t('profile.label.region')} value={user.region || 'Not set'} id="profile-region" />
           <InfoRow
             icon={Globe}
-            label="Language"
+            label={t('profile.label.language')}
             value={LANGUAGE_LABELS[user.preferred_language || 'en'] || user.preferred_language}
             id="profile-language"
           />
           <InfoRow
             icon={Sprout}
-            label="Onboarding"
+            label={t('profile.label.onboarding')}
             value={
               <span className={`inline-flex items-center gap-1 ${user.is_onboarded ? 'text-green-400' : 'text-amber-400'}`}>
                 {user.is_onboarded ? <CheckCircle2 className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
@@ -126,16 +124,13 @@ export default function ProfilePage() {
 
         {/* Quick actions */}
         <div className="card">
-          <h3 className="text-sm font-semibold text-cultivax-text-muted uppercase tracking-wider mb-2">
-            Quick Actions
-          </h3>
+          <h3 className="text-sm font-semibold text-cultivax-text-muted uppercase tracking-wider mb-2">{t('profile.quick_actions')}</h3>
           <button
             onClick={() => router.push('/settings')}
             className="w-full flex items-center justify-between py-3 text-sm text-cultivax-text-secondary hover:text-cultivax-text-primary transition-colors border-b border-cultivax-border"
           >
             <span className="flex items-center gap-3">
-              <Settings className="w-4 h-4" /> Language & Accessibility
-            </span>
+              <Settings className="w-4 h-4" />{t('profile.language_accessibility')}</span>
             <ChevronRight className="w-4 h-4" />
           </button>
           <button
@@ -143,8 +138,7 @@ export default function ProfilePage() {
             className="w-full flex items-center justify-between py-3 text-sm text-cultivax-text-secondary hover:text-cultivax-text-primary transition-colors"
           >
             <span className="flex items-center gap-3">
-              <Sprout className="w-4 h-4" /> My Crops
-            </span>
+              <Sprout className="w-4 h-4" />{t('profile.my_crops')}</span>
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>

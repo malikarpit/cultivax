@@ -19,6 +19,7 @@ import TrustRing from '@/components/TrustRing';
 import FilterChips from '@/components/FilterChips';
 import Badge from '@/components/Badge';
 import { useFetch } from '@/hooks/useFetch';
+import { useTranslation } from 'react-i18next';
 
 const CATEGORIES = [
   { label: 'All', value: 'all' },
@@ -31,6 +32,7 @@ const CATEGORIES = [
 ];
 
 export default function ServicesPage() {
+  const { t } = useTranslation();
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('all');
 
@@ -60,7 +62,7 @@ export default function ServicesPage() {
     <ProtectedRoute>
     <div className="animate-fade-in">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold">Service Marketplace</h1>
+        <h1 className="text-2xl font-bold">{t('services.title')}</h1>
         <p className="text-sm text-cultivax-text-muted mt-1">Find trusted agricultural service providers</p>
       </div>
 
@@ -134,7 +136,7 @@ export default function ServicesPage() {
                         : 'text-cultivax-text-muted pointer-events-none'
                     )}
                   >
-                    Request Service <ArrowRight className="w-3 h-3" />
+                    {t('services.request')} <ArrowRight className="w-3 h-3" />
                   </Link>
                 </div>
               </div>

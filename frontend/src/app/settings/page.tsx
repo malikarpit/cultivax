@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import clsx from 'clsx';
+import { useTranslation } from 'react-i18next';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { useAuth } from '@/context/AuthContext';
 import { useAccessibility } from '@/hooks/useAccessibility';
@@ -40,6 +41,7 @@ const LANGUAGES = [
 ];
 
 export default function SettingsPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { user, updatePreferences } = useAuth();
   const {
@@ -128,10 +130,10 @@ export default function SettingsPage() {
           <div>
             <h1 className="text-2xl font-bold text-cultivax-text-primary flex items-center gap-2">
               <SettingsIcon className="w-6 h-6 text-cultivax-primary" />
-              Settings
+              {t('settings.title')}
             </h1>
             <p className="text-sm text-cultivax-text-muted mt-0.5">
-              Customize your CultivaX experience
+              {t('settings.subtitle')}
             </p>
           </div>
         </div>
@@ -140,10 +142,10 @@ export default function SettingsPage() {
         <div className="card mb-6">
           <div className="flex items-center gap-2 mb-4">
             <Globe className="w-5 h-5 text-cultivax-primary" />
-            <h2 className="text-base font-semibold text-cultivax-text-primary">Language</h2>
+            <h2 className="text-base font-semibold text-cultivax-text-primary">{t('settings.language')}</h2>
           </div>
           <p className="text-xs text-cultivax-text-muted mb-4">
-            Choose your preferred language. The interface will update immediately.
+            {t('settings.language_desc')}
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -187,42 +189,42 @@ export default function SettingsPage() {
         <div className="card mb-6">
           <div className="flex items-center gap-2 mb-4">
             <Eye className="w-5 h-5 text-cultivax-primary" />
-            <h2 className="text-base font-semibold text-cultivax-text-primary">Accessibility</h2>
+            <h2 className="text-base font-semibold text-cultivax-text-primary">{t('settings.accessibility')}</h2>
           </div>
           <p className="text-xs text-cultivax-text-muted mb-3">
-            Adjust the interface for better readability and comfort.
+            {t('settings.accessibility_desc')}
           </p>
 
           <div className="space-y-1">
             <ToggleRow
               id="settings-large-text"
               icon={Type}
-              label="Large Text"
-              description="Increase font sizes by 25% across the interface"
+              label={t('a11y.large_text')}
+              description={t('settings.large_text_desc')}
               active={!!settings.largeText}
               onToggle={toggleLargeText}
             />
             <ToggleRow
               id="settings-high-contrast"
               icon={Eye}
-              label="High Contrast"
-              description="Increase color contrast for better visibility"
+              label={t('a11y.high_contrast')}
+              description={t('settings.high_contrast_desc')}
               active={!!settings.highContrast}
               onToggle={toggleHighContrast}
             />
             <ToggleRow
               id="settings-reduced-motion"
               icon={Wind}
-              label="Reduce Motion"
-              description="Minimize animations and transitions"
+              label={t('a11y.reduce_motion')}
+              description={t('settings.reduce_motion_desc')}
               active={!!settings.reducedMotion}
               onToggle={toggleReducedMotion}
             />
             <ToggleRow
               id="settings-dark-mode"
               icon={settings.theme === 'dark' ? Sun : Moon}
-              label={settings.theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
-              description="Toggle between dark and light themes"
+              label={settings.theme === 'dark' ? t('a11y.light_mode') : t('a11y.dark_mode')}
+              description={t('settings.theme_desc')}
               active={settings.theme === 'dark'}
               onToggle={toggleTheme}
             />
@@ -233,19 +235,19 @@ export default function SettingsPage() {
         <div className="card">
           <div className="flex items-center gap-2 mb-4">
             <User className="w-5 h-5 text-cultivax-primary" />
-            <h2 className="text-base font-semibold text-cultivax-text-primary">Account</h2>
+            <h2 className="text-base font-semibold text-cultivax-text-primary">{t('settings.account')}</h2>
           </div>
           <div className="space-y-3">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-cultivax-text-muted">Name</span>
+              <span className="text-cultivax-text-muted">{t('settings.field_name')}</span>
               <span className="text-cultivax-text-primary font-medium">{user?.full_name || '—'}</span>
             </div>
             <div className="flex items-center justify-between text-sm">
-              <span className="text-cultivax-text-muted">Phone</span>
+              <span className="text-cultivax-text-muted">{t('settings.field_phone')}</span>
               <span className="text-cultivax-text-primary font-medium">{user?.phone || '—'}</span>
             </div>
             <div className="flex items-center justify-between text-sm">
-              <span className="text-cultivax-text-muted">Role</span>
+              <span className="text-cultivax-text-muted">{t('settings.field_role')}</span>
               <span className="inline-flex items-center gap-1 text-cultivax-primary">
                 <Shield className="w-3 h-3" />
                 <span className="capitalize font-medium">{user?.role}</span>

@@ -9,8 +9,10 @@ import ParcelForm from '@/components/ParcelForm';
 import ParcelList from '@/components/ParcelList';
 import { deleteLandParcel, listLandParcels, restoreLandParcel } from '@/lib/land-parcels';
 import type { LandParcel } from '@/lib/types';
+import { useTranslation } from 'react-i18next';
 
 export default function LandParcelsPage() {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<LandParcel[]>([]);
@@ -90,10 +92,8 @@ export default function LandParcelsPage() {
       <div className="animate-fade-in space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-cultivax-text-primary">My Fields</h1>
-            <p className="text-sm text-cultivax-text-muted mt-0.5">
-              Manage field boundaries, soil profile, and irrigation metadata
-            </p>
+            <h1 className="text-2xl font-bold text-cultivax-text-primary">{t('land-parcels.my_fields')}</h1>
+            <p className="text-sm text-cultivax-text-muted mt-0.5">{t('land-parcels.manage_field_boundaries_soil')}</p>
           </div>
           <button
             className="btn-primary"
@@ -103,8 +103,7 @@ export default function LandParcelsPage() {
             }}
             type="button"
           >
-            <Plus className="w-4 h-4" /> New Field
-          </button>
+            <Plus className="w-4 h-4" />{t('land-parcels.new_field')}</button>
         </div>
 
         <div className="relative max-w-xl">
@@ -113,13 +112,13 @@ export default function LandParcelsPage() {
             className="input !pl-10"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by field name or region"
+            placeholder={t('land-parcels.search_by_field_name')}
           />
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-cultivax-text-muted">
-            {activeCount} active fields{showDeleted ? `, ${deletedCount} deleted` : ''}
+            {activeCount} {activeCount === 0 ? t('fields.active_fields_empty', '0 active fields') : t('fields.active_fields', 'active fields')}{showDeleted ? `, ${deletedCount} deleted` : ''}
           </p>
           <label className="inline-flex items-center gap-2 text-sm text-cultivax-text-secondary">
             <input
@@ -130,9 +129,7 @@ export default function LandParcelsPage() {
                 setShowDeleted(next);
                 await load(next);
               }}
-            />
-            Show deleted fields
-          </label>
+            />{t('land-parcels.show_deleted_fields')}</label>
         </div>
 
         {loading ? (
@@ -161,7 +158,7 @@ export default function LandParcelsPage() {
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowForm(false)} />
           <div className="relative bg-cultivax-surface border border-cultivax-border rounded-2xl p-5 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <h2 className="text-lg font-semibold text-cultivax-text-primary mb-4">
-              {editing ? 'Edit Field' : 'Create Field'}
+              {editing ? 'Edit Field' : t('fields.create_field', 'Create Field')}
             </h2>
             <ParcelForm
               initialData={editing}

@@ -11,6 +11,7 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import DataTable from '@/components/DataTable';
 import { useApi } from '@/hooks/useApi';
 import { useAuth } from '@/context/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 interface Equipment {
   id: string;
@@ -24,6 +25,7 @@ interface Equipment {
 }
 
 export default function ProviderEquipmentPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [providerId, setProviderId] = useState<string | null>(null);
   const profileApi = useApi<{ id: string }>();
@@ -86,8 +88,8 @@ export default function ProviderEquipmentPage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Equipment Management</h1>
-            <p className="text-gray-400 mt-1">Manage your equipment inventory</p>
+            <h1 className="text-2xl font-bold">{t('provider.equipment.equipment_management')}</h1>
+            <p className="text-gray-400 mt-1">{t('provider.equipment.manage_your_equipment_inventory')}</p>
           </div>
           <button className="btn-primary text-sm" onClick={() => setShowForm(!showForm)}>
             {showForm ? 'Cancel' : '+ Add Equipment'}
@@ -97,56 +99,56 @@ export default function ProviderEquipmentPage() {
         {/* Add Form */}
         {showForm && (
           <form onSubmit={handleSubmit} className="card space-y-4">
-            <h3 className="font-semibold">Add New Equipment</h3>
+            <h3 className="font-semibold">{t('provider.equipment.add_new_equipment')}</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="text-xs text-gray-400 block mb-1">Name</label>
+                <label className="text-xs text-gray-400 block mb-1">{t('provider.equipment.name')}</label>
                 <input
                   type="text"
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  placeholder="e.g., John Deere 5310"
+                  placeholder={t('provider.equipment.e_g_john_deere')}
                   className="w-full text-sm"
                   required
                 />
               </div>
               <div>
-                <label className="text-xs text-gray-400 block mb-1">Type</label>
+                <label className="text-xs text-gray-400 block mb-1">{t('provider.equipment.type')}</label>
                 <select
                   value={form.equipment_type}
                   onChange={(e) => setForm({ ...form, equipment_type: e.target.value })}
                   className="w-full text-sm"
                 >
-                  <option value="tractor">Tractor</option>
-                  <option value="harvester">Harvester</option>
-                  <option value="sprayer">Sprayer</option>
-                  <option value="planter">Planter</option>
-                  <option value="irrigation">Irrigation System</option>
-                  <option value="other">Other</option>
+                  <option value="tractor">{t('provider.equipment.tractor')}</option>
+                  <option value="harvester">{t('provider.equipment.harvester')}</option>
+                  <option value="sprayer">{t('provider.equipment.sprayer')}</option>
+                  <option value="planter">{t('provider.equipment.planter')}</option>
+                  <option value="irrigation">{t('provider.equipment.irrigation_system')}</option>
+                  <option value="other">{t('provider.equipment.other')}</option>
                 </select>
               </div>
               <div>
-                <label className="text-xs text-gray-400 block mb-1">Daily Rate (₹)</label>
+                <label className="text-xs text-gray-400 block mb-1">{t('provider.equipment.daily_rate')}</label>
                 <input
                   type="number"
                   value={form.daily_rate}
                   onChange={(e) => setForm({ ...form, daily_rate: e.target.value })}
-                  placeholder="1500"
+                  placeholder={t('provider.equipment.1500')}
                   className="w-full text-sm"
                   required
                 />
               </div>
               <div>
-                <label className="text-xs text-gray-400 block mb-1">Condition</label>
+                <label className="text-xs text-gray-400 block mb-1">{t('provider.equipment.condition')}</label>
                 <select
                   value={form.condition}
                   onChange={(e) => setForm({ ...form, condition: e.target.value })}
                   className="w-full text-sm"
                 >
-                  <option value="excellent">Excellent</option>
-                  <option value="good">Good</option>
-                  <option value="fair">Fair</option>
-                  <option value="poor">Poor</option>
+                  <option value="excellent">{t('provider.equipment.excellent')}</option>
+                  <option value="good">{t('provider.equipment.good')}</option>
+                  <option value="fair">{t('provider.equipment.fair')}</option>
+                  <option value="poor">{t('provider.equipment.poor')}</option>
                 </select>
               </div>
             </div>
@@ -167,8 +169,8 @@ export default function ProviderEquipmentPage() {
         {!equipmentApi.loading && items.length === 0 && (
           <div className="card text-center py-12 text-gray-500">
             <p className="text-5xl mb-4">🚜</p>
-            <p className="text-lg font-medium">No equipment listed</p>
-            <p className="text-sm mt-1">Add your first equipment to the inventory</p>
+            <p className="text-lg font-medium">{t('provider.equipment.no_equipment_listed')}</p>
+            <p className="text-sm mt-1">{t('provider.equipment.add_your_first_equipment')}</p>
           </div>
         )}
 

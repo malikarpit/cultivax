@@ -11,6 +11,7 @@ import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { useApi } from '@/hooks/useApi';
+import { useTranslation } from 'react-i18next';
 
 function ReviewSubmissionContent() {
   const router = useRouter();
@@ -48,11 +49,9 @@ function ReviewSubmissionContent() {
       <ProtectedRoute>
         <div className="max-w-lg mx-auto text-center py-16">
           <p className="text-6xl mb-4">✅</p>
-          <h1 className="text-2xl font-bold mb-2">Review Submitted</h1>
-          <p className="text-gray-400 mb-6">Thank you for your feedback!</p>
-          <button className="btn-primary" onClick={() => router.push('/services')}>
-            Back to Services
-          </button>
+          <h1 className="text-2xl font-bold mb-2">{t('services.review.review_submitted')}</h1>
+          <p className="text-gray-400 mb-6">{t('services.review.thank_you_for_your')}</p>
+          <button className="btn-primary" onClick={() => router.push('/services')}>{t('services.review.back_to_services')}</button>
         </div>
       </ProtectedRoute>
     );
@@ -62,14 +61,14 @@ function ReviewSubmissionContent() {
     <ProtectedRoute>
       <div className="max-w-lg mx-auto space-y-6">
         <div>
-          <h1 className="text-2xl font-bold">Submit Review</h1>
-          <p className="text-gray-400 mt-1">Rate the service you received</p>
+          <h1 className="text-2xl font-bold">{t('services.review.submit_review')}</h1>
+          <p className="text-gray-400 mt-1">{t('services.review.rate_the_service_you')}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="card space-y-5">
           {/* Star Rating */}
           <div>
-            <label className="text-sm text-gray-400 block mb-2">Rating</label>
+            <label className="text-sm text-gray-400 block mb-2">{t('services.review.rating')}</label>
             <div className="flex gap-2">
               {[1, 2, 3, 4, 5].map((star) => (
                 <button
@@ -88,11 +87,11 @@ function ReviewSubmissionContent() {
 
           {/* Comment */}
           <div>
-            <label className="text-sm text-gray-400 block mb-1">Feedback (optional)</label>
+            <label className="text-sm text-gray-400 block mb-1">{t('services.review.feedback_optional')}</label>
             <textarea
               value={form.comment}
               onChange={(e) => setForm({ ...form, comment: e.target.value })}
-              placeholder="How was the service?"
+              placeholder={t('services.review.how_was_the_service')}
               rows={4}
               className="w-full text-sm"
             />
@@ -101,20 +100,20 @@ function ReviewSubmissionContent() {
           {/* Complaint Category */}
           {form.rating <= 2 && (
             <div>
-              <label className="text-sm text-gray-400 block mb-1">Issue Category</label>
+              <label className="text-sm text-gray-400 block mb-1">{t('services.review.issue_category')}</label>
               <select
                 value={form.complaint_category}
                 onChange={(e) => setForm({ ...form, complaint_category: e.target.value })}
                 className="w-full text-sm"
               >
-                <option value="">Select an issue...</option>
-                <option value="Late Arrival">Late Arrival</option>
-                <option value="Poor Quality">Poor Quality</option>
-                <option value="Incomplete Work">Incomplete Work</option>
-                <option value="Equipment Damage">Equipment Damage</option>
-                <option value="Overcharging">Overcharging</option>
-                <option value="Unprofessional">Unprofessional Behavior</option>
-                <option value="Other">Other</option>
+                <option value="">{t('services.review.select_an_issue')}</option>
+                <option value="Late Arrival">{t('services.review.late_arrival')}</option>
+                <option value="Poor Quality">{t('services.review.poor_quality')}</option>
+                <option value="Incomplete Work">{t('services.review.incomplete_work')}</option>
+                <option value="Equipment Damage">{t('services.review.equipment_damage')}</option>
+                <option value="Overcharging">{t('services.review.overcharging')}</option>
+                <option value="Unprofessional">{t('services.review.unprofessional_behavior')}</option>
+                <option value="Other">{t('services.review.other')}</option>
               </select>
             </div>
           )}
@@ -137,8 +136,9 @@ function ReviewSubmissionContent() {
 }
 
 export default function ReviewSubmissionPage() {
+  const { t } = useTranslation();
   return (
-    <Suspense fallback={<div className="p-8 text-center text-cultivax-text-muted">Loading...</div>}>
+    <Suspense fallback={<div className="p-8 text-center text-cultivax-text-muted">{t('services.review.loading')}</div>}>
       <ReviewSubmissionContent />
     </Suspense>
   );

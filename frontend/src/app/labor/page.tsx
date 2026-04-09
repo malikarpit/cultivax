@@ -18,6 +18,7 @@ import TrustRing from '@/components/TrustRing';
 import { useAuth } from '@/context/AuthContext';
 import { useApi } from '@/hooks/useApi';
 import Link from 'next/link';
+import { useTranslation } from 'react-i18next';
 
 interface LaborListing {
   id: string;
@@ -36,6 +37,7 @@ interface LaborListing {
 }
 
 export default function LaborPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const laborApi = useApi<{ items: LaborListing[]; total: number }>();
   const addLaborApi = useApi();
@@ -136,45 +138,45 @@ export default function LaborPage() {
 
       {showForm && isProvider && (
         <form onSubmit={handleSubmit} className="card space-y-4 mb-6 border-cultivax-primary/30">
-          <h3 className="font-semibold text-lg flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-cultivax-primary" /> New Labor Listing</h3>
+          <h3 className="font-semibold text-lg flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-cultivax-primary" />{t('labor.new_labor_listing')}</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="text-xs text-gray-400 block mb-1">Labor Type</label>
+              <label className="text-xs text-gray-400 block mb-1">{t('labor.labor_type')}</label>
               <select
                 value={form.labor_type}
                 onChange={(e) => setForm({ ...form, labor_type: e.target.value })}
                 className="w-full text-sm"
               >
-                <option value="harvesting_crew">Harvesting Crew</option>
-                <option value="irrigation_worker">Irrigation Worker</option>
-                <option value="spraying_team">Spraying Team</option>
-                <option value="general_farm_labor">General Farm Labor</option>
+                <option value="harvesting_crew">{t('labor.harvesting_crew')}</option>
+                <option value="irrigation_worker">{t('labor.irrigation_worker')}</option>
+                <option value="spraying_team">{t('labor.spraying_team')}</option>
+                <option value="general_farm_labor">{t('labor.general_farm_labor')}</option>
               </select>
             </div>
             <div>
-              <label className="text-xs text-gray-400 block mb-1">Region</label>
+              <label className="text-xs text-gray-400 block mb-1">{t('labor.region')}</label>
               <input
                 type="text"
                 value={form.region}
                 onChange={(e) => setForm({ ...form, region: e.target.value })}
-                placeholder="e.g. Punjab"
+                placeholder={t('labor.e_g_punjab')}
                 className="w-full text-sm"
                 required
               />
             </div>
             <div>
-              <label className="text-xs text-gray-400 block mb-1">Daily Rate (₹)</label>
+              <label className="text-xs text-gray-400 block mb-1">{t('labor.daily_rate')}</label>
               <input
                 type="number"
                 value={form.daily_rate}
                 onChange={(e) => setForm({ ...form, daily_rate: e.target.value })}
-                placeholder="650"
+                placeholder={t('labor.650')}
                 className="w-full text-sm"
                 required
               />
             </div>
             <div>
-              <label className="text-xs text-gray-400 block mb-1">Crew Size (Workers)</label>
+              <label className="text-xs text-gray-400 block mb-1">{t('labor.crew_size_workers')}</label>
               <input
                 type="number"
                 min="1"
@@ -185,12 +187,12 @@ export default function LaborPage() {
               />
             </div>
             <div className="md:col-span-2">
-              <label className="text-xs text-gray-400 block mb-1">Description</label>
+              <label className="text-xs text-gray-400 block mb-1">{t('labor.description')}</label>
               <input
                 type="text"
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
-                placeholder="Experienced crew skilled in wheat cutting..."
+                placeholder={t('labor.experienced_crew_skilled_in')}
                 className="w-full text-sm"
                 required
               />
@@ -206,14 +208,14 @@ export default function LaborPage() {
       {!isProvider && (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
           <div className="card-stat">
-            <p className="text-xs text-cultivax-text-muted mb-1">Available Today</p>
+            <p className="text-xs text-cultivax-text-muted mb-1">{t('labor.available_today')}</p>
             <p className="text-2xl font-bold">{displayListings.length}</p>
-            <p className="text-xs text-cultivax-text-muted">crews targeting you</p>
+            <p className="text-xs text-cultivax-text-muted">{t('labor.crews_targeting_you')}</p>
           </div>
           <div className="card-stat">
-            <p className="text-xs text-cultivax-text-muted mb-1">Total Workers</p>
+            <p className="text-xs text-cultivax-text-muted mb-1">{t('labor.total_workers')}</p>
             <p className="text-2xl font-bold">{displayListings.reduce((acc, c) => acc + c.available_units, 0)}</p>
-            <p className="text-xs text-cultivax-text-muted">active in region</p>
+            <p className="text-xs text-cultivax-text-muted">{t('labor.active_in_region')}</p>
           </div>
         </div>
       )}
@@ -221,12 +223,12 @@ export default function LaborPage() {
       {/* Logic Cards */}
       <div className="space-y-4">
         {laborApi.loading && (
-          <div className="text-center py-12 text-cultivax-text-muted">Loading providers...</div>
+          <div className="text-center py-12 text-cultivax-text-muted">{t('labor.loading_providers')}</div>
         )}
         {!laborApi.loading && displayListings.length === 0 && (
           <div className="card text-center py-12 text-gray-500">
              <p className="text-5xl mb-4">🚜</p>
-             <p className="text-lg font-medium">No Labor active!</p>
+             <p className="text-lg font-medium">{t('labor.no_labor_active')}</p>
              <p className="text-sm mt-1">{isProvider ? 'Add your first crew' : 'Check back later for harvest teams.'}</p>
           </div>
         )}
@@ -238,9 +240,9 @@ export default function LaborPage() {
                 <div className="flex items-center gap-2 mb-1">
                   <h3 className="text-base font-semibold">{crew.provider_name || 'Independent Provider'}</h3>
                   {crew.is_available ? (
-                    <Badge variant="green" size="sm" dot>Available</Badge>
+                    <Badge variant="green" size="sm" dot>{t('labor.available')}</Badge>
                   ) : (
-                    <Badge variant="gray" size="sm">Unavailable</Badge>
+                    <Badge variant="gray" size="sm">{t('labor.unavailable')}</Badge>
                   )}
                 </div>
 
@@ -268,9 +270,7 @@ export default function LaborPage() {
                       <button
                         onClick={() => handleDelete(crew.id)}
                         className="btn-secondary !text-red-400 !border-red-500/20 hover:!bg-red-500/10 text-xs flex-1 sm:flex-auto"
-                      >
-                        Delete
-                      </button>
+                      >{t('labor.delete')}</button>
                     </div>
                   ) : (
                     <Link

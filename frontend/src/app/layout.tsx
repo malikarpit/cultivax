@@ -16,11 +16,15 @@
 import { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Inter } from 'next/font/google';
+import { Toaster } from 'sonner';
 import './globals.css';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { SWRProvider } from '@/context/SWRProvider';
 import Sidebar from '@/components/Sidebar';
 import Header from '@/components/Header';
+import Footer from '@/components/Footer';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import { useOnlineSync } from '@/hooks/useOnlineSync';
 
 // Import i18n (side-effect — initializes the library)
 import '@/lib/i18n';
@@ -32,24 +36,29 @@ const inter = Inter({
   variable: '--font-inter',
 });
 
-// Routes that don't use the authenticated layout
-const PUBLIC_ROUTES = ['/', '/login', '/register', '/tour'];
+// Routes that don't use the authenticated layout at all
+const PUBLIC_ONLY_ROUTES = ['/', '/login', '/register', '/tour', '/privacy', '/terms', '/support'];
 
 /**
  * LangSync — Reactively sets document.documentElement.lang when the
  * user's preferred_language changes. Also tells i18next to switch.
  */
 function LangSync() {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const { i18n } = useTranslation();
 
   useEffect(() => {
-    const lang = user?.preferred_language || 'en';
-    document.documentElement.lang = lang;
-    if (i18n.language !== lang) {
-      i18n.changeLanguage(lang);
+    // Only enforce the backend preference if the user is fully logged in
+    if (!isLoading && user?.preferred_language) {
+      if (i18n.language !== user.preferred_language) {
+        document.documentElement.lang = user.preferred_language;
+        i18n.changeLanguage(user.preferred_language);
+      }
+    } else if (!isLoading && !user) {
+      // Unauthenticated public route — sync the <html> tag to whatever the language detector found
+      document.documentElement.lang = i18n.language || 'en';
     }
-  }, [user?.preferred_language, i18n]);
+  }, [user?.preferred_language, isLoading, i18n.language]);
 
   return null;
 }
@@ -61,15 +70,19 @@ function LayoutShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-  const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
+  // Global online/offline sync — handles SW background-sync messages
+  // and auto-triggers queue flush when connectivity is restored.
+  useOnlineSync();
+
+  const isPublicOnlyRoute = PUBLIC_ONLY_ROUTES.includes(pathname);
   const isAuthenticated = !!user && !isLoading;
 
   // Safety net: redirect unauthenticated users from private routes → /login
   useEffect(() => {
-    if (!isLoading && !user && !isPublicRoute) {
+    if (!isLoading && !user && !isPublicOnlyRoute) {
       router.replace('/login');
     }
-  }, [isLoading, user, isPublicRoute, router]);
+  }, [isLoading, user, isPublicOnlyRoute, router]);
 
   // Convenience: redirect authenticated users away from public routes
   // (e.g. logged-in user visits /login → send to their dashboard)
@@ -93,10 +106,10 @@ function LayoutShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (isPublicRoute || !isAuthenticated) {
+  if (isPublicOnlyRoute) {
     // Public layout — full width, no sidebar/header
     return (
-      <div className="min-h-screen bg-cultivax-bg">
+      <div className="min-h-screen bg-cultivax-bg flex flex-col">
         {children}
       </div>
     );
@@ -104,7 +117,7 @@ function LayoutShell({ children }: { children: React.ReactNode }) {
 
   // Authenticated layout — sidebar + header + content
   return (
-    <div className="min-h-screen bg-cultivax-bg">
+    <div className="min-h-screen bg-cultivax-bg flex flex-col">
       <Sidebar
         isOpen={sidebarOpen}
         onToggle={() => setSidebarOpen(!sidebarOpen)}
@@ -119,13 +132,14 @@ function LayoutShell({ children }: { children: React.ReactNode }) {
 
       <main
         className={`
-          pt-[60px] transition-all duration-300
+          flex-1 pt-[60px] transition-all duration-300 flex flex-col
           ${sidebarCollapsed ? 'md:pl-[72px]' : 'md:pl-64'}
         `}
       >
-        <div className="p-4 sm:p-6 lg:p-8">
+        <div className="p-4 sm:p-6 lg:p-8 flex-1">
           {children}
         </div>
+        <Footer />
       </main>
     </div>
   );
@@ -141,6 +155,7 @@ export default function RootLayout({
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#0B0F19" />
+        <link rel="manifest" href="/manifest.json" />
         <meta
           name="description"
           content="CultivaX — Intelligent Crop Management for Indian Farmers"
@@ -154,12 +169,26 @@ export default function RootLayout({
         />
       </head>
       <body className={`${inter.className} antialiased`}>
-        <AuthProvider>
-          <LangSync />
-          <ErrorBoundary>
-            <LayoutShell>{children}</LayoutShell>
-          </ErrorBoundary>
-        </AuthProvider>
+        <SWRProvider>
+          <AuthProvider>
+            <LangSync />
+            <ErrorBoundary>
+              <LayoutShell>{children}</LayoutShell>
+            </ErrorBoundary>
+          </AuthProvider>
+        </SWRProvider>
+        {/* Global toast notifications — used by useOnlineSync for sync feedback */}
+        <Toaster
+          position="bottom-right"
+          theme="dark"
+          toastOptions={{
+            style: {
+              background: 'var(--cultivax-surface, #1A1F2E)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              color: '#E2E8F0',
+            },
+          }}
+        />
       </body>
     </html>
   );

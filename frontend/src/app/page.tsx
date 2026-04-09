@@ -29,81 +29,94 @@ import {
 import { useState } from 'react';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import Footer from '@/components/Footer';
+import { useTranslation } from 'react-i18next';
+import { useAuth } from '@/context/AuthContext';
 
-const FEATURES = [
+const getFeatures = (t: any) => [
   {
     icon: Sprout,
-    title: 'Crop Timeline',
-    desc: 'Track every stage from sowing to harvest with day-by-day progress and growth alerts.',
+    title: t('landing.features.cropTimeline.title'),
+    desc: t('landing.features.cropTimeline.desc'),
     color: 'text-emerald-400',
     bg: 'bg-emerald-500/10',
   },
   {
     icon: Bell,
-    title: 'Smart Alerts',
-    desc: 'Get notified when your crop needs attention — stress indicators, weather events, or missed actions.',
+    title: t('landing.features.smartAlerts.title'),
+    desc: t('landing.features.smartAlerts.desc'),
     color: 'text-amber-400',
     bg: 'bg-amber-500/10',
   },
   {
     icon: FlaskConical,
-    title: 'What-If Simulation',
-    desc: 'Test hypothetical actions before committing. See how irrigation or fertilizer changes would affect outcomes.',
+    title: t('landing.features.whatIf.title'),
+    desc: t('landing.features.whatIf.desc'),
     color: 'text-blue-400',
     bg: 'bg-blue-500/10',
   },
   {
     icon: WifiOff,
-    title: 'Offline Sync',
-    desc: 'Works without internet, syncs when connected — designed for field use on any device.',
+    title: t('landing.features.offlineSync.title'),
+    desc: t('landing.features.offlineSync.desc'),
     color: 'text-purple-400',
     bg: 'bg-purple-500/10',
   },
   {
     icon: Globe,
-    title: 'Local Language',
-    desc: 'Full interface available in Hindi and English with more languages coming soon.',
+    title: t('landing.features.localLanguage.title'),
+    desc: t('landing.features.localLanguage.desc'),
     color: 'text-teal-400',
     bg: 'bg-teal-500/10',
   },
   {
     icon: Shield,
-    title: 'Trusted Providers',
-    desc: 'Find verified service providers with transparent trust scores, reviews, and fair pricing.',
+    title: t('landing.features.trustedProviders.title'),
+    desc: t('landing.features.trustedProviders.desc'),
     color: 'text-rose-400',
     bg: 'bg-rose-500/10',
   },
 ];
 
-const PROCESS = [
+const getProcess = (t: any) => [
   {
     step: '01',
-    title: 'Create Crop',
-    desc: 'Add your crop details and map your field boundaries',
+    title: t('landing.process.step1.title'),
+    desc: t('landing.process.step1.desc'),
     icon: '🌱',
   },
   {
     step: '02',
-    title: 'Log Actions',
-    desc: 'Record irrigation, fertilizer, pesticide applications',
+    title: t('landing.process.step2.title'),
+    desc: t('landing.process.step2.desc'),
     icon: '📝',
   },
   {
     step: '03',
-    title: 'Get Alerts',
-    desc: 'Receive smart notifications and AI recommendations',
+    title: t('landing.process.step3.title'),
+    desc: t('landing.process.step3.desc'),
     icon: '🔔',
   },
   {
     step: '04',
-    title: 'Book Services',
-    desc: 'Find and hire trusted agricultural service providers',
+    title: t('landing.process.step4.title'),
+    desc: t('landing.process.step4.desc'),
     icon: '🤝',
   },
 ];
 
 export default function LandingPage() {
+  const { t } = useTranslation();
   const [mobileNav, setMobileNav] = useState(false);
+  const { user, isAuthenticated, isLoading } = useAuth();
+
+  const getDashboardPath = () => {
+    if (!user) return '/login';
+    switch (user.role) {
+      case 'admin': return '/admin';
+      case 'provider': return '/provider';
+      default: return '/dashboard';
+    }
+  };
 
   return (
     <div className="min-h-screen bg-cultivax-bg text-cultivax-text-primary">
@@ -121,28 +134,36 @@ export default function LandingPage() {
           {/* Desktop nav */}
           <div className="hidden md:flex items-center gap-6">
             <a href="#features" className="text-sm text-cultivax-text-secondary hover:text-cultivax-text-primary transition-colors">
-              Features
+              {t('landing.nav.features')}
             </a>
             <a href="#how-it-works" className="text-sm text-cultivax-text-secondary hover:text-cultivax-text-primary transition-colors">
-              How It Works
+              {t('landing.nav.howItWorks')}
             </a>
             <a href="#for-farmers" className="text-sm text-cultivax-text-secondary hover:text-cultivax-text-primary transition-colors">
-              For Farmers
+              {t('landing.nav.forFarmers')}
             </a>
             <a href="#for-providers" className="text-sm text-cultivax-text-secondary hover:text-cultivax-text-primary transition-colors">
-              For Providers
+              {t('landing.nav.forProviders')}
             </a>
           </div>
 
           {/* Right actions */}
           <div className="hidden md:flex items-center gap-3">
             <LanguageSwitcher compact />
-            <Link href="/login" className="btn-ghost text-sm">
-              Sign In
-            </Link>
-            <Link href="/register" className="btn-primary text-sm">
-              Get Started
-            </Link>
+            {!isLoading && (isAuthenticated ? (
+              <Link href={getDashboardPath()} className="btn-primary text-sm flex items-center gap-2">
+                Go to Dashboard <ArrowRight className="w-4 h-4" />
+              </Link>
+            ) : (
+              <>
+                <Link href="/login" className="btn-ghost text-sm">
+                  {t('auth.login')}
+                </Link>
+                <Link href="/register" className="btn-primary text-sm">
+                  {t('auth.register')}
+                </Link>
+              </>
+            ))}
           </div>
 
           {/* Mobile hamburger */}
@@ -158,11 +179,22 @@ export default function LandingPage() {
         {mobileNav && (
           <div className="md:hidden bg-cultivax-surface border-t border-cultivax-border animate-slide-down">
             <div className="px-4 py-4 space-y-3">
-              <a href="#features" className="block text-sm text-cultivax-text-secondary py-2" onClick={() => setMobileNav(false)}>Features</a>
-              <a href="#how-it-works" className="block text-sm text-cultivax-text-secondary py-2" onClick={() => setMobileNav(false)}>How It Works</a>
-              <div className="flex gap-3 pt-2">
-                <Link href="/login" className="btn-secondary text-sm flex-1 text-center">Sign In</Link>
-                <Link href="/register" className="btn-primary text-sm flex-1 text-center">Get Started</Link>
+              <a href="#features" className="block text-sm text-cultivax-text-secondary py-2" onClick={() => setMobileNav(false)}>{t('landing.nav.features')}</a>
+              <a href="#how-it-works" className="block text-sm text-cultivax-text-secondary py-2" onClick={() => setMobileNav(false)}>{t('landing.nav.howItWorks')}</a>
+              <div className="py-2 border-t border-cultivax-border">
+                <LanguageSwitcher className="w-fit" />
+              </div>
+              <div className="flex flex-col gap-3 pt-2">
+                {!isLoading && (isAuthenticated ? (
+                  <Link href={getDashboardPath()} className="btn-primary text-sm text-center py-2 flex items-center justify-center gap-2">
+                    Go to Dashboard <ArrowRight className="w-4 h-4" />
+                  </Link>
+                ) : (
+                  <div className="flex gap-3">
+                    <Link href="/login" className="btn-secondary text-sm flex-1 text-center">{t('auth.login')}</Link>
+                    <Link href="/register" className="btn-primary text-sm flex-1 text-center">{t('auth.register')}</Link>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
@@ -186,18 +218,17 @@ export default function LandingPage() {
           {/* Tag */}
           <div className="inline-flex items-center gap-2 bg-cultivax-primary/10 border border-cultivax-primary/20 rounded-full px-4 py-1.5 text-sm text-cultivax-primary mb-6">
             <Leaf className="w-4 h-4" />
-            Intelligent Crop Management for Indian Farmers
+            {t('landing.heroTag')}
           </div>
 
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold leading-tight mb-6">
-            <span className="gradient-text">Track Crops.</span>{' '}
-            <span className="text-cultivax-text-primary">Get Alerts.</span>{' '}
-            <span className="gradient-text">Book Services.</span>
+            <span className="gradient-text">{t('landing.heroTitle1')}</span>{' '}
+            <span className="text-cultivax-text-primary">{t('landing.heroTitle2')}</span>{' '}
+            <span className="gradient-text">{t('landing.heroTitle3')}</span>
           </h1>
 
           <p className="text-lg sm:text-xl text-cultivax-text-secondary max-w-2xl mx-auto mb-10 leading-relaxed">
-            CultivaX helps Indian farmers manage crop lifecycles with smart alerts,
-            what-if simulations, and a trusted service marketplace — all in your language.
+            {t('landing.heroDesc')}
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -205,14 +236,14 @@ export default function LandingPage() {
               href="/register"
               className="btn-primary text-base px-8 py-3.5 flex items-center gap-2 group"
             >
-              Start Your First Crop
+              {t('landing.startCrop')}
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </Link>
             <Link
               href="/tour"
               className="btn-secondary text-base px-8 py-3.5"
             >
-              See How It Works
+              {t('landing.howItWorks')}
             </Link>
           </div>
         </div>
@@ -223,15 +254,15 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-14">
             <h2 className="text-3xl font-bold mb-4">
-              Everything You Need to Grow Smarter
+              {t('landing.features.title')}
             </h2>
             <p className="text-cultivax-text-secondary max-w-xl mx-auto">
-              From sowing to harvest, CultivaX provides the intelligence tools modern farming demands.
+              {t('landing.features.subtitle')}
             </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {FEATURES.map((f) => (
+            {getFeatures(t).map((f: any) => (
               <div
                 key={f.title}
                 className="card-interactive p-6 group"
@@ -255,17 +286,17 @@ export default function LandingPage() {
       <section className="py-20 px-4 bg-cultivax-surface/50" id="how-it-works">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-14">
-            <h2 className="text-3xl font-bold mb-4">How CultivaX Works</h2>
+            <h2 className="text-3xl font-bold mb-4">{t('landing.process.title')}</h2>
             <p className="text-cultivax-text-secondary">
-              Four simple steps to smarter farming
+              {t('landing.process.subtitle')}
             </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {PROCESS.map((p, i) => (
+            {getProcess(t).map((p: any, i: number) => (
               <div key={p.step} className="relative text-center group">
                 {/* Connector line (desktop) */}
-                {i < PROCESS.length - 1 && (
+                {i < getProcess(t).length - 1 && (
                   <div className="hidden lg:block absolute top-10 left-[60%] w-[80%] h-[1px] bg-cultivax-border" />
                 )}
 
@@ -288,15 +319,15 @@ export default function LandingPage() {
       {/* ─── For Providers ──────────────────────────────── */}
       <section className="py-20 px-4" id="for-providers">
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl font-bold mb-4">For Service Providers</h2>
+          <h2 className="text-3xl font-bold mb-4">{t('landing.providers.title')}</h2>
           <p className="text-cultivax-text-secondary max-w-xl mx-auto mb-8">
-            Reach thousands of farmers, manage your services, and build trust through transparent ratings.
+            {t('landing.providers.desc')}
           </p>
           <Link
             href="/register"
             className="btn-secondary text-base px-8 py-3 inline-flex items-center gap-2"
           >
-            Register as a Provider <ChevronRight className="w-4 h-4" />
+            {t('landing.providers.cta')} <ChevronRight className="w-4 h-4" />
           </Link>
         </div>
       </section>
@@ -309,16 +340,16 @@ export default function LandingPage() {
 
           <div className="relative">
             <h2 className="text-2xl sm:text-3xl font-bold mb-4">
-              Start your first crop — it takes 2 minutes
+              {t('landing.cta.title')}
             </h2>
             <p className="text-cultivax-text-secondary mb-8">
-              Join thousands of Indian farmers using CultivaX to grow smarter.
+              {t('landing.cta.desc')}
             </p>
             <Link
               href="/register"
               className="btn-primary text-base px-10 py-3.5 inline-flex items-center gap-2 group"
             >
-              Get Started Free
+              {t('landing.cta.button')}
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </Link>
           </div>

@@ -8,8 +8,10 @@ import TrustRing from '@/components/TrustRing';
 import { MapPin, CheckCircle2, Clock, Wrench, Sprout, Star, ArrowLeft, Send } from 'lucide-react';
 import Link from 'next/link';
 import Badge from '@/components/Badge';
+import { useTranslation } from 'react-i18next';
 
 export default function ProviderProfilePage() {
+  const { t } = useTranslation();
   const { id } = useParams();
   const router = useRouter();
   
@@ -57,11 +59,9 @@ export default function ProviderProfilePage() {
     return (
       <ProtectedRoute>
         <div className="card text-center py-16">
-          <h2 className="text-xl font-bold text-red-500 mb-2">Profile Not Found</h2>
+          <h2 className="text-xl font-bold text-red-500 mb-2">{t('services.[id].profile_not_found')}</h2>
           <p className="text-cultivax-text-secondary mb-6">{error || 'This provider does not exist or has been removed.'}</p>
-          <button onClick={() => router.push('/services')} className="btn-primary">
-            Back to Marketplace
-          </button>
+          <button onClick={() => router.push('/services')} className="btn-primary">{t('services.[id].back_to_marketplace')}</button>
         </div>
       </ProtectedRoute>
     );
@@ -72,8 +72,7 @@ export default function ProviderProfilePage() {
       <div className="animate-fade-in max-w-4xl mx-auto space-y-6">
         {/* Back Link */}
         <Link href="/services" className="inline-flex items-center text-sm font-medium text-cultivax-text-muted hover:text-cultivax-text-primary transition-colors">
-          <ArrowLeft className="w-4 h-4 mr-1" /> Back to Services
-        </Link>
+          <ArrowLeft className="w-4 h-4 mr-1" />{t('services.[id].back_to_services')}</Link>
         
         {/* Header Profile */}
         <div className="card p-6">
@@ -88,11 +87,11 @@ export default function ProviderProfilePage() {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-3 mb-2">
                 <h1 className="text-2xl font-bold truncate">{provider.business_name || 'Independent Provider'}</h1>
-                {provider.is_verified && <Badge variant="blue">Verified</Badge>}
+                {provider.is_verified && <Badge variant="blue">{t('services.[id].verified')}</Badge>}
                 {!provider.is_suspended ? (
-                  <Badge variant="green" dot>Active</Badge>
+                  <Badge variant="green" dot>{t('services.[id].active')}</Badge>
                 ) : (
-                  <Badge variant="red">Suspended</Badge>
+                  <Badge variant="red">{t('services.[id].suspended')}</Badge>
                 )}
               </div>
               
@@ -122,7 +121,7 @@ export default function ProviderProfilePage() {
             
             {/* Equipment Section */}
             <div className="card p-6">
-              <h2 className="text-lg font-bold mb-4">Available Equipment</h2>
+              <h2 className="text-lg font-bold mb-4">{t('services.[id].available_equipment')}</h2>
               {equipment.length > 0 ? (
                 <div className="space-y-3">
                   {equipment.map(eq => (
@@ -139,7 +138,7 @@ export default function ProviderProfilePage() {
                 </div>
               ) : (
                 <div className="text-center py-6 bg-cultivax-elevated/30 rounded-lg border border-cultivax-border border-dashed">
-                  <p className="text-sm text-cultivax-text-muted">No specific equipment listed.</p>
+                  <p className="text-sm text-cultivax-text-muted">{t('services.[id].no_specific_equipment_listed')}</p>
                 </div>
               )}
             </div>
@@ -147,7 +146,7 @@ export default function ProviderProfilePage() {
             {/* Reviews Section */}
             <div className="card p-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold">Recent Reviews</h2>
+                <h2 className="text-lg font-bold">{t('services.[id].recent_reviews')}</h2>
                 <div className="text-sm font-medium text-cultivax-text-secondary flex items-center gap-1">
                   <Star className="w-4 h-4 text-cultivax-primary fill-cultivax-primary" />
                   {reviewsData?.aggregates?.average_rating ? reviewsData.aggregates.average_rating.toFixed(1) : 'No rating'}
@@ -174,7 +173,7 @@ export default function ProviderProfilePage() {
                 </div>
               ) : (
                 <div className="text-center py-6 bg-cultivax-elevated/30 rounded-lg border border-cultivax-border border-dashed">
-                  <p className="text-sm text-cultivax-text-muted">No reviews yet.</p>
+                  <p className="text-sm text-cultivax-text-muted">{t('services.[id].no_reviews_yet')}</p>
                 </div>
               )}
             </div>
@@ -186,7 +185,7 @@ export default function ProviderProfilePage() {
             
             {/* Specializations */}
             <div className="card p-6">
-              <h2 className="text-sm font-bold mb-3 flex items-center gap-2"><Sprout className="w-4 h-4 text-cultivax-primary" /> Crop Specializations</h2>
+              <h2 className="text-sm font-bold mb-3 flex items-center gap-2"><Sprout className="w-4 h-4 text-cultivax-primary" />{t('services.[id].crop_specializations')}</h2>
               {provider.crop_specializations && provider.crop_specializations.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
                   {provider.crop_specializations.map((crop: string) => (
@@ -196,7 +195,7 @@ export default function ProviderProfilePage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-cultivax-text-muted">General services</p>
+                <p className="text-xs text-cultivax-text-muted">{t('services.[id].general_services')}</p>
               )}
             </div>
             

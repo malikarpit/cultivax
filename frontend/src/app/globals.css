@@ -1,3 +1,6 @@
+/* MapLibre GL CSS */
+@import 'maplibre-gl/dist/maplibre-gl.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -5,9 +8,6 @@
 /* ============================================================
    CultivaX Global Styles — Dark Agricultural Intelligence Theme
    ============================================================ */
-
-/* Leaflet CSS */
-@import 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
 
 /* ─── CSS Custom Properties ────────────────────────────────── */
 :root {
@@ -168,6 +168,7 @@ body {
   }
 
   /* ─── Inputs ───────────────────────────────────────────── */
+  .input,
   input[type="text"],
   input[type="email"],
   input[type="tel"],
@@ -284,14 +285,14 @@ body {
 
 .glass-card {
   background: rgba(36, 42, 58, 0.4);
-  backdrop-filter: blur(16px) saturate(180%);
   -webkit-backdrop-filter: blur(16px) saturate(180%);
+  backdrop-filter: blur(16px) saturate(180%);
 }
 
 .glass-card-solid {
   background: rgba(25, 31, 47, 0.8);
-  backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
 }
 
 /* SVG growth arc for circular progress */
@@ -444,7 +445,6 @@ body {
 }
 .no-scrollbar {
   -ms-overflow-style: none;
-  scrollbar-width: none;
 }
 
 /* Mobile-friendly touch targets */
@@ -554,10 +554,12 @@ html.reduce-motion *::after {
 /* ─── Dark Mode (explicit toggle — overrides system pref) ─── */
 /* Note: CultivaX defaults to a dark theme already. This toggle
    flips to a LIGHTER dark variant or full light in the future. */
+/* 
 html.dark-mode {
-  /* Currently the design is already dark. This class is a placeholder
-     for future light-mode toggle (invert to dark-mode ON = keep dark). */
-}
+  Currently the design is already dark. This class is a placeholder
+  for future light-mode toggle (invert to dark-mode ON = keep dark). 
+} 
+*/
 
 /* ============================================================
    LANGUAGE-SPECIFIC FONTS (Indic Scripts)

@@ -10,6 +10,7 @@ import { useEffect } from 'react';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { useAuth } from '@/context/AuthContext';
 import { useApi } from '@/hooks/useApi';
+import { useTranslation } from 'react-i18next';
 
 interface Review {
   id: string;
@@ -29,6 +30,7 @@ interface ReviewData {
 }
 
 export default function ProviderReviewsPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const reviewsApi = useApi<ReviewData>();
 
@@ -52,8 +54,8 @@ export default function ProviderReviewsPage() {
     <ProtectedRoute requiredRole={["provider", "admin"]}>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold">My Reviews</h1>
-          <p className="text-gray-400 mt-1">Feedback from farmers you&apos;ve served</p>
+          <h1 className="text-2xl font-bold">{t('provider.reviews.my_reviews')}</h1>
+          <p className="text-gray-400 mt-1">{t('provider.reviews.feedback_from_farmers_you')}</p>
         </div>
 
         {/* Summary */}
@@ -94,8 +96,8 @@ export default function ProviderReviewsPage() {
         {!reviewsApi.loading && reviews.length === 0 && (
           <div className="card text-center py-12 text-gray-500">
             <p className="text-5xl mb-4">⭐</p>
-            <p className="text-lg font-medium">No reviews yet</p>
-            <p className="text-sm mt-1">Reviews will appear once farmers rate your services</p>
+            <p className="text-lg font-medium">{t('provider.reviews.no_reviews_yet')}</p>
+            <p className="text-sm mt-1">{t('provider.reviews.reviews_will_appear_once')}</p>
           </div>
         )}
 

@@ -16,6 +16,7 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import Badge from '@/components/Badge';
 import FilterChips from '@/components/FilterChips';
 import { apiGet, apiPost, apiPut } from '@/lib/api';
+import { useTranslation } from 'react-i18next';
 
 const SEVERITY_FILTERS = [
   { label: 'All', value: 'all' },
@@ -102,6 +103,7 @@ function getAlertTitle(alert: AlertItem): string {
 }
 
 export default function AlertsPage() {
+  const { t } = useTranslation();
   const [severityFilter, setSeverityFilter] = useState('all');
   const [urgencyFilter, setUrgencyFilter] = useState('all');
   const [showHandled, setShowHandled] = useState(false);
@@ -198,8 +200,7 @@ export default function AlertsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Bell className="w-6 h-6 text-cultivax-primary" /> Alerts & Notifications
-          </h1>
+            <Bell className="w-6 h-6 text-cultivax-primary" />{t('alerts.alerts_notifications')}</h1>
           <p className="text-sm text-cultivax-text-muted mt-1">
             {unhandledCount} unhandled alerts on this page
           </p>
@@ -211,9 +212,7 @@ export default function AlertsPage() {
               checked={showHandled}
               onChange={(e) => setShowHandled(e.target.checked)}
               className="w-4 h-4 rounded border-cultivax-border bg-cultivax-elevated text-cultivax-primary"
-            />
-            Show handled
-          </label>
+            />{t('alerts.show_handled')}</label>
           <button
             onClick={handleBulkAcknowledge}
             disabled={bulkLoading || unhandledCount === 0}
@@ -277,7 +276,7 @@ export default function AlertsPage() {
                       {alert.severity}
                     </Badge>
                     {alert.is_acknowledged && (
-                      <Badge variant="green" size="sm" dot>Handled</Badge>
+                      <Badge variant="green" size="sm" dot>{t('alerts.handled')}</Badge>
                     )}
                   </div>
                   <p className="text-xs text-cultivax-text-secondary mb-2">{alert.message}</p>
@@ -297,7 +296,7 @@ export default function AlertsPage() {
                   {/* Recommended Action */}
                   {!alert.is_acknowledged && recommendedAction && (
                     <div className="bg-cultivax-elevated rounded-lg px-3 py-2 text-xs text-cultivax-text-secondary mt-2">
-                      <span className="font-semibold text-cultivax-primary">Recommended:</span> {recommendedAction}
+                      <span className="font-semibold text-cultivax-primary">{t('alerts.recommended')}</span> {recommendedAction}
                     </div>
                   )}
 
@@ -323,7 +322,7 @@ export default function AlertsPage() {
       {!loading && filtered.length === 0 && (
         <div className="card text-center py-12">
           <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto mb-3" />
-          <p className="text-cultivax-text-secondary">All clear! No alerts match your filter.</p>
+          <p className="text-cultivax-text-secondary">{t('alerts.all_clear_no_alerts')}</p>
         </div>
       )}
 
@@ -332,16 +331,12 @@ export default function AlertsPage() {
           onClick={() => setSkip(Math.max(0, skip - PAGE_SIZE))}
           disabled={skip === 0 || loading}
           className="px-3 py-2 text-xs rounded-lg border border-cultivax-border text-cultivax-text-secondary hover:bg-cultivax-elevated disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Previous
-        </button>
+        >{t('alerts.previous')}</button>
         <button
           onClick={() => setSkip(skip + PAGE_SIZE)}
           disabled={!hasNextPage || loading}
           className="px-3 py-2 text-xs rounded-lg border border-cultivax-border text-cultivax-text-secondary hover:bg-cultivax-elevated disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Next
-        </button>
+        >{t('alerts.next')}</button>
       </div>
     </div>
     </ProtectedRoute>

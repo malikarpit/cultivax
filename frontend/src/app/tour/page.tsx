@@ -19,6 +19,7 @@ import {
   Check,
 } from 'lucide-react';
 import clsx from 'clsx';
+import { useTranslation } from 'react-i18next';
 
 const TOUR_STEPS = [
   {
@@ -81,6 +82,7 @@ function markTourSeen(finalStep: number, completed: boolean) {
 /* ─── Component ──────────────────────────────────────────── */
 
 export default function TourPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(0);
   const [ready, setReady] = useState(false);
@@ -128,7 +130,7 @@ export default function TourPage() {
           <div className="w-8 h-8 bg-cultivax-primary/15 rounded-lg flex items-center justify-center">
             <Leaf className="w-5 h-5 text-cultivax-primary" />
           </div>
-          <span className="font-bold text-lg">CultivaX</span>
+          <span className="font-bold text-lg">{t('tour.cultivax')}</span>
         </div>
         <button
           onClick={handleSkip}
@@ -193,8 +195,7 @@ export default function TourPage() {
                 currentStep === 0 && 'opacity-0 pointer-events-none'
               )}
             >
-              <ArrowLeft className="w-4 h-4" /> Previous
-            </button>
+              <ArrowLeft className="w-4 h-4" />{t('tour.previous')}</button>
 
             <button
               onClick={handleNext}
