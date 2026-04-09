@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from 'react';
 import { Loader2 } from 'lucide-react';
+import * as turf from '@turf/area';
+import { polygon as turfPolygon } from '@turf/helpers';
 
 import MapView from '@/components/MapView';
 import { createLandParcel, updateLandParcel } from '@/lib/land-parcels';
@@ -123,6 +125,7 @@ export default function ParcelForm({ initialData, onSuccess, onCancel }: ParcelF
           />
           <select
             className="input"
+            aria-label="Select land area unit"
             value={landAreaUnit}
             onChange={(e) => setLandAreaUnit(e.target.value as 'acres' | 'hectares' | 'bigha')}
           >
@@ -152,6 +155,7 @@ export default function ParcelForm({ initialData, onSuccess, onCancel }: ParcelF
         />
         <select
           className="input"
+          aria-label="Select irrigation source"
           value={irrigationSource}
           onChange={(e) => setIrrigationSource(e.target.value)}
         >
@@ -163,7 +167,7 @@ export default function ParcelForm({ initialData, onSuccess, onCancel }: ParcelF
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <select className="input" value={soilPrimary} onChange={(e) => setSoilPrimary(e.target.value)}>
+        <select className="input" aria-label="Select primary soil type" value={soilPrimary} onChange={(e) => setSoilPrimary(e.target.value)}>
           <option value="">Soil type</option>
           {SOIL_PRIMARY_OPTIONS.map((option) => (
             <option key={option} value={option}>{option}</option>
@@ -179,7 +183,7 @@ export default function ParcelForm({ initialData, onSuccess, onCancel }: ParcelF
           value={soilPh}
           onChange={(e) => setSoilPh(e.target.value)}
         />
-        <select className="input" value={soilOrganic} onChange={(e) => setSoilOrganic(e.target.value)}>
+        <select className="input" aria-label="Select soil organic matter level" value={soilOrganic} onChange={(e) => setSoilOrganic(e.target.value)}>
           <option value="">Organic matter</option>
           {SOIL_ORGANIC_OPTIONS.map((option) => (
             <option key={option} value={option}>{option}</option>
@@ -191,14 +195,53 @@ export default function ParcelForm({ initialData, onSuccess, onCancel }: ParcelF
         center={mapCenter}
         zoom={13}
         editable
+        onChangeCenter={(center) => {
+          setLat(center[0].toFixed(6));
+          setLng(center[1].toFixed(6));
+        }}
+        onMarkerDragEnd={(id, newLat, newLng) => {
+          setLat(newLat.toFixed(6));
+          setLng(newLng.toFixed(6));
+        }}
         polygons={polygon.length >= 3 ? [{ id: 'draft', positions: polygon, label: 'Boundary' }] : []}
         markers={[{ id: 'center', lat: mapCenter[0], lng: mapCenter[1], label: parcelName || 'Field center' }]}
-        onPolygonComplete={(points) => setPolygon(points)}
-        height="300px"
+        onPolygonComplete={(points) => {
+          setPolygon(points);
+          // Auto-update center to polygon centroid
+          if (points.length >= 3) {
+            let sumLat = 0, sumLng = 0;
+            points.forEach(p => { sumLat += p[0]; sumLng += p[1]; });
+            setLat((sumLat / points.length).toFixed(6));
+            setLng((sumLng / points.length).toFixed(6));
+          }
+          
+          // Calculate Area natively if closed shape
+          if (points.length >= 3) {
+            try {
+              // Ensure polygon is closed for Turf.js
+              const turfCoords = [...points.map(p => [p[1], p[0]])]; 
+              if (turfCoords[0][0] !== turfCoords[turfCoords.length-1][0] || 
+                  turfCoords[0][1] !== turfCoords[turfCoords.length-1][1]) {
+                turfCoords.push(turfCoords[0]);
+              }
+              const p = turfPolygon([turfCoords]);
+              const sqMeters = turf.default(p); // auto-calculates precise geodesic area
+              
+              if (landAreaUnit === 'acres') {
+                setLandArea((sqMeters * 0.000247105).toFixed(2));
+              } else if (landAreaUnit === 'hectares') {
+                setLandArea((sqMeters * 0.0001).toFixed(2));
+              }
+            } catch (e) {
+              console.error("Area calc failed:", e);
+            }
+          }
+        }}
+        className="h-[500px] min-h-[500px]"
       />
 
       <p className="text-xs text-cultivax-text-muted">
-        Click on map to draw boundary, then double-click to finish.
+        Click on map to draw boundary. Drag corner points to edit.
       </p>
 
       {error && <div className="text-sm text-red-400">{error}</div>}

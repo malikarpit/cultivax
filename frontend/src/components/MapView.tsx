@@ -1,14 +1,14 @@
 'use client';
 
 /**
- * MapView — Interactive Leaflet map component
+ * MapView — Interactive MapLibre GL map component
  *
  * Features:
- * - Dark tile layer (CartoDB Dark Matter)
- * - View mode: Shows parcel boundaries as green polygons
- * - Edit mode: Polygon draw tool for boundary mapping
- * - Marker popups with crop/parcel info
- * - Responsive: Full-width on mobile
+ * - Fluid WebGL engine (MapLibre)
+ * - Draggable boundary nodes
+ * - Auto-geolocation & Nominatim Geocoding
+ * - Real-time polygon rendering
+ * - Area Calculation (Turf.js)
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
@@ -23,34 +23,38 @@ export interface MapMarker {
   label: string;
   popup?: string;
   color?: string;
+  draggable?: boolean;
 }
 
 export interface MapPolygon {
   id: string;
-  positions: [number, number][];
+  positions: [number, number][]; // [lat, lng] array
   label?: string;
   color?: string;
   fillColor?: string;
 }
 
-interface MapViewProps {
-  center?: [number, number];
+export interface MapViewProps {
+  center?: [number, number]; // [lat, lng]
   zoom?: number;
   markers?: MapMarker[];
   polygons?: MapPolygon[];
   editable?: boolean;
   onPolygonComplete?: (points: [number, number][]) => void;
-  height?: string;
+  onChangeCenter?: (center: [number, number]) => void;
+  onMarkerDragEnd?: (markerId: string, lat: number, lng: number) => void;
   className?: string;
 }
 
-// Dynamic import wrapper to prevent SSR issues with Leaflet
+// Dynamic import wrapper to prevent SSR issues with WebGL Contexts
 const MapViewInner = dynamic(() => import('./MapViewInner'), {
   ssr: false,
   loading: () => (
-    <div className="w-full bg-cultivax-elevated rounded-xl flex items-center justify-center animate-pulse"
-         style={{ height: '400px' }}>
-      <div className="text-cultivax-text-muted text-sm">Loading map...</div>
+    <div className="w-full bg-cultivax-elevated rounded-xl flex items-center justify-center animate-pulse h-[500px]">
+      <div className="text-cultivax-text-muted text-sm flex flex-col items-center gap-3">
+        <svg className="w-8 h-8 animate-spin text-cultivax-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
+        Loading WebGL Engine...
+      </div>
     </div>
   ),
 });
