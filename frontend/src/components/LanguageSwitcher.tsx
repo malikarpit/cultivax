@@ -9,8 +9,9 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Globe, Loader2 } from 'lucide-react';
-import clsx from 'clsx';
 import { useAuth } from '@/context/AuthContext';
+import { useTranslation } from 'react-i18next';
+import clsx from 'clsx';
 
 const LOCALES = [
   { code: 'en', label: 'English',  flag: '🇮🇳' },
@@ -30,6 +31,7 @@ export default function LanguageSwitcher({
   className,
 }: LanguageSwitcherProps) {
   const { user, updatePreferences } = useAuth();
+  const { i18n } = useTranslation();
   const [isOpen, setIsOpen]         = useState(false);
   const [isSaving, setIsSaving]     = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -74,6 +76,7 @@ export default function LanguageSwitcher({
         document.documentElement.lang = code;
         document.cookie = `locale=${code}; path=/; max-age=31536000; SameSite=Lax`;
         localStorage.setItem('cultivax_locale', code);
+        i18n.changeLanguage(code); // Trigger i18next re-render immediately
       }
     } catch (err) {
       console.error('Failed to update language preference:', err);
