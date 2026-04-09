@@ -7,8 +7,10 @@ import { Users, Search, MoreVertical, Edit3, Trash2, ShieldAlert, Loader2, Refre
 import ProtectedRoute from '@/components/ProtectedRoute';
 import Badge from '@/components/Badge';
 import clsx from 'clsx';
+import { useTranslation } from 'react-i18next';
 
 export default function AdminUsersPage() {
+  const { t } = useTranslation();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
@@ -61,8 +63,8 @@ export default function AdminUsersPage() {
       <div className="animate-fade-in max-w-7xl mx-auto py-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <div>
-            <h1 className="text-3xl font-extrabold text-m3-on-surface">User Management</h1>
-            <p className="text-m3-on-surface-variant mt-2">Manage all system users, execute soft deletes, or alter access boundaries.</p>
+            <h1 className="text-3xl font-extrabold text-m3-on-surface">{t('admin.users.user_management')}</h1>
+            <p className="text-m3-on-surface-variant mt-2">{t('admin.users.manage_all_system_users')}</p>
           </div>
         </div>
 
@@ -72,7 +74,7 @@ export default function AdminUsersPage() {
             <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-m3-on-surface-variant" />
             <input 
               type="text" 
-              placeholder="Search by name, email, phone..." 
+              placeholder={t('admin.users.search_by_name_email')} 
               className="w-full bg-m3-surface border border-m3-outline-variant/30 rounded-lg pl-10 pr-4 py-2 text-sm text-m3-on-surface focus:ring-2 focus:ring-m3-primary/50"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -83,19 +85,19 @@ export default function AdminUsersPage() {
             onChange={e => setRoleFilter(e.target.value)}
             className="bg-m3-surface border border-m3-outline-variant/30 rounded-lg px-4 py-2 text-sm text-m3-on-surface appearance-none"
           >
-            <option value="">All Roles</option>
-            <option value="farmer">Farmer</option>
-            <option value="provider">Provider</option>
-            <option value="admin">Admin</option>
+            <option value="">{t('admin.users.all_roles')}</option>
+            <option value="farmer">{t('admin.users.farmer')}</option>
+            <option value="provider">{t('admin.users.provider')}</option>
+            <option value="admin">{t('admin.users.admin')}</option>
           </select>
           <select 
             value={deletedFilter} 
             onChange={e => setDeletedFilter(e.target.value)}
             className="bg-m3-surface border border-m3-outline-variant/30 rounded-lg px-4 py-2 text-sm text-m3-on-surface appearance-none"
           >
-            <option value="false">Active Only</option>
-            <option value="true">Deleted Only</option>
-            <option value="all">Everyone</option>
+            <option value="false">{t('admin.users.active_only')}</option>
+            <option value="true">{t('admin.users.deleted_only')}</option>
+            <option value="all">{t('admin.users.everyone')}</option>
           </select>
         </div>
 
@@ -105,11 +107,11 @@ export default function AdminUsersPage() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-m3-surface-container-high/40 text-m3-on-surface-variant text-xs uppercase tracking-wider">
-                  <th className="p-4 font-semibold">User</th>
-                  <th className="p-4 font-semibold">Contact</th>
-                  <th className="p-4 font-semibold">Role</th>
-                  <th className="p-4 font-semibold">Status</th>
-                  <th className="p-4 font-semibold text-right">Actions</th>
+                  <th className="p-4 font-semibold">{t('admin.users.user')}</th>
+                  <th className="p-4 font-semibold">{t('admin.users.contact')}</th>
+                  <th className="p-4 font-semibold">{t('admin.users.role')}</th>
+                  <th className="p-4 font-semibold">{t('admin.users.status')}</th>
+                  <th className="p-4 font-semibold text-right">{t('admin.users.actions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-m3-outline-variant/10 text-sm">
@@ -122,9 +124,7 @@ export default function AdminUsersPage() {
                 ) : users.length === 0 ? (
                    <tr>
                      <td colSpan={5} className="p-8 text-center text-m3-on-surface-variant">
-                       <Users className="w-8 h-8 opacity-40 mx-auto mb-2" />
-                       No users found matching criteria.
-                     </td>
+                       <Users className="w-8 h-8 opacity-40 mx-auto mb-2" />{t('admin.users.no_users_found_matching')}</td>
                    </tr>
                 ) : (
                   users.map((user: any) => (
@@ -144,9 +144,9 @@ export default function AdminUsersPage() {
                       </td>
                       <td className="p-4">
                         {user.is_deleted ? (
-                          <Badge variant="red">Deleted</Badge>
+                          <Badge variant="red">{t('admin.users.deleted')}</Badge>
                         ) : (
-                          <Badge variant="blue">Active</Badge>
+                          <Badge variant="blue">{t('admin.users.active')}</Badge>
                         )}
                       </td>
                       <td className="p-4 text-right">
@@ -179,16 +179,12 @@ export default function AdminUsersPage() {
                 disabled={page === 1} 
                 onClick={() => setPage(page - 1)}
                 className="px-3 py-1 text-sm border border-m3-outline-variant/30 rounded-lg disabled:opacity-50 hover:bg-m3-surface-container-highest transition-colors"
-              >
-                Previous
-              </button>
+              >{t('admin.users.previous')}</button>
               <button 
                 disabled={page >= totalPages} 
                 onClick={() => setPage(page + 1)}
                 className="px-3 py-1 text-sm border border-m3-outline-variant/30 rounded-lg disabled:opacity-50 hover:bg-m3-surface-container-highest transition-colors"
-              >
-                Next
-              </button>
+              >{t('admin.users.next')}</button>
             </div>
           </div>
         </div>
@@ -213,9 +209,9 @@ export default function AdminUsersPage() {
                 onChange={e => setSelectedRole(e.target.value)}
                 className="w-full mb-6 bg-m3-surface-container-highest border border-m3-outline-variant/30 rounded-xl px-4 py-3 text-sm text-m3-on-surface appearance-none"
               >
-                <option value="farmer">Farmer</option>
-                <option value="provider">Provider</option>
-                <option value="admin">Admin</option>
+                <option value="farmer">{t('admin.users.farmer')}</option>
+                <option value="provider">{t('admin.users.provider')}</option>
+                <option value="admin">{t('admin.users.admin')}</option>
               </select>
             )}
 
@@ -223,9 +219,7 @@ export default function AdminUsersPage() {
               <button
                 onClick={() => setActionType(null)}
                 className="px-4 py-2 rounded-lg font-medium text-sm text-m3-on-surface hover:bg-m3-surface-container-highest transition-colors border border-m3-outline-variant/20"
-              >
-                Cancel
-              </button>
+              >{t('admin.users.cancel')}</button>
               <button
                 onClick={handleAction}
                 disabled={api.loading}

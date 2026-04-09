@@ -11,6 +11,7 @@
 import { useEffect, useState } from 'react';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { useApi } from '@/hooks/useApi';
+import { useTranslation } from 'react-i18next';
 
 interface DeadLetter {
   id: string;
@@ -24,6 +25,7 @@ interface DeadLetter {
 }
 
 export default function DeadLettersPage() {
+  const { t } = useTranslation();
   const dlqApi = useApi<DeadLetter[]>();
   const retryApi = useApi();
   const [retrying, setRetrying] = useState<string | null>(null);
@@ -58,8 +60,8 @@ export default function DeadLettersPage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Dead Letter Queue</h1>
-            <p className="text-gray-400 mt-1">Failed events requiring attention</p>
+            <h1 className="text-2xl font-bold">{t('admin.dead-letters.dead_letter_queue')}</h1>
+            <p className="text-gray-400 mt-1">{t('admin.dead-letters.failed_events_requiring_attention')}</p>
           </div>
           <button
             className="text-sm text-cultivax-primary hover:underline"
@@ -78,8 +80,8 @@ export default function DeadLettersPage() {
         {!dlqApi.loading && items.length === 0 && (
           <div className="card text-center py-12 text-gray-500">
             <p className="text-5xl mb-4">✅</p>
-            <p className="text-lg font-medium">No dead letters</p>
-            <p className="text-sm mt-1">All events processed successfully</p>
+            <p className="text-lg font-medium">{t('admin.dead-letters.no_dead_letters')}</p>
+            <p className="text-sm mt-1">{t('admin.dead-letters.all_events_processed_successfully')}</p>
           </div>
         )}
 

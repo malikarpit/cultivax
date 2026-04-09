@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 const SUBSYSTEM_ICONS: Record<string, any> = {
   database: Database,
@@ -60,6 +61,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default function SystemHealthPage() {
+  const { t } = useTranslation();
   const api = useApi();
   const { data, loading, refetch } = useFetch('/api/v1/admin/health');
   const [triggering, setTriggering] = useState(false);
@@ -68,7 +70,7 @@ export default function SystemHealthPage() {
     setTriggering(true);
     try {
       await api.execute('/admin/health-check', { method: 'POST' });
-      toast.success('Health probe triggered — refreshing data...');
+      toast.success(t('admin.health.toast.health_probe_triggered_refreshing'));
       refetch();
     } catch (err: any) {
       toast.error(err.message || 'Health probe trigger failed');
@@ -96,10 +98,8 @@ export default function SystemHealthPage() {
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <div>
-            <h1 className="text-3xl font-extrabold text-m3-on-surface">System Health Monitor</h1>
-            <p className="text-m3-on-surface-variant mt-2">
-              Real-time subsystem telemetry. Auto-refreshed every 30 s by the background health polling loop.
-            </p>
+            <h1 className="text-3xl font-extrabold text-m3-on-surface">{t('admin.health.system_health_monitor')}</h1>
+            <p className="text-m3-on-surface-variant mt-2">{t('admin.health.real_time_subsystem_telemetry')}</p>
           </div>
           <button
             onClick={handleForceProbe}
@@ -122,7 +122,7 @@ export default function SystemHealthPage() {
             <div className={clsx('rounded-2xl border bg-gradient-to-r p-6 mb-6 flex items-center gap-5', bannerGradient[overall])}>
               <OverallIcon className={clsx('w-12 h-12 flex-shrink-0', overallCfg.textClass)} />
               <div>
-                <p className="text-xs uppercase tracking-widest text-m3-on-surface-variant font-semibold mb-1">Overall System Status</p>
+                <p className="text-xs uppercase tracking-widest text-m3-on-surface-variant font-semibold mb-1">{t('admin.health.overall_system_status')}</p>
                 <h2 className={clsx('text-4xl font-extrabold', overallCfg.textClass)}>{overall}</h2>
               </div>
             </div>
@@ -139,11 +139,11 @@ export default function SystemHealthPage() {
                 <table className="w-full text-left border-collapse min-w-[900px]">
                   <thead>
                     <tr className="bg-m3-surface-container-high/40 text-m3-on-surface-variant text-xs uppercase tracking-wider">
-                      <th className="p-4 font-semibold">Subsystem</th>
-                      <th className="p-4 font-semibold">Status</th>
-                      <th className="p-4 font-semibold">Last Probe</th>
-                      <th className="p-4 font-semibold">Freshness</th>
-                      <th className="p-4 font-semibold">Telemetry Details</th>
+                      <th className="p-4 font-semibold">{t('admin.health.subsystem')}</th>
+                      <th className="p-4 font-semibold">{t('admin.health.status')}</th>
+                      <th className="p-4 font-semibold">{t('admin.health.last_probe')}</th>
+                      <th className="p-4 font-semibold">{t('admin.health.freshness')}</th>
+                      <th className="p-4 font-semibold">{t('admin.health.telemetry_details')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-m3-outline-variant/10 text-sm">
@@ -151,8 +151,8 @@ export default function SystemHealthPage() {
                       <tr>
                         <td colSpan={5} className="p-12 text-center text-m3-on-surface-variant">
                           <Activity className="w-10 h-10 opacity-30 mx-auto mb-3" />
-                          <p className="font-medium text-lg">No Health Data Yet</p>
-                          <p className="text-sm opacity-70">Force a probe or wait for the 30 s background loop.</p>
+                          <p className="font-medium text-lg">{t('admin.health.no_health_data_yet')}</p>
+                          <p className="text-sm opacity-70">{t('admin.health.force_a_probe_or')}</p>
                         </td>
                       </tr>
                     ) : (
@@ -204,7 +204,7 @@ export default function SystemHealthPage() {
                                     ))}
                                 </div>
                               ) : (
-                                <span className="text-xs text-m3-on-surface-variant opacity-40">No probe data</span>
+                                <span className="text-xs text-m3-on-surface-variant opacity-40">{t('admin.health.no_probe_data')}</span>
                               )}
                               {info.error_message && (
                                 <p className="mt-1 text-xs text-red-400 font-mono break-all max-w-xs">{info.error_message}</p>

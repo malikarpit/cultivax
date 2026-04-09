@@ -7,8 +7,10 @@ import { Shield, Search, ToggleLeft, ToggleRight, Loader2, AlertCircle } from 'l
 import ProtectedRoute from '@/components/ProtectedRoute';
 import clsx from 'clsx';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 export default function AdminFeaturesPage() {
+  const { t } = useTranslation();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   
@@ -72,13 +74,11 @@ export default function AdminFeaturesPage() {
       <div className="animate-fade-in max-w-7xl mx-auto py-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <div>
-            <h1 className="text-3xl font-extrabold text-m3-on-surface">Runtime Feature Flags</h1>
-            <p className="text-m3-on-surface-variant mt-2">Manage Namespaced Feature Flags globally applying scope resolutions explicitly across CTIS Engine Cache rules.</p>
+            <h1 className="text-3xl font-extrabold text-m3-on-surface">{t('admin.features.runtime_feature_flags')}</h1>
+            <p className="text-m3-on-surface-variant mt-2">{t('admin.features.manage_namespaced_feature_flags')}</p>
           </div>
           <button className="px-5 py-2.5 bg-cultivax-primary hover:bg-cultivax-primary/90 text-white rounded-xl shadow-lg transition-colors flex items-center gap-2 font-medium">
-            <Shield className="w-4 h-4" />
-            Create Namespace Flag
-          </button>
+            <Shield className="w-4 h-4" />{t('admin.features.create_namespace_flag')}</button>
         </div>
 
         {/* Filters */}
@@ -87,7 +87,7 @@ export default function AdminFeaturesPage() {
             <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-m3-on-surface-variant" />
             <input 
               type="text" 
-              placeholder="Search explicitly by Namespace (e.g., prod.ml_kill_switch)..." 
+              placeholder={t('admin.features.search_explicitly_by_namespace')} 
               className="w-full bg-m3-surface border border-m3-outline-variant/30 rounded-lg pl-10 pr-4 py-2 text-sm text-m3-on-surface focus:ring-2 focus:ring-m3-primary/50"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -101,11 +101,11 @@ export default function AdminFeaturesPage() {
             <table className="w-full text-left border-collapse min-w-[1000px]">
               <thead>
                 <tr className="bg-m3-surface-container-high/40 text-m3-on-surface-variant text-xs uppercase tracking-wider">
-                  <th className="p-4 font-semibold">Flag Identity (Namespace)</th>
-                  <th className="p-4 font-semibold">Scope Mapping</th>
-                  <th className="p-4 font-semibold">Description Context</th>
-                  <th className="p-4 font-semibold">Runtime State</th>
-                  <th className="p-4 font-semibold text-right">Toggle Controls</th>
+                  <th className="p-4 font-semibold">{t('admin.features.flag_identity_namespace')}</th>
+                  <th className="p-4 font-semibold">{t('admin.features.scope_mapping')}</th>
+                  <th className="p-4 font-semibold">{t('admin.features.description_context')}</th>
+                  <th className="p-4 font-semibold">{t('admin.features.runtime_state')}</th>
+                  <th className="p-4 font-semibold text-right">{t('admin.features.toggle_controls')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-m3-outline-variant/10 text-sm">
@@ -119,8 +119,8 @@ export default function AdminFeaturesPage() {
                    <tr>
                      <td colSpan={5} className="p-12 text-center text-m3-on-surface-variant">
                        <ToggleLeft className="w-10 h-10 opacity-30 mx-auto mb-3" />
-                       <p className="font-medium text-lg">No Feature Flags Generated</p>
-                       <p className="text-sm opacity-70">Expand search filters or initiate a payload dynamically.</p>
+                       <p className="font-medium text-lg">{t('admin.features.no_feature_flags_generated')}</p>
+                       <p className="text-sm opacity-70">{t('admin.features.expand_search_filters_or')}</p>
                      </td>
                    </tr>
                 ) : (
@@ -187,16 +187,12 @@ export default function AdminFeaturesPage() {
                 disabled={page === 1} 
                 onClick={() => setPage(page - 1)}
                 className="px-4 py-2 text-sm font-semibold border border-m3-outline-variant/30 text-m3-on-surface rounded-xl disabled:opacity-30 hover:bg-m3-surface-container-highest transition-all shadow-sm"
-              >
-                Previous
-              </button>
+              >{t('admin.features.previous')}</button>
               <button 
                 disabled={page >= totalPages} 
                 onClick={() => setPage(page + 1)}
                 className="px-4 py-2 text-sm font-semibold border border-cultivax-primary/30 text-cultivax-primary bg-cultivax-primary/5 rounded-xl disabled:opacity-30 hover:bg-cultivax-primary/10 transition-all shadow-sm"
-              >
-                Next
-              </button>
+              >{t('admin.features.next')}</button>
             </div>
           </div>
         </div>
@@ -218,14 +214,12 @@ export default function AdminFeaturesPage() {
                {actionFlagName} ({actionScope})
             </p>
 
-            <p className="text-sm text-m3-on-surface-variant mb-6 leading-relaxed">
-               Modifying this Namespace triggers an exact structural rebuild overriding the CTIS TTL mapping limits dynamically caching globally! Be explicitly clear in your rationale.
-            </p>
+            <p className="text-sm text-m3-on-surface-variant mb-6 leading-relaxed">{t('admin.features.modifying_this_namespace_triggers')}</p>
 
             <textarea 
               value={reason}
               onChange={e => setReason(e.target.value)}
-              placeholder="Governance Mapping Logic (ex. Escalated Issue #241)"
+              placeholder={t('admin.features.governance_mapping_logic_ex')}
               className="w-full mb-6 bg-m3-surface-container-highest border border-m3-outline-variant/30 rounded-xl px-4 py-3 text-sm text-m3-on-surface min-h-[100px] resize-none focus:ring-2 focus:ring-cultivax-primary/50"
             />
 
@@ -233,9 +227,7 @@ export default function AdminFeaturesPage() {
               <button
                 onClick={closeModal}
                 className="px-5 py-2.5 rounded-xl font-medium text-sm text-m3-on-surface hover:bg-m3-surface-container-highest transition-colors border border-m3-outline-variant/20 shadow-sm"
-              >
-                Cancel
-              </button>
+              >{t('admin.features.cancel')}</button>
               <button
                 onClick={handleToggle}
                 disabled={api.loading || reason.trim().length === 0}

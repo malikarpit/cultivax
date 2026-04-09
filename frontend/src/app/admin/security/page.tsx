@@ -7,6 +7,7 @@ import {
   ShieldAlert, RefreshCw, AlertTriangle, ShieldX, Database, Ban, Activity
 } from 'lucide-react';
 import clsx from 'clsx';
+import { useTranslation } from 'react-i18next';
 
 interface SecurityEvent {
   timestamp: number;
@@ -58,6 +59,7 @@ function EventRow({ event }: { event: SecurityEvent }) {
 }
 
 export default function SecurityDashboardPage() {
+  const { t } = useTranslation();
   const [limit, setLimit] = useState<number>(50);
   const { data, loading, error, refetch } = useFetch<{events: SecurityEvent[], warning?: string}>(`/api/v1/admin/security-events?limit=${limit}`);
 
@@ -71,12 +73,8 @@ export default function SecurityDashboardPage() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h1 className="text-3xl font-extrabold text-m3-on-surface flex items-center gap-3">
-              <ShieldAlert className="w-8 h-8 text-red-500" />
-              Security Events
-            </h1>
-            <p className="text-m3-on-surface-variant mt-1 max-w-xl text-sm">
-              Live operational visibility into rate limit hits, oversized payloads, and detected injection attempts.
-            </p>
+              <ShieldAlert className="w-8 h-8 text-red-500" />{t('admin.security.security_events')}</h1>
+            <p className="text-m3-on-surface-variant mt-1 max-w-xl text-sm">{t('admin.security.live_operational_visibility_into')}</p>
           </div>
           <div className="flex items-center gap-3">
              <select
@@ -84,9 +82,9 @@ export default function SecurityDashboardPage() {
                 onChange={e => setLimit(Number(e.target.value))}
                 className="bg-m3-surface border border-m3-outline-variant/30 rounded-xl px-3 py-2 text-sm text-m3-on-surface focus:ring-2 focus:ring-red-500/50"
               >
-                <option value={20}>Last 20</option>
-                <option value={50}>Last 50</option>
-                <option value={100}>Last 100</option>
+                <option value={20}>{t('admin.security.last_20')}</option>
+                <option value={50}>{t('admin.security.last_50')}</option>
+                <option value={100}>{t('admin.security.last_100')}</option>
               </select>
             <button
               onClick={refetch}
@@ -94,7 +92,7 @@ export default function SecurityDashboardPage() {
               className="flex items-center gap-2 px-4 py-2 border border-m3-outline-variant/40 rounded-xl hover:bg-m3-surface-container-highest transition-colors disabled:opacity-50"
             >
               <RefreshCw className={clsx('w-4 h-4 text-m3-on-surface', loading && 'animate-spin')} />
-              <span className="text-sm font-medium">Refresh</span>
+              <span className="text-sm font-medium">{t('admin.security.refresh')}</span>
             </button>
           </div>
         </div>
@@ -109,25 +107,23 @@ export default function SecurityDashboardPage() {
         {/* Console View */}
         <div className="glass-card rounded-2xl border border-m3-outline-variant/30 overflow-hidden bg-m3-surface-container-low shadow-xl">
           <div className="p-4 border-b border-m3-outline-variant/20 bg-m3-surface-container/50 flex items-center gap-2 text-sm font-medium text-m3-on-surface-variant uppercase tracking-wider">
-            <Activity className="w-4 h-4 text-red-400" />
-            Live Event Buffer (In-Memory)
-          </div>
+            <Activity className="w-4 h-4 text-red-400" />{t('admin.security.live_event_buffer_in')}</div>
           
           <div className="divide-y divide-m3-outline-variant/10 max-h-[600px] overflow-y-auto">
             {loading && events.length === 0 ? (
               <div className="p-12 text-center text-m3-on-surface-variant flex flex-col items-center gap-3">
                 <RefreshCw className="w-6 h-6 animate-spin opacity-50" />
-                <p>Loading security stream...</p>
+                <p>{t('admin.security.loading_security_stream')}</p>
               </div>
             ) : error ? (
               <div className="p-12 text-center text-red-400">
-                <p>Failed to load security events. Verify permissions.</p>
+                <p>{t('admin.security.failed_to_load_security')}</p>
               </div>
             ) : events.length === 0 ? (
               <div className="p-12 text-center text-m3-on-surface-variant">
                 <ShieldAlert className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                <p>No recent security events detected.</p>
-                <p className="text-xs mt-1 opacity-60">The buffer relies on in-memory storage and resets on deployment.</p>
+                <p>{t('admin.security.no_recent_security_events')}</p>
+                <p className="text-xs mt-1 opacity-60">{t('admin.security.the_buffer_relies_on')}</p>
               </div>
             ) : (
               events.map((evt, idx) => (

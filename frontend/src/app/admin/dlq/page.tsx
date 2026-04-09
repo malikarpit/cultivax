@@ -9,8 +9,10 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 export default function DLQAdminPage() {
+  const { t } = useTranslation();
   const [page, setPage] = useState(1);
   const [eventTypeFilter, setEventTypeFilter] = useState('');
   const [bulkReason, setBulkReason] = useState('');
@@ -25,7 +27,7 @@ export default function DLQAdminPage() {
   const handleSingleRetry = async (eventId: string) => {
     try {
       await api.execute(`/admin/dead-letters/${eventId}/retry`, { method: 'POST' });
-      toast.success('Event recovered and placed back in queue');
+      toast.success(t('admin.dlq.toast.event_recovered_and_placed'));
       refetch();
     } catch (err: any) {
       toast.error(err.message || 'Failed to retry event');
@@ -34,7 +36,7 @@ export default function DLQAdminPage() {
 
   const handleBulkRetry = async () => {
     if (!bulkReason.trim()) {
-      toast.error('A recovery reason is required');
+      toast.error(t('admin.dlq.toast.a_recovery_reason_is'));
       return;
     }
     
@@ -70,12 +72,8 @@ export default function DLQAdminPage() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <div>
             <h1 className="text-3xl font-extrabold text-m3-on-surface flex items-center gap-3">
-              <Skull className="w-8 h-8 text-red-500" />
-              Dead Letter Queue
-            </h1>
-            <p className="text-m3-on-surface-variant mt-2 max-w-2xl">
-              Inspect and recover exhausted system events. Events in the DLQ have failed all retry attempts or exceeded their survival TTL.
-            </p>
+              <Skull className="w-8 h-8 text-red-500" />{t('admin.dlq.dead_letter_queue')}</h1>
+            <p className="text-m3-on-surface-variant mt-2 max-w-2xl">{t('admin.dlq.inspect_and_recover_exhausted')}</p>
           </div>
 
           <div className="flex items-center gap-3">
@@ -89,11 +87,11 @@ export default function DLQAdminPage() {
                 }}
                 className="pl-9 pr-8 py-2.5 rounded-xl border border-m3-outline-variant/30 bg-m3-surface-container-low text-sm font-medium focus:ring-2 focus:ring-cultivax-primary outline-none appearance-none"
               >
-                <option value="">All Event Types</option>
-                <option value="RiskAssessment">RiskAssessment</option>
-                <option value="WeatherUpdated">WeatherUpdated</option>
-                <option value="MediaAnalyzed">MediaAnalyzed</option>
-                <option value="YieldSubmitted">YieldSubmitted</option>
+                <option value="">{t('admin.dlq.all_event_types')}</option>
+                <option value="RiskAssessment">{t('admin.dlq.riskassessment')}</option>
+                <option value="WeatherUpdated">{t('admin.dlq.weatherupdated')}</option>
+                <option value="MediaAnalyzed">{t('admin.dlq.mediaanalyzed')}</option>
+                <option value="YieldSubmitted">{t('admin.dlq.yieldsubmitted')}</option>
               </select>
             </div>
 
@@ -110,9 +108,7 @@ export default function DLQAdminPage() {
               disabled={deadLetters.length === 0}
               className="px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl shadow-lg transition-colors flex items-center gap-2 font-medium disabled:opacity-50"
             >
-              <Activity className="w-4 h-4" />
-              Bulk Recovery
-            </button>
+              <Activity className="w-4 h-4" />{t('admin.dlq.bulk_recovery')}</button>
           </div>
         </div>
 
@@ -120,17 +116,15 @@ export default function DLQAdminPage() {
         {loading && deadLetters.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-32 opacity-60">
             <Loader2 className="w-12 h-12 animate-spin text-cultivax-primary mb-4" />
-            <p className="text-m3-on-surface-variant font-medium">Scanning graves...</p>
+            <p className="text-m3-on-surface-variant font-medium">{t('admin.dlq.scanning_graves')}</p>
           </div>
         ) : deadLetters.length === 0 ? (
           <div className="glass-card rounded-2xl border border-dashed border-m3-outline-variant/40 py-24 flex flex-col items-center justify-center text-center">
             <div className="w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center mb-4">
               <PackageOpen className="w-8 h-8 text-green-500" />
             </div>
-            <h3 className="text-xl font-bold text-m3-on-surface mb-2">The Queue is Empty</h3>
-            <p className="text-m3-on-surface-variant max-w-md">
-              There are no exhausted events waiting for recovery. All backend processes are healthy and executing normally.
-            </p>
+            <h3 className="text-xl font-bold text-m3-on-surface mb-2">{t('admin.dlq.the_queue_is_empty')}</h3>
+            <p className="text-m3-on-surface-variant max-w-md">{t('admin.dlq.there_are_no_exhausted')}</p>
           </div>
         ) : (
           <div className="glass-card rounded-2xl border border-m3-outline-variant/20 overflow-hidden">
@@ -146,10 +140,10 @@ export default function DLQAdminPage() {
                 <thead>
                   <tr className="bg-m3-surface-container-highest/30 text-m3-on-surface-variant text-xs uppercase tracking-wider">
                     <th className="p-4 font-semibold w-10"></th>
-                    <th className="p-4 font-semibold">Event Target</th>
-                    <th className="p-4 font-semibold">Decay / Age</th>
-                    <th className="p-4 font-semibold">Status Limits</th>
-                    <th className="p-4 font-semibold text-right">Actions</th>
+                    <th className="p-4 font-semibold">{t('admin.dlq.event_target')}</th>
+                    <th className="p-4 font-semibold">{t('admin.dlq.decay_age')}</th>
+                    <th className="p-4 font-semibold">{t('admin.dlq.status_limits')}</th>
+                    <th className="p-4 font-semibold text-right">{t('admin.dlq.actions')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-m3-outline-variant/10 text-sm">
@@ -164,7 +158,7 @@ export default function DLQAdminPage() {
                           <td className="p-4">
                             <div className="font-bold text-m3-on-surface mb-1 flex items-center gap-2">
                               {event.event_type}
-                              <span className="text-[10px] bg-red-500/10 text-red-500 px-2 py-0.5 rounded-full uppercase">DeadLetter</span>
+                              <span className="text-[10px] bg-red-500/10 text-red-500 px-2 py-0.5 rounded-full uppercase">{t('admin.dlq.deadletter')}</span>
                             </div>
                             <div className="text-xs text-m3-on-surface-variant font-mono">
                               {event.entity_type} : {event.entity_id.split('-')[0]}...
@@ -174,7 +168,7 @@ export default function DLQAdminPage() {
                             {event.age_seconds > 3600 
                               ? `${(event.age_seconds/3600).toFixed(1)} hrs` 
                               : `${Math.round(event.age_seconds/60)} mins`}
-                            <div className="text-[10px] opacity-60 mt-1 uppercase">Stuck in queue</div>
+                            <div className="text-[10px] opacity-60 mt-1 uppercase">{t('admin.dlq.stuck_in_queue')}</div>
                           </td>
                           <td className="p-4">
                             <div className="text-xs mb-1 font-mono">
@@ -190,9 +184,7 @@ export default function DLQAdminPage() {
                               disabled={api.loading}
                               className="px-4 py-2 bg-m3-surface-container-high hover:bg-cultivax-primary/20 hover:text-cultivax-primary hover:border-cultivax-primary/50 border border-transparent rounded-xl transition-all text-xs font-bold inline-flex items-center gap-2 disabled:opacity-50"
                             >
-                              <Play className="w-3 h-3" />
-                              Force Retry
-                            </button>
+                              <Play className="w-3 h-3" />{t('admin.dlq.force_retry')}</button>
                           </td>
                         </tr>
                         
@@ -203,13 +195,13 @@ export default function DLQAdminPage() {
                               <div className="p-6 pt-2 pl-14">
                                 <div className="grid grid-cols-2 gap-6 mb-4">
                                   <div>
-                                    <h4 className="text-xs uppercase tracking-wider text-m3-on-surface-variant font-bold mb-2">Failure Reason</h4>
+                                    <h4 className="text-xs uppercase tracking-wider text-m3-on-surface-variant font-bold mb-2">{t('admin.dlq.failure_reason')}</h4>
                                     <p className="text-sm border-l-2 border-amber-500 pl-3 py-1 bg-amber-500/5 rounded-r-md">
                                       {event.failure_reason || 'Unknown fatal termination'}
                                     </p>
                                   </div>
                                   <div>
-                                    <h4 className="text-xs uppercase tracking-wider text-m3-on-surface-variant font-bold mb-2">Timestamps</h4>
+                                    <h4 className="text-xs uppercase tracking-wider text-m3-on-surface-variant font-bold mb-2">{t('admin.dlq.timestamps')}</h4>
                                     <div className="text-xs font-mono text-m3-on-surface-variant space-y-1">
                                       <p>Created: {new Date(event.created_at).toLocaleString()}</p>
                                       <p>Last Misfire: {event.last_failed_at ? new Date(event.last_failed_at).toLocaleString() : 'N/A'}</p>
@@ -218,7 +210,7 @@ export default function DLQAdminPage() {
                                 </div>
                                 {event.last_error && (
                                   <div className="mt-4">
-                                    <h4 className="text-xs uppercase tracking-wider text-m3-on-surface-variant font-bold mb-2">Internal Stack Trace</h4>
+                                    <h4 className="text-xs uppercase tracking-wider text-m3-on-surface-variant font-bold mb-2">{t('admin.dlq.internal_stack_trace')}</h4>
                                     <pre className="text-[10px] font-mono text-red-400 bg-black/80 p-4 rounded-xl overflow-x-auto border border-red-500/20 whitespace-pre-wrap max-h-64 overflow-y-auto custom-scrollbar">
                                       {event.last_error}
                                     </pre>
@@ -243,17 +235,13 @@ export default function DLQAdminPage() {
                   disabled={page === 1}
                   onClick={() => setPage(p => p - 1)}
                   className="px-3 py-1 bg-m3-surface-container-high rounded disabled:opacity-30 hover:text-white"
-                >
-                  Prev
-                </button>
+                >{t('admin.dlq.prev')}</button>
                 <span className="font-mono">{page}</span>
                 <button
                   disabled={deadLetters.length < 50}
                   onClick={() => setPage(p => p + 1)}
                   className="px-3 py-1 bg-m3-surface-container-high rounded disabled:opacity-30 hover:text-white"
-                >
-                  Next
-                </button>
+                >{t('admin.dlq.next')}</button>
               </div>
             </div>
           </div>
@@ -266,19 +254,17 @@ export default function DLQAdminPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
           <div className="glass-card max-w-md w-full rounded-2xl p-6 shadow-2xl border border-red-500/30">
             <h2 className="text-xl font-bold text-red-500 flex items-center gap-2 mb-2">
-              <AlertTriangle className="w-6 h-6" />
-              Mass Queue Recovery
-            </h2>
+              <AlertTriangle className="w-6 h-6" />{t('admin.dlq.mass_queue_recovery')}</h2>
             <p className="text-sm text-m3-on-surface-variant mb-6">
               You are about to force retry up to 100 DeadLetter events. {eventTypeFilter ? `Filtered to: ${eventTypeFilter}` : 'No filters applied.'} This will bypass normal throttles and dump them directly into the dispatcher.
             </p>
             
             <div className="mb-6">
-              <label className="block text-sm font-bold text-m3-on-surface-variant mb-2">Override Reason (Required)</label>
+              <label className="block text-sm font-bold text-m3-on-surface-variant mb-2">{t('admin.dlq.override_reason_required')}</label>
               <textarea 
                 value={bulkReason}
                 onChange={e => setBulkReason(e.target.value)}
-                placeholder="e.g. Services restored, forcing batch replay"
+                placeholder={t('admin.dlq.e_g_services_restored')}
                 className="w-full bg-m3-surface-container-lowest border border-m3-outline-variant/30 rounded-xl p-3 text-sm focus:ring-2 focus:ring-red-500 outline-none resize-none h-24"
               />
             </div>
@@ -287,9 +273,7 @@ export default function DLQAdminPage() {
               <button
                 onClick={() => setShowBulkModal(false)}
                 className="px-5 py-2.5 rounded-xl font-medium hover:bg-m3-surface-container-high transition-colors"
-              >
-                Cancel
-              </button>
+              >{t('admin.dlq.cancel')}</button>
               <button
                 onClick={handleBulkRetry}
                 disabled={api.loading || !bulkReason.trim()}

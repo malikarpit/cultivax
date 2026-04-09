@@ -8,8 +8,10 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import Badge from '@/components/Badge';
 import clsx from 'clsx';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 export default function AdminRulesPage() {
+  const { t } = useTranslation();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -37,16 +39,16 @@ export default function AdminRulesPage() {
       if (actionType === 'validate') {
         const res = await api.execute(`/api/v1/rules/${actionRuleId}/validate`, { method: 'POST' });
         if (res.validation_errors?.length > 0) {
-            toast.error('Validation Semantics Failed.');
+            toast.error(t('admin.rules.toast.validation_semantics_failed'));
         } else {
-            toast.success('Template Validated Semantically!');
+            toast.success(t('admin.rules.toast.template_validated_semantically'));
         }
       } else if (actionType === 'approve') {
         await api.execute(`/api/v1/rules/${actionRuleId}/approve`, { method: 'POST' });
-        toast.success('Template Activated! Previous scoping deactivated automatically.');
+        toast.success(t('admin.rules.toast.template_activated_previous_scoping'));
       } else if (actionType === 'deprecate') {
         await api.execute(`/api/v1/rules/${actionRuleId}/deprecate`, { method: 'POST', body: { reason } });
-        toast.success('Template Deprecated!');
+        toast.success(t('admin.rules.toast.template_deprecated'));
       }
       refetch();
       setActionType(null);
@@ -68,13 +70,11 @@ export default function AdminRulesPage() {
       <div className="animate-fade-in max-w-7xl mx-auto py-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <div>
-            <h1 className="text-3xl font-extrabold text-m3-on-surface">Rule Template Governance</h1>
-            <p className="text-m3-on-surface-variant mt-2">Manage CTIS Stage Engine Rules globally imposing strict continuity and semantic boundaries.</p>
+            <h1 className="text-3xl font-extrabold text-m3-on-surface">{t('admin.rules.rule_template_governance')}</h1>
+            <p className="text-m3-on-surface-variant mt-2">{t('admin.rules.manage_ctis_stage_engine')}</p>
           </div>
           <button className="px-5 py-2.5 bg-cultivax-primary hover:bg-cultivax-primary/90 text-white rounded-xl shadow-lg transition-colors flex items-center gap-2 font-medium">
-            <Edit3 className="w-4 h-4" />
-            New Draft
-          </button>
+            <Edit3 className="w-4 h-4" />{t('admin.rules.new_draft')}</button>
         </div>
 
         {/* Filters */}
@@ -83,7 +83,7 @@ export default function AdminRulesPage() {
             <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-m3-on-surface-variant" />
             <input 
               type="text" 
-              placeholder="Filter exactly by Crop Type (e.g., wheat)..." 
+              placeholder={t('admin.rules.filter_exactly_by_crop')} 
               className="w-full bg-m3-surface border border-m3-outline-variant/30 rounded-lg pl-10 pr-4 py-2 text-sm text-m3-on-surface focus:ring-2 focus:ring-m3-primary/50"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -94,11 +94,11 @@ export default function AdminRulesPage() {
             onChange={e => setStatusFilter(e.target.value)}
             className="bg-m3-surface border border-m3-outline-variant/30 rounded-lg px-4 py-2 text-sm text-m3-on-surface appearance-none min-w-[200px]"
           >
-            <option value="">Status Lifecycle: All</option>
-            <option value="draft">Drafts Only</option>
-            <option value="validated">Validated (Awaiting Approval)</option>
-            <option value="active">Active (Production)</option>
-            <option value="deprecated">Deprecated</option>
+            <option value="">{t('admin.rules.status_lifecycle_all')}</option>
+            <option value="draft">{t('admin.rules.drafts_only')}</option>
+            <option value="validated">{t('admin.rules.validated_awaiting_approval')}</option>
+            <option value="active">{t('admin.rules.active_production')}</option>
+            <option value="deprecated">{t('admin.rules.deprecated')}</option>
           </select>
         </div>
 
@@ -108,11 +108,11 @@ export default function AdminRulesPage() {
             <table className="w-full text-left border-collapse min-w-[1000px]">
               <thead>
                 <tr className="bg-m3-surface-container-high/40 text-m3-on-surface-variant text-xs uppercase tracking-wider">
-                  <th className="p-4 font-semibold">Scope Identity</th>
-                  <th className="p-4 font-semibold">Version Info</th>
-                  <th className="p-4 font-semibold">Lifecycle State</th>
-                  <th className="p-4 font-semibold">Effective Bounds</th>
-                  <th className="p-4 font-semibold text-right">Transitions</th>
+                  <th className="p-4 font-semibold">{t('admin.rules.scope_identity')}</th>
+                  <th className="p-4 font-semibold">{t('admin.rules.version_info')}</th>
+                  <th className="p-4 font-semibold">{t('admin.rules.lifecycle_state')}</th>
+                  <th className="p-4 font-semibold">{t('admin.rules.effective_bounds')}</th>
+                  <th className="p-4 font-semibold text-right">{t('admin.rules.transitions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-m3-outline-variant/10 text-sm">
@@ -126,8 +126,8 @@ export default function AdminRulesPage() {
                    <tr>
                      <td colSpan={5} className="p-12 text-center text-m3-on-surface-variant">
                        <Network className="w-10 h-10 opacity-30 mx-auto mb-3" />
-                       <p className="font-medium text-lg">No Rules Found</p>
-                       <p className="text-sm opacity-70">Expand search filters or create a draft.</p>
+                       <p className="font-medium text-lg">{t('admin.rules.no_rules_found')}</p>
+                       <p className="text-sm opacity-70">{t('admin.rules.expand_search_filters_or')}</p>
                      </td>
                    </tr>
                 ) : (
@@ -153,10 +153,10 @@ export default function AdminRulesPage() {
                         <div className="text-[10px] mt-1 opacity-60 font-mono">ID: {rule.id.split('-')[0]}..</div>
                       </td>
                       <td className="p-4 align-top">
-                        {rule.status === 'draft' && <Badge variant="primary">Draft</Badge>}
-                        {rule.status === 'validated' && <Badge variant="amber">Validated</Badge>}
-                        {rule.status === 'active' && <Badge variant="green">Active</Badge>}
-                        {rule.status === 'deprecated' && <Badge variant="neutral">Deprecated</Badge>}
+                        {rule.status === 'draft' && <Badge variant="primary">{t('admin.rules.draft')}</Badge>}
+                        {rule.status === 'validated' && <Badge variant="amber">{t('admin.rules.validated')}</Badge>}
+                        {rule.status === 'active' && <Badge variant="green">{t('admin.rules.active')}</Badge>}
+                        {rule.status === 'deprecated' && <Badge variant="neutral">{t('admin.rules.deprecated')}</Badge>}
                       </td>
                       <td className="p-4 align-top text-m3-on-surface-variant text-xs">
                         Starts: <span className="font-medium text-m3-on-surface">{rule.effective_from_date}</span>
@@ -223,16 +223,12 @@ export default function AdminRulesPage() {
                 disabled={page === 1} 
                 onClick={() => setPage(page - 1)}
                 className="px-4 py-2 text-sm font-semibold border border-m3-outline-variant/30 text-m3-on-surface rounded-xl disabled:opacity-30 hover:bg-m3-surface-container-highest transition-all shadow-sm"
-              >
-                Previous
-              </button>
+              >{t('admin.rules.previous')}</button>
               <button 
                 disabled={page >= totalPages} 
                 onClick={() => setPage(page + 1)}
                 className="px-4 py-2 text-sm font-semibold border border-cultivax-primary/30 text-cultivax-primary bg-cultivax-primary/5 rounded-xl disabled:opacity-30 hover:bg-cultivax-primary/10 transition-all shadow-sm"
-              >
-                Next
-              </button>
+              >{t('admin.rules.next')}</button>
             </div>
           </div>
         </div>
@@ -264,7 +260,7 @@ export default function AdminRulesPage() {
               <textarea 
                 value={reason}
                 onChange={e => setReason(e.target.value)}
-                placeholder="Reasoning logic for the transition..."
+                placeholder={t('admin.rules.reasoning_logic_for_the')}
                 className="w-full mb-6 bg-m3-surface-container-highest border border-m3-outline-variant/30 rounded-xl px-4 py-3 text-sm text-m3-on-surface min-h-[100px] resize-none focus:ring-2 focus:ring-cultivax-primary/50"
               />
             )}
@@ -273,9 +269,7 @@ export default function AdminRulesPage() {
               <button
                 onClick={() => setActionType(null)}
                 className="px-5 py-2.5 rounded-xl font-medium text-sm text-m3-on-surface hover:bg-m3-surface-container-highest transition-colors border border-m3-outline-variant/20 shadow-sm"
-              >
-                Cancel
-              </button>
+              >{t('admin.rules.cancel')}</button>
               <button
                 onClick={handleAction}
                 disabled={api.loading || (actionType === 'deprecate' && reason.trim().length === 0)}

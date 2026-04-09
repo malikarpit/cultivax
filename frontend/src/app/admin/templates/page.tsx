@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { useAuth } from '@/context/AuthContext';
 import { useApi } from '@/hooks/useApi';
+import { useTranslation } from 'react-i18next';
 
 interface RuleTemplate {
   id: string;
@@ -27,6 +28,7 @@ interface RuleTemplate {
 }
 
 export default function TemplateGovernancePage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const rulesApi = useApi<RuleTemplate[]>();
   const actionApi = useApi();
@@ -72,20 +74,20 @@ export default function TemplateGovernancePage() {
     <ProtectedRoute requiredRole="admin">
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold">Template Governance</h1>
-          <p className="text-gray-400 mt-1">Manage crop rule template lifecycle</p>
+          <h1 className="text-2xl font-bold">{t('admin.templates.template_governance')}</h1>
+          <p className="text-gray-400 mt-1">{t('admin.templates.manage_crop_rule_template')}</p>
         </div>
 
         {/* Lifecycle Legend */}
         <div className="card flex items-center gap-4 text-sm">
-          <span className="text-gray-400">Lifecycle:</span>
-          <span className="bg-gray-500/20 text-gray-400 px-2 py-0.5 rounded-full">draft</span>
+          <span className="text-gray-400">{t('admin.templates.lifecycle')}</span>
+          <span className="bg-gray-500/20 text-gray-400 px-2 py-0.5 rounded-full">{t('admin.templates.draft')}</span>
           <span className="text-gray-500">→</span>
-          <span className="bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full">validated</span>
+          <span className="bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full">{t('admin.templates.validated')}</span>
           <span className="text-gray-500">→</span>
-          <span className="bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full">active</span>
+          <span className="bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full">{t('admin.templates.active')}</span>
           <span className="text-gray-500">→</span>
-          <span className="bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full">deprecated</span>
+          <span className="bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full">{t('admin.templates.deprecated')}</span>
         </div>
 
         {/* Templates List */}
@@ -98,7 +100,7 @@ export default function TemplateGovernancePage() {
         {!rulesApi.loading && templates.length === 0 && (
           <div className="card text-center py-12 text-gray-500">
             <p className="text-5xl mb-4">📐</p>
-            <p className="text-lg font-medium">No templates found</p>
+            <p className="text-lg font-medium">{t('admin.templates.no_templates_found')}</p>
           </div>
         )}
 

@@ -9,8 +9,10 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 export default function AdminAuditLogPage() {
+  const { t } = useTranslation();
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState({
     action: '',
@@ -49,24 +51,19 @@ export default function AdminAuditLogPage() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h1 className="text-3xl font-extrabold text-m3-on-surface flex items-center gap-3">
-              <FileText className="w-8 h-8 text-cultivax-primary" />
-              Admin Audit Logs
-            </h1>
-            <p className="text-m3-on-surface-variant mt-2 max-w-2xl">
-              Compliance-ready footprints tracing explicit system changes organically without omission.
-            </p>
+              <FileText className="w-8 h-8 text-cultivax-primary" />{t('admin.audits.admin_audit_logs')}</h1>
+            <p className="text-m3-on-surface-variant mt-2 max-w-2xl">{t('admin.audits.compliance_ready_footprints_tracing')}</p>
           </div>
         </div>
 
         {/* Filter Toolbar */}
         <div className="glass-card rounded-2xl p-4 flex flex-col md:flex-row gap-4 border border-m3-outline-variant/30 bg-m3-surface-container-low">
           <div className="flex items-center gap-2 text-m3-on-surface-variant px-2">
-            <Filter className="w-4 h-4" /> Filters
-          </div>
+            <Filter className="w-4 h-4" />{t('admin.audits.filters')}</div>
           <input 
             type="text"
             name="action"
-            placeholder="Filter by Action..."
+            placeholder={t('admin.audits.filter_by_action')}
             className="flex-1 bg-m3-surface shadow-sm focus:ring-2 focus:ring-cultivax-primary/50 text-m3-on-surface rounded-xl px-4 py-2 border border-m3-outline-variant/30 text-sm"
             value={filters.action}
             onChange={handleFilterChange}
@@ -74,7 +71,7 @@ export default function AdminAuditLogPage() {
           <input 
             type="text"
             name="entity_type"
-            placeholder="Entity Type (e.g., user, service_provider)..."
+            placeholder={t('admin.audits.entity_type_e_g')}
             className="flex-1 bg-m3-surface shadow-sm focus:ring-2 focus:ring-cultivax-primary/50 text-m3-on-surface rounded-xl px-4 py-2 border border-m3-outline-variant/30 text-sm"
             value={filters.entity_type}
             onChange={handleFilterChange}
@@ -82,7 +79,7 @@ export default function AdminAuditLogPage() {
           <input 
             type="text"
             name="admin_id"
-            placeholder="Exact Admin UUID..."
+            placeholder={t('admin.audits.exact_admin_uuid')}
             className="flex-1 bg-m3-surface shadow-sm focus:ring-2 focus:ring-cultivax-primary/50 text-m3-on-surface rounded-xl px-4 py-2 border border-m3-outline-variant/30 text-sm"
             value={filters.admin_id}
             onChange={handleFilterChange}
@@ -102,19 +99,17 @@ export default function AdminAuditLogPage() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-m3-surface-container-highest/30 text-m3-on-surface-variant text-xs uppercase tracking-wider">
-                  <th className="p-4 font-semibold w-56">Timestamp</th>
-                  <th className="p-4 font-semibold w-40">Actor (Admin View)</th>
-                  <th className="p-4 font-semibold w-48">Action</th>
-                  <th className="p-4 font-semibold">Entity Mappings</th>
-                  <th className="p-4 font-semibold w-24">Trace</th>
+                  <th className="p-4 font-semibold w-56">{t('admin.audits.timestamp')}</th>
+                  <th className="p-4 font-semibold w-40">{t('admin.audits.actor_admin_view')}</th>
+                  <th className="p-4 font-semibold w-48">{t('admin.audits.action')}</th>
+                  <th className="p-4 font-semibold">{t('admin.audits.entity_mappings')}</th>
+                  <th className="p-4 font-semibold w-24">{t('admin.audits.trace')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-m3-outline-variant/10 text-sm">
                 {data?.items?.length === 0 && !loading && (
                    <tr>
-                     <td colSpan={5} className="p-8 text-center text-m3-on-surface-variant/60">
-                        No auditable records bound to this filter state.
-                     </td>
+                     <td colSpan={5} className="p-8 text-center text-m3-on-surface-variant/60">{t('admin.audits.no_auditable_records_bound')}</td>
                    </tr>
                 )}
                 {data?.items?.map((log: any) => (
@@ -144,9 +139,7 @@ export default function AdminAuditLogPage() {
                         <button 
                           onClick={() => setExpandedLogId(expandedLogId === log.id ? null : log.id)}
                           className="px-3 py-1.5 text-xs font-semibold rounded-lg hover:bg-m3-surface-container-highest transition-colors border border-m3-outline-variant/40"
-                        >
-                          Payload
-                        </button>
+                        >{t('admin.audits.payload')}</button>
                       </td>
                     </tr>
 
@@ -158,8 +151,7 @@ export default function AdminAuditLogPage() {
                               
                               <div className="space-y-2">
                                 <h4 className="font-bold text-m3-on-surface-variant uppercase tracking-wider flex items-center gap-2">
-                                   <List className="w-3 h-3" /> Before State
-                                </h4>
+                                   <List className="w-3 h-3" />{t('admin.audits.before_state')}</h4>
                                 <pre className="bg-m3-surface-container p-3 rounded-lg border border-m3-outline-variant/20 custom-scrollbar overflow-x-auto font-mono text-[10px] text-m3-on-surface opacity-80">
                                   {log.before_value ? JSON.stringify(log.before_value, null, 2) : "Null / Unavailable"}
                                 </pre>
@@ -167,8 +159,7 @@ export default function AdminAuditLogPage() {
 
                               <div className="space-y-2">
                                 <h4 className="font-bold text-cultivax-primary uppercase tracking-wider flex items-center gap-2">
-                                   <ArrowRight className="w-3 h-3" /> After Delta
-                                </h4>
+                                   <ArrowRight className="w-3 h-3" />{t('admin.audits.after_delta')}</h4>
                                 <pre className="bg-m3-surface-container p-3 rounded-lg border border-cultivax-primary/20 custom-scrollbar overflow-x-auto font-mono text-[10px] text-green-400 opacity-90">
                                   {log.after_value ? JSON.stringify(log.after_value, null, 2) : "Null / Process executed purely"}
                                 </pre>

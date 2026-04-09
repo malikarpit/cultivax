@@ -9,8 +9,10 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 export default function MLModelsAdminPage() {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<'registry'|'feedback'|'training'>('registry');
 
   return (
@@ -21,12 +23,8 @@ export default function MLModelsAdminPage() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h1 className="text-3xl font-extrabold text-m3-on-surface flex items-center gap-3">
-              <BrainCircuit className="w-8 h-8 text-cultivax-primary" />
-              Machine Learning Governance
-            </h1>
-            <p className="text-m3-on-surface-variant mt-2 max-w-2xl">
-              Control dynamic endpoints mapping Risk Analytics exactly across Versioning bounds, fallback paths, and prediction loops.
-            </p>
+              <BrainCircuit className="w-8 h-8 text-cultivax-primary" />{t('admin.ml-models.machine_learning_governance')}</h1>
+            <p className="text-m3-on-surface-variant mt-2 max-w-2xl">{t('admin.ml-models.control_dynamic_endpoints_mapping')}</p>
           </div>
         </div>
 
@@ -41,8 +39,7 @@ export default function MLModelsAdminPage() {
                 : "border-transparent text-m3-on-surface-variant hover:text-m3-on-surface hover:bg-m3-surface-container/50 rounded-t-xl"
             )}
           >
-            <Activity className="w-4 h-4" /> Model Registry
-          </button>
+            <Activity className="w-4 h-4" />{t('admin.ml-models.model_registry')}</button>
           <button
             onClick={() => setActiveTab('feedback')}
             className={clsx(
@@ -52,8 +49,7 @@ export default function MLModelsAdminPage() {
                 : "border-transparent text-m3-on-surface-variant hover:text-m3-on-surface hover:bg-m3-surface-container/50 rounded-t-xl"
             )}
           >
-            <MessageSquare className="w-4 h-4" /> Farmer Feedback
-          </button>
+            <MessageSquare className="w-4 h-4" />{t('admin.ml-models.farmer_feedback')}</button>
           <button
             onClick={() => setActiveTab('training')}
             className={clsx(
@@ -63,8 +59,7 @@ export default function MLModelsAdminPage() {
                 : "border-transparent text-m3-on-surface-variant hover:text-m3-on-surface hover:bg-m3-surface-container/50 rounded-t-xl"
             )}
           >
-            <Database className="w-4 h-4" /> Training Audits
-          </button>
+            <Database className="w-4 h-4" />{t('admin.ml-models.training_audits')}</button>
         </div>
 
         {/* Tab Content */}
@@ -102,8 +97,7 @@ function RegistryTab() {
     <div className="glass-card rounded-2xl border border-m3-outline-variant/30 overflow-hidden">
       <div className="p-4 bg-m3-surface-container-low border-b border-m3-outline-variant/30 flex justify-between items-center">
         <h3 className="font-bold text-m3-on-surface flex items-center gap-2">
-          <Shield className="w-5 h-5 text-cultivax-primary" /> Active Deployments
-        </h3>
+          <Shield className="w-5 h-5 text-cultivax-primary" />{t('admin.ml-models.active_deployments')}</h3>
         <span className="text-xs font-mono text-m3-on-surface-variant bg-m3-surface-container-high px-3 py-1 rounded-full">
           Total: {models?.length || 0}
         </span>
@@ -112,10 +106,10 @@ function RegistryTab() {
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-m3-surface-container-highest/30 text-m3-on-surface-variant text-xs uppercase tracking-wider">
-              <th className="p-4 font-semibold">Registration Status</th>
-              <th className="p-4 font-semibold">Model Identification</th>
-              <th className="p-4 font-semibold">Evaluation Metrics</th>
-              <th className="p-4 font-semibold text-right">Overrides</th>
+              <th className="p-4 font-semibold">{t('admin.ml-models.registration_status')}</th>
+              <th className="p-4 font-semibold">{t('admin.ml-models.model_identification')}</th>
+              <th className="p-4 font-semibold">{t('admin.ml-models.evaluation_metrics')}</th>
+              <th className="p-4 font-semibold text-right">{t('admin.ml-models.overrides')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-m3-outline-variant/10 text-sm">
@@ -124,12 +118,10 @@ function RegistryTab() {
                 <td className="p-4">
                   {model.is_active || model.status === 'active' ? (
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-500/10 text-green-500 text-xs font-bold uppercase tracking-wide border border-green-500/20">
-                      <Zap className="w-3 h-3" /> Active
-                    </span>
+                      <Zap className="w-3 h-3" />{t('admin.ml-models.active')}</span>
                   ) : (
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-m3-surface-container-highest text-m3-on-surface-variant text-xs font-bold uppercase tracking-wide">
-                      <Square className="w-3 h-3" /> Draft
-                    </span>
+                      <Square className="w-3 h-3" />{t('admin.ml-models.draft')}</span>
                   )}
                 </td>
                 <td className="p-4 font-mono">
@@ -164,9 +156,7 @@ function RegistryTab() {
             ))}
             {(!models || models.length === 0) && (
               <tr>
-                <td colSpan={4} className="p-8 text-center text-m3-on-surface-variant opacity-70">
-                  No models registered yet. Database fallback active.
-                </td>
+                <td colSpan={4} className="p-8 text-center text-m3-on-surface-variant opacity-70">{t('admin.ml-models.no_models_registered_yet')}</td>
               </tr>
             )}
           </tbody>
@@ -184,17 +174,16 @@ function FeedbackTab() {
     <div className="glass-card rounded-2xl border border-m3-outline-variant/30 overflow-hidden">
       <div className="p-4 bg-m3-surface-container-low border-b border-m3-outline-variant/30">
         <h3 className="font-bold text-m3-on-surface flex items-center gap-2">
-          <Star className="w-5 h-5 text-cultivax-secondary" /> Field Feedback Streams
-        </h3>
+          <Star className="w-5 h-5 text-cultivax-secondary" />{t('admin.ml-models.field_feedback_streams')}</h3>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm border-collapse">
           <thead>
             <tr className="bg-m3-surface-container-highest/30 text-m3-on-surface-variant text-xs uppercase tracking-wider">
-              <th className="p-4">Crop Target</th>
-              <th className="p-4">Prediction Data</th>
-              <th className="p-4">Alignment</th>
-              <th className="p-4">Farmer Output</th>
+              <th className="p-4">{t('admin.ml-models.crop_target')}</th>
+              <th className="p-4">{t('admin.ml-models.prediction_data')}</th>
+              <th className="p-4">{t('admin.ml-models.alignment')}</th>
+              <th className="p-4">{t('admin.ml-models.farmer_output')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-m3-outline-variant/10">
@@ -202,16 +191,16 @@ function FeedbackTab() {
                <tr key={fb.id} className="hover:bg-m3-surface-container-lowest/50">
                  <td className="p-4 font-mono text-xs">{fb.crop_instance_id.split('-')[0]}</td>
                  <td className="p-4">
-                    <div className="text-xs mb-1"><span className="opacity-60 font-mono text-[10px]">PRED ID:</span> {fb.prediction_id}</div>
-                    <div className="text-xs"><span className="opacity-60 font-mono text-[10px]">CONF:</span> {(fb.original_confidence * 100).toFixed(1)}%</div>
+                    <div className="text-xs mb-1"><span className="opacity-60 font-mono text-[10px]">{t('admin.ml-models.pred_id')}</span> {fb.prediction_id}</div>
+                    <div className="text-xs"><span className="opacity-60 font-mono text-[10px]">{t('admin.ml-models.conf')}</span> {(fb.original_confidence * 100).toFixed(1)}%</div>
                  </td>
                  <td className="p-4 font-bold uppercase text-xs tracking-wider">
                    {fb.feedback_type === 'confirmed' ? (
-                     <span className="text-green-500 block">Confirmed</span>
+                     <span className="text-green-500 block">{t('admin.ml-models.confirmed')}</span>
                    ) : fb.feedback_type === 'rejected' ? (
-                     <span className="text-red-500 block">Rejected</span>
+                     <span className="text-red-500 block">{t('admin.ml-models.rejected')}</span>
                    ) : (
-                     <span className="text-amber-500 block">Partial</span>
+                     <span className="text-amber-500 block">{t('admin.ml-models.partial')}</span>
                    )}
                  </td>
                  <td className="p-4">
@@ -235,17 +224,16 @@ function TrainingTab() {
     <div className="glass-card rounded-2xl border border-m3-outline-variant/30 overflow-hidden">
       <div className="p-4 bg-m3-surface-container-low border-b border-m3-outline-variant/30">
         <h3 className="font-bold text-m3-on-surface flex items-center gap-2">
-          <LineChart className="w-5 h-5 text-blue-500" /> Training Lineage
-        </h3>
+          <LineChart className="w-5 h-5 text-blue-500" />{t('admin.ml-models.training_lineage')}</h3>
       </div>
       <div className="overflow-x-auto p-0">
         <table className="w-full text-left text-sm border-collapse">
             <thead>
               <tr className="bg-m3-surface-container-highest/30 text-m3-on-surface-variant text-xs uppercase tracking-wider">
-                <th className="p-4">Execution Target</th>
-                <th className="p-4">Dataset Volumes</th>
-                <th className="p-4">Final Accuracy / Loss</th>
-                <th className="p-4">Timestamp</th>
+                <th className="p-4">{t('admin.ml-models.execution_target')}</th>
+                <th className="p-4">{t('admin.ml-models.dataset_volumes')}</th>
+                <th className="p-4">{t('admin.ml-models.final_accuracy_loss')}</th>
+                <th className="p-4">{t('admin.ml-models.timestamp')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-m3-outline-variant/10">

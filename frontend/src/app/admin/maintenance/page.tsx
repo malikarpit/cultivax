@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 const TASK_LABELS: Record<string, { label: string; cadence: string; icon: string }> = {
   system_health:   { label: 'System Health Check',    cadence: 'Hourly (min 5 min)', icon: '🏥' },
@@ -24,11 +25,11 @@ function StatusPill({ status }: { status: string }) {
   if (status === 'ok' || status === 'Operational')
     return <span className={clsx(base, 'bg-green-500/15 text-green-400 border border-green-500/20')}><CheckCircle className="w-3 h-3" />{status}</span>;
   if (status === 'skipped')
-    return <span className={clsx(base, 'bg-slate-500/15 text-slate-400 border border-slate-500/20')}><Clock className="w-3 h-3" />skipped</span>;
+    return <span className={clsx(base, 'bg-slate-500/15 text-slate-400 border border-slate-500/20')}><Clock className="w-3 h-3" />{t('admin.maintenance.skipped')}</span>;
   if (status === 'error' || status === 'all_failed')
     return <span className={clsx(base, 'bg-red-500/15 text-red-400 border border-red-500/20')}><XCircle className="w-3 h-3" />{status}</span>;
   if (status === 'partial_failure')
-    return <span className={clsx(base, 'bg-amber-500/15 text-amber-400 border border-amber-500/20')}><AlertTriangle className="w-3 h-3" />partial</span>;
+    return <span className={clsx(base, 'bg-amber-500/15 text-amber-400 border border-amber-500/20')}><AlertTriangle className="w-3 h-3" />{t('admin.maintenance.partial')}</span>;
   return <span className={clsx(base, 'bg-m3-surface-container-highest text-m3-on-surface-variant border border-m3-outline-variant/30')}>{status}</span>;
 }
 
@@ -36,12 +37,12 @@ function OverdueBadge({ overdue }: { overdue: boolean }) {
   if (!overdue) return null;
   return (
     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-red-500/10 text-red-400 border border-red-500/20 ml-2 animate-pulse">
-      <AlertTriangle className="w-2.5 h-2.5" /> overdue
-    </span>
+      <AlertTriangle className="w-2.5 h-2.5" />{t('admin.maintenance.overdue')}</span>
   );
 }
 
 export default function AdminMaintenancePage() {
+  const { t } = useTranslation();
   const { data: status, loading: statusLoading, refetch: refetchStatus } = useFetch('/api/v1/admin/maintenance/status');
   const { execute, loading: triggerLoading } = useApi();
 
@@ -70,12 +71,8 @@ export default function AdminMaintenancePage() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h1 className="text-3xl font-extrabold text-m3-on-surface flex items-center gap-3">
-              <Activity className="w-8 h-8 text-cultivax-primary" />
-              Scheduled Maintenance
-            </h1>
-            <p className="text-m3-on-surface-variant mt-1 max-w-xl text-sm">
-              Operational visibility into all background cron tasks — cadences, failure counts, and live scheduling state.
-            </p>
+              <Activity className="w-8 h-8 text-cultivax-primary" />{t('admin.maintenance.scheduled_maintenance')}</h1>
+            <p className="text-m3-on-surface-variant mt-1 max-w-xl text-sm">{t('admin.maintenance.operational_visibility_into_all')}</p>
           </div>
 
           {/* Status Summary Chip */}
@@ -93,17 +90,16 @@ export default function AdminMaintenancePage() {
         {/* Trigger Controls */}
         <div className="glass-card rounded-2xl p-5 border border-m3-outline-variant/30 bg-m3-surface-container-low flex flex-col sm:flex-row items-start sm:items-center gap-4">
           <div className="flex items-center gap-2 text-m3-on-surface-variant text-sm font-medium min-w-fit">
-            <Zap className="w-4 h-4 text-cultivax-primary" /> Manual Trigger
-          </div>
+            <Zap className="w-4 h-4 text-cultivax-primary" />{t('admin.maintenance.manual_trigger')}</div>
           <select
             value={pendingCadence}
             onChange={e => setPendingCadence(e.target.value)}
             className="flex-1 bg-m3-surface border border-m3-outline-variant/30 rounded-xl px-4 py-2 text-sm text-m3-on-surface focus:ring-2 focus:ring-cultivax-primary/50"
           >
-            <option value="all">All Tasks</option>
-            <option value="hourly">Hourly Tasks Only</option>
-            <option value="daily">Daily Tasks Only</option>
-            <option value="weekly">Weekly Tasks Only</option>
+            <option value="all">{t('admin.maintenance.all_tasks')}</option>
+            <option value="hourly">{t('admin.maintenance.hourly_tasks_only')}</option>
+            <option value="daily">{t('admin.maintenance.daily_tasks_only')}</option>
+            <option value="weekly">{t('admin.maintenance.weekly_tasks_only')}</option>
           </select>
           <button
             onClick={handleTrigger}
@@ -168,29 +164,29 @@ export default function AdminMaintenancePage() {
                   <div className="px-5 pb-5 space-y-3 border-t border-m3-outline-variant/20 pt-4">
                     <div className="grid grid-cols-2 gap-3 text-xs">
                       <div>
-                        <p className="text-m3-on-surface-variant uppercase tracking-wider mb-1">Last Run</p>
+                        <p className="text-m3-on-surface-variant uppercase tracking-wider mb-1">{t('admin.maintenance.last_run')}</p>
                         <p className="font-mono text-m3-on-surface">
                           {taskStatus?.last_run
                             ? new Date(taskStatus.last_run).toLocaleString()
-                            : <span className="text-m3-on-surface-variant/50 italic">never</span>}
+                            : <span className="text-m3-on-surface-variant/50 italic">{t('admin.maintenance.never')}</span>}
                         </p>
                       </div>
                       <div>
-                        <p className="text-m3-on-surface-variant uppercase tracking-wider mb-1">Next Eligible</p>
+                        <p className="text-m3-on-surface-variant uppercase tracking-wider mb-1">{t('admin.maintenance.next_eligible')}</p>
                         <p className={clsx('font-mono', overdue ? 'text-red-400' : 'text-m3-on-surface')}>
                           {taskStatus?.next_eligible_run
                             ? new Date(taskStatus.next_eligible_run).toLocaleString()
-                            : <span className="text-green-400 italic">ready now</span>}
+                            : <span className="text-green-400 italic">{t('admin.maintenance.ready_now')}</span>}
                         </p>
                       </div>
                       <div>
-                        <p className="text-m3-on-surface-variant uppercase tracking-wider mb-1">Min Interval</p>
+                        <p className="text-m3-on-surface-variant uppercase tracking-wider mb-1">{t('admin.maintenance.min_interval')}</p>
                         <p className="font-mono text-m3-on-surface">
                           {taskStatus?.min_interval_seconds ? `${taskStatus.min_interval_seconds}s` : '—'}
                         </p>
                       </div>
                       <div>
-                        <p className="text-m3-on-surface-variant uppercase tracking-wider mb-1">Consecutive Failures</p>
+                        <p className="text-m3-on-surface-variant uppercase tracking-wider mb-1">{t('admin.maintenance.consecutive_failures')}</p>
                         <p className={clsx('font-bold', failures >= 3 ? 'text-red-400' : failures > 0 ? 'text-amber-400' : 'text-green-400')}>
                           {failures}
                         </p>
@@ -210,7 +206,7 @@ export default function AdminMaintenancePage() {
               <div className="flex items-center gap-3">
                 <CheckCircle className="w-5 h-5 text-cultivax-primary" />
                 <div>
-                  <h3 className="font-bold text-m3-on-surface">Last Run Result</h3>
+                  <h3 className="font-bold text-m3-on-surface">{t('admin.maintenance.last_run_result')}</h3>
                   <p className="text-xs text-m3-on-surface-variant font-mono">run_id: {lastRunResult.run_id}</p>
                 </div>
               </div>

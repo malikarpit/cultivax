@@ -5,8 +5,10 @@ import { useFetch } from '@/hooks/useFetch';
 import { Shield, Clock, Search, Filter, Loader2 } from 'lucide-react';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import Badge from '@/components/Badge';
+import { useTranslation } from 'react-i18next';
 
 export default function AdminAuditPage() {
+  const { t } = useTranslation();
   const [page, setPage] = useState(1);
   const [actionFilter, setActionFilter] = useState('');
   
@@ -37,8 +39,8 @@ export default function AdminAuditPage() {
              <Shield className="w-8 h-8 text-cultivax-primary" />
           </div>
           <div>
-            <h1 className="text-3xl font-extrabold text-m3-on-surface">Audit Trail</h1>
-            <p className="text-m3-on-surface-variant mt-1">Immutable ledger tracing governance execution policies and security boundaries.</p>
+            <h1 className="text-3xl font-extrabold text-m3-on-surface">{t('admin.audit.audit_trail')}</h1>
+            <p className="text-m3-on-surface-variant mt-1">{t('admin.audit.immutable_ledger_tracing_governance')}</p>
           </div>
         </div>
 
@@ -51,13 +53,13 @@ export default function AdminAuditPage() {
               onChange={e => { setActionFilter(e.target.value); setPage(1); }}
               className="w-full bg-m3-surface border border-m3-outline-variant/30 rounded-lg pl-10 pr-4 py-2.5 text-sm text-m3-on-surface appearance-none focus:ring-2 focus:ring-cultivax-primary/50"
             >
-              <option value="">All Actions</option>
-              <option value="role_change">Role Changes</option>
-              <option value="user_deleted">Deletions</option>
-              <option value="user_restored">Restorations</option>
-              <option value="provider_verified">Provider Verification</option>
-              <option value="provider_suspended">Provider Suspensions</option>
-              <option value="dead_letter_retry">Dead Letter Retries</option>
+              <option value="">{t('admin.audit.all_actions')}</option>
+              <option value="role_change">{t('admin.audit.role_changes')}</option>
+              <option value="user_deleted">{t('admin.audit.deletions')}</option>
+              <option value="user_restored">{t('admin.audit.restorations')}</option>
+              <option value="provider_verified">{t('admin.audit.provider_verification')}</option>
+              <option value="provider_suspended">{t('admin.audit.provider_suspensions')}</option>
+              <option value="dead_letter_retry">{t('admin.audit.dead_letter_retries')}</option>
             </select>
           </div>
         </div>
@@ -68,11 +70,11 @@ export default function AdminAuditPage() {
             <table className="w-full text-left border-collapse min-w-[800px]">
               <thead>
                 <tr className="bg-m3-surface-container-high/40 text-m3-on-surface-variant text-xs uppercase tracking-wider">
-                  <th className="p-4 font-semibold w-56">Action</th>
-                  <th className="p-4 font-semibold w-48">Admin ID</th>
-                  <th className="p-4 font-semibold w-48">Target Type</th>
-                  <th className="p-4 font-semibold w-64">Details</th>
-                  <th className="p-4 font-semibold text-right">Timestamp</th>
+                  <th className="p-4 font-semibold w-56">{t('admin.audit.action')}</th>
+                  <th className="p-4 font-semibold w-48">{t('admin.audit.admin_id')}</th>
+                  <th className="p-4 font-semibold w-48">{t('admin.audit.target_type')}</th>
+                  <th className="p-4 font-semibold w-64">{t('admin.audit.details')}</th>
+                  <th className="p-4 font-semibold text-right">{t('admin.audit.timestamp')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-m3-outline-variant/10 text-sm">
@@ -86,8 +88,8 @@ export default function AdminAuditPage() {
                    <tr>
                      <td colSpan={5} className="p-12 text-center text-m3-on-surface-variant">
                        <Clock className="w-10 h-10 opacity-30 mx-auto mb-3" />
-                       <p className="text-lg font-medium">No Audit Trace Found</p>
-                       <p className="text-sm opacity-70">Adjust filters to see chronological governance actions.</p>
+                       <p className="text-lg font-medium">{t('admin.audit.no_audit_trace_found')}</p>
+                       <p className="text-sm opacity-70">{t('admin.audit.adjust_filters_to_see')}</p>
                      </td>
                    </tr>
                 ) : (
@@ -140,16 +142,12 @@ export default function AdminAuditPage() {
                   disabled={page === 1} 
                   onClick={() => setPage(p => p - 1)}
                   className="px-4 py-2 text-sm font-semibold border border-m3-outline-variant/30 text-m3-on-surface rounded-xl disabled:opacity-30 hover:bg-m3-surface-container-highest transition-all shadow-sm"
-                >
-                  Previous
-                </button>
+                >{t('admin.audit.previous')}</button>
                 <button 
                   disabled={page >= totalPages} 
                   onClick={() => setPage(p => p + 1)}
                   className="px-4 py-2 text-sm font-semibold border border-cultivax-primary/30 text-cultivax-primary bg-cultivax-primary/5 rounded-xl disabled:opacity-30 hover:bg-cultivax-primary/10 transition-all shadow-sm"
-                >
-                  Next
-                </button>
+                >{t('admin.audit.next')}</button>
               </div>
             </div>
           )}

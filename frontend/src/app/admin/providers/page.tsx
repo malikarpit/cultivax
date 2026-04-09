@@ -7,8 +7,10 @@ import { Users, Search, Edit3, Trash2, ShieldAlert, ShieldCheck, ShieldOff, Load
 import ProtectedRoute from '@/components/ProtectedRoute';
 import Badge from '@/components/Badge';
 import clsx from 'clsx';
+import { useTranslation } from 'react-i18next';
 
 export default function AdminProvidersPage() {
+  const { t } = useTranslation();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [verifiedFilter, setVerifiedFilter] = useState('');
@@ -64,8 +66,8 @@ export default function AdminProvidersPage() {
       <div className="animate-fade-in max-w-7xl mx-auto py-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <div>
-            <h1 className="text-3xl font-extrabold text-m3-on-surface">Provider Governance</h1>
-            <p className="text-m3-on-surface-variant mt-2">Manage provider network trust, verify compliance, or restrict violating entities globally.</p>
+            <h1 className="text-3xl font-extrabold text-m3-on-surface">{t('admin.providers.provider_governance')}</h1>
+            <p className="text-m3-on-surface-variant mt-2">{t('admin.providers.manage_provider_network_trust')}</p>
           </div>
         </div>
 
@@ -75,7 +77,7 @@ export default function AdminProvidersPage() {
             <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-m3-on-surface-variant" />
             <input 
               type="text" 
-              placeholder="Search by business name or service type..." 
+              placeholder={t('admin.providers.search_by_business_name')} 
               className="w-full bg-m3-surface border border-m3-outline-variant/30 rounded-lg pl-10 pr-4 py-2 text-sm text-m3-on-surface focus:ring-2 focus:ring-m3-primary/50"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -86,18 +88,18 @@ export default function AdminProvidersPage() {
             onChange={e => setVerifiedFilter(e.target.value)}
             className="bg-m3-surface border border-m3-outline-variant/30 rounded-lg px-4 py-2 text-sm text-m3-on-surface appearance-none"
           >
-            <option value="">Verification: All</option>
-            <option value="true">Verified Only</option>
-            <option value="false">Unverified Only</option>
+            <option value="">{t('admin.providers.verification_all')}</option>
+            <option value="true">{t('admin.providers.verified_only')}</option>
+            <option value="false">{t('admin.providers.unverified_only')}</option>
           </select>
           <select 
             value={suspendedFilter} 
             onChange={e => setSuspendedFilter(e.target.value)}
             className="bg-m3-surface border border-m3-outline-variant/30 rounded-lg px-4 py-2 text-sm text-m3-on-surface appearance-none"
           >
-            <option value="false">Active (Not Suspended)</option>
-            <option value="true">Suspended Only</option>
-            <option value="all">Suspend Bound: All</option>
+            <option value="false">{t('admin.providers.active_not_suspended')}</option>
+            <option value="true">{t('admin.providers.suspended_only')}</option>
+            <option value="all">{t('admin.providers.suspend_bound_all')}</option>
           </select>
         </div>
 
@@ -107,11 +109,11 @@ export default function AdminProvidersPage() {
             <table className="w-full text-left border-collapse min-w-[900px]">
               <thead>
                 <tr className="bg-m3-surface-container-high/40 text-m3-on-surface-variant text-xs uppercase tracking-wider">
-                  <th className="p-4 font-semibold">Business</th>
-                  <th className="p-4 font-semibold">Service Type</th>
-                  <th className="p-4 font-semibold">Territory</th>
-                  <th className="p-4 font-semibold">Access State</th>
-                  <th className="p-4 font-semibold text-right">Actions</th>
+                  <th className="p-4 font-semibold">{t('admin.providers.business')}</th>
+                  <th className="p-4 font-semibold">{t('admin.providers.service_type')}</th>
+                  <th className="p-4 font-semibold">{t('admin.providers.territory')}</th>
+                  <th className="p-4 font-semibold">{t('admin.providers.access_state')}</th>
+                  <th className="p-4 font-semibold text-right">{t('admin.providers.actions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-m3-outline-variant/10 text-sm">
@@ -125,8 +127,8 @@ export default function AdminProvidersPage() {
                    <tr>
                      <td colSpan={5} className="p-12 text-center text-m3-on-surface-variant">
                        <Briefcase className="w-10 h-10 opacity-30 mx-auto mb-3" />
-                       <p className="font-medium text-lg">No Providers Found</p>
-                       <p className="text-sm opacity-70">Adjust active filters directly.</p>
+                       <p className="font-medium text-lg">{t('admin.providers.no_providers_found')}</p>
+                       <p className="text-sm opacity-70">{t('admin.providers.adjust_active_filters_directly')}</p>
                      </td>
                    </tr>
                 ) : (
@@ -151,14 +153,14 @@ export default function AdminProvidersPage() {
                       <td className="p-4 align-top">
                         <div className="flex flex-col gap-2 items-start">
                           {provider.is_suspended ? (
-                            <Badge variant="red">Suspended</Badge>
+                            <Badge variant="red">{t('admin.providers.suspended')}</Badge>
                           ) : (
-                            <Badge variant="blue">Active</Badge>
+                            <Badge variant="blue">{t('admin.providers.active')}</Badge>
                           )}
                           {provider.is_verified ? (
-                             <Badge variant="green">Verified</Badge>
+                             <Badge variant="green">{t('admin.providers.verified')}</Badge>
                           ) : (
-                             <Badge variant="amber">Unverified</Badge>
+                             <Badge variant="amber">{t('admin.providers.unverified')}</Badge>
                           )}
                         </div>
                       </td>
@@ -219,16 +221,12 @@ export default function AdminProvidersPage() {
                 disabled={page === 1} 
                 onClick={() => setPage(page - 1)}
                 className="px-4 py-2 text-sm font-semibold border border-m3-outline-variant/30 text-m3-on-surface rounded-xl disabled:opacity-30 hover:bg-m3-surface-container-highest transition-all shadow-sm"
-              >
-                Previous
-              </button>
+              >{t('admin.providers.previous')}</button>
               <button 
                 disabled={page >= totalPages} 
                 onClick={() => setPage(page + 1)}
                 className="px-4 py-2 text-sm font-semibold border border-cultivax-primary/30 text-cultivax-primary bg-cultivax-primary/5 rounded-xl disabled:opacity-30 hover:bg-cultivax-primary/10 transition-all shadow-sm"
-              >
-                Next
-              </button>
+              >{t('admin.providers.next')}</button>
             </div>
           </div>
         </div>
@@ -264,7 +262,7 @@ export default function AdminProvidersPage() {
               <textarea 
                 value={reason}
                 onChange={e => setReason(e.target.value)}
-                placeholder="Required justification rationale. Visible to the provider."
+                placeholder={t('admin.providers.required_justification_rationale_visible')}
                 className="w-full mb-6 bg-m3-surface-container-highest border border-m3-outline-variant/30 rounded-xl px-4 py-3 text-sm text-m3-on-surface min-h-[100px] resize-none focus:ring-2 focus:ring-cultivax-primary/50"
               />
             )}
@@ -273,9 +271,7 @@ export default function AdminProvidersPage() {
               <button
                 onClick={() => setActionType(null)}
                 className="px-5 py-2.5 rounded-xl font-medium text-sm text-m3-on-surface hover:bg-m3-surface-container-highest transition-colors border border-m3-outline-variant/20 shadow-sm"
-              >
-                Cancel
-              </button>
+              >{t('admin.providers.cancel')}</button>
               <button
                 onClick={handleAction}
                 disabled={api.loading || (actionType !== 'verify' && reason.trim().length === 0)}
