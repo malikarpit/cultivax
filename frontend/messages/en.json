@@ -41,7 +41,15 @@
     "terms": "Terms of Service",
     "support": "Support",
     "documentation": "Documentation",
-    "copyright": "© 2026 CultivaX Agricultural Intelligence. All rights reserved."
+    "copyright": "© 2026 CultivaX Agricultural Intelligence. All rights reserved.",
+    "actionLog": {
+      "noActions": "No actions logged yet.",
+      "subtype": "Subtype",
+      "source": "Source",
+      "impact": "Impact",
+      "appliedInReplay": "✨ Applied in Replay",
+      "orphaned": "⚠️ Orphaned"
+    }
   },
   "landing": {
     "nav": {
@@ -161,6 +169,10 @@
     "newCrop": "+ New Crop",
     "noCrops": "No crops yet",
     "noCropsDesc": "Create your first crop to get started",
+    "health": "Health",
+    "recoveryRequired": "Recovery Required",
+    "recoveryRequiredDesc": "Your recent action logs have triggered a critical health threshold constraint in the Replay Engine. Please review your Action History and mitigate immediately.",
+    "growthTimeline": "Growth Timeline",
     "day": "Day",
     "stressScore": "Stress Score",
     "riskIndex": "Risk Index",
@@ -169,12 +181,12 @@
     "sowingDate": "Sowing Date",
     "variety": "Variety",
     "cropType": "Crop Type",
-    "growthTimeline": "Growth Timeline",
     "actionHistory": "Action History",
     "overview": "Overview",
     "actions": "Actions",
     "map": "Map",
     "analytics": "Analytics",
+    "media": "Media",
     "commandPanel": "Actions",
     "logAction": "Log Action",
     "simulate": "Run Simulation",
@@ -215,9 +227,27 @@
       "notes": "Notes (optional)"
     },
     "detail": {
+      "stressRiskTrend": "Stress & Risk Trend",
       "lastSynced": "Last synced: {time}",
       "recommendations": "Recommendations",
-      "weatherImpact": "Weather Impact"
+      "loadingRecommendations": "Loading recommendations...",
+      "noRecommendations": "No active recommendations right now.",
+      "markActed": "Mark Acted",
+      "dismiss": "Dismiss",
+      "selectField": "Select Field",
+      "weatherImpact": "Weather Impact",
+      "cropInfo": "Crop Info",
+      "linkedField": "Linked Field",
+      "linkField": "Link field",
+      "noFieldLinked": "No field linked yet",
+      "linkFieldNow": "Link a field now",
+      "area": "Area",
+      "fieldMap": "Field Map",
+      "cropGallery": "Crop Gallery",
+      "actionDistribution": "Action Distribution",
+      "stressOverTime": "Stress Over Time",
+      "temperature": "Temperature",
+      "humidity": "Humidity"
     }
   },
   "simulation": {

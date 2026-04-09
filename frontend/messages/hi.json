@@ -41,7 +41,15 @@
     "terms": "सेवा की शर्तें",
     "support": "सहायता",
     "documentation": "दस्तावेज़",
-    "copyright": "© 2026 CultivaX कृषि बुद्धिमत्ता। सभी अधिकार सुरक्षित।"
+    "copyright": "© 2026 CultivaX कृषि बुद्धिमत्ता। सभी अधिकार सुरक्षित।",
+    "actionLog": {
+      "noActions": "कोई कार्रवाई दर्ज नहीं की गई।",
+      "subtype": "उप-प्रकार",
+      "source": "स्रोत",
+      "impact": "प्रभाव",
+      "appliedInReplay": "✨ रिप्ले में लागू",
+      "orphaned": "⚠️ अनाथ"
+    }
   },
   "landing": {
     "nav": {
@@ -161,6 +169,9 @@
     "newCrop": "+ नई फसल",
     "noCrops": "अभी कोई फसल नहीं",
     "noCropsDesc": "शुरू करने के लिए अपनी पहली फसल बनाएं",
+    "health": "स्वास्थ्य",
+    "recoveryRequired": "रिकवरी आवश्यक",
+    "recoveryRequiredDesc": "आपके हालिया एक्शन लॉग ने रिप्ले इंजन में एक महत्वपूर्ण स्वास्थ्य सीमा उल्लंघन को ट्रिगर किया है। कृपया अपना एक्शन इतिहास देखें और तुरंत समाधान करें।",
     "day": "दिन",
     "stressScore": "तनाव स्कोर",
     "riskIndex": "जोखिम सूचकांक",
@@ -175,6 +186,7 @@
     "actions": "कार्रवाई",
     "map": "नक्शा",
     "analytics": "विश्लेषण",
+    "media": "मीडिया",
     "commandPanel": "कार्रवाई",
     "logAction": "कार्रवाई दर्ज करें",
     "simulate": "सिमुलेशन चलाएं",
@@ -215,9 +227,27 @@
       "notes": "नोट्स (वैकल्पिक)"
     },
     "detail": {
+      "stressRiskTrend": "तनाव और जोखिम प्रवृत्ति",
       "lastSynced": "आखिरी सिंक: {time}",
       "recommendations": "सिफारिशें",
-      "weatherImpact": "मौसम प्रभाव"
+      "loadingRecommendations": "सिफारिशें लोड हो रही हैं...",
+      "noRecommendations": "अभी कोई सक्रिय सिफारिश नहीं है।",
+      "markActed": "कार्रवाई की गई",
+      "dismiss": "खारिज करें",
+      "selectField": "खेत चुनें",
+      "weatherImpact": "मौसम प्रभाव",
+      "cropInfo": "फसल की जानकारी",
+      "linkedField": "लिंक किया गया खेत",
+      "linkField": "खेत लिंक करें",
+      "noFieldLinked": "कोई खेत लिंक नहीं किया गया",
+      "linkFieldNow": "अभी एक खेत लिंक करें",
+      "area": "क्षेत्रफल",
+      "fieldMap": "खेत का नक्शा",
+      "cropGallery": "फसल गैलरी",
+      "actionDistribution": "कार्रवाई वितरण",
+      "stressOverTime": "समय के साथ तनाव",
+      "temperature": "तापमान",
+      "humidity": "नमी"
     }
   },
   "simulation": {
