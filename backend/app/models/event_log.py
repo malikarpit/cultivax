@@ -5,9 +5,10 @@ DB-backed event persistence for the event dispatcher.
 TDD Section 2.4.1. Idempotency via UNIQUE event_hash.
 """
 
-from sqlalchemy import Column, String, Integer, DateTime, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID, JSONB
 from datetime import datetime, timezone
+
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 
 from app.models.base import BaseModel
 
@@ -21,7 +22,9 @@ class EventLog(BaseModel):
     # YieldSubmitted | WeatherUpdated | RuleModified | AlertCreated
 
     # Entity reference
-    entity_type = Column(String(50), nullable=False)  # crop_instance | service_request | user
+    entity_type = Column(
+        String(50), nullable=False
+    )  # crop_instance | service_request | user
     entity_id = Column(UUID(as_uuid=True), nullable=False, index=True)
 
     # Payload
@@ -34,7 +37,9 @@ class EventLog(BaseModel):
     module_target = Column(String(50), nullable=True)  # ctis | soe | ml | media
 
     # Priority (MSDD 3.8) — higher = processed first
-    priority = Column(Integer, default=5, nullable=False)  # 1=Low, 5=Normal, 10=High, 99=Emergency
+    priority = Column(
+        Integer, default=5, nullable=False
+    )  # 1=Low, 5=Normal, 10=High, 99=Emergency
 
     # Chain integrity (MSDD Enh 2)
     chain_hash = Column(String(255), nullable=True)

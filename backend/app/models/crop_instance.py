@@ -5,8 +5,9 @@ Core CTIS table. Represents one farmer's one crop lifecycle.
 Fields from TDD Section 2.3.1.
 """
 
-from sqlalchemy import Column, String, Float, Date, Integer, Boolean, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy import (Boolean, Column, Date, Float, ForeignKey, Integer,
+                        String)
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
 
 from app.models.base import BaseModel
@@ -16,7 +17,9 @@ class CropInstance(BaseModel):
     __tablename__ = "crop_instances"
 
     # Foreign keys
-    farmer_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    farmer_id = Column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True
+    )
 
     # Crop identity
     crop_type = Column(String(100), nullable=False, index=True)
@@ -55,7 +58,9 @@ class CropInstance(BaseModel):
     sub_region = Column(String(100), nullable=True)
 
     # land parcel for geospatial features
-    land_parcel_id = Column(UUID(as_uuid=True), ForeignKey("land_parcels.id"), nullable=True)
+    land_parcel_id = Column(
+        UUID(as_uuid=True), ForeignKey("land_parcels.id"), nullable=True
+    )
 
     # Rule template reference
     rule_template_id = Column(UUID(as_uuid=True), nullable=True)
@@ -83,10 +88,18 @@ class CropInstance(BaseModel):
 
     # Relationships
     farmer = relationship("User", back_populates="crop_instances")
-    action_logs = relationship("ActionLog", back_populates="crop_instance", lazy="dynamic")
-    snapshots = relationship("CropInstanceSnapshot", back_populates="crop_instance", lazy="dynamic")
-    yield_records = relationship("YieldRecord", back_populates="crop_instance", lazy="dynamic")
-    deviation_profile = relationship("DeviationProfile", back_populates="crop_instance", uselist=False)
+    action_logs = relationship(
+        "ActionLog", back_populates="crop_instance", lazy="dynamic"
+    )
+    snapshots = relationship(
+        "CropInstanceSnapshot", back_populates="crop_instance", lazy="dynamic"
+    )
+    yield_records = relationship(
+        "YieldRecord", back_populates="crop_instance", lazy="dynamic"
+    )
+    deviation_profile = relationship(
+        "DeviationProfile", back_populates="crop_instance", uselist=False
+    )
 
     def __repr__(self):
         return f"<CropInstance {self.crop_type} [{self.state}]>"

@@ -5,7 +5,7 @@ Feature flags for progressive rollout and kill switches.
 MSDD Enhancement Section 13 + Development Roadmap Enhancement 6.
 """
 
-from sqlalchemy import Column, String, Boolean, Text
+from sqlalchemy import Boolean, Column, String, Text
 
 from app.models.base import BaseModel
 

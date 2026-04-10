@@ -5,7 +5,7 @@ Labor resources offered by service providers.
 MSDD Section 2.6.
 """
 
-from sqlalchemy import Column, String, Float, Integer, Boolean, ForeignKey
+from sqlalchemy import Boolean, Column, Float, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 

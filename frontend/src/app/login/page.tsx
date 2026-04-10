@@ -17,13 +17,15 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Leaf, Eye, EyeOff, Phone, Lock, Loader2, MessageSquare, ArrowRight, Shield } from 'lucide-react';
-import { useAuth } from '@/context/AuthContext';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import Footer from '@/components/Footer';
+import { useTranslation } from 'react-i18next';
+import { useAuth } from '@/context/AuthContext';
 
 type AuthTab = 'password' | 'otp';
 
 export default function LoginPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { login, loginWithOTP, sendOTP } = useAuth();
 
@@ -77,7 +79,17 @@ export default function LoginPage() {
       const loggedInUser = await login(phone, password);
       router.push(getPostLoginRoute(loggedInUser.role));
     } catch (err: any) {
-      const msg = err?.message || 'Invalid phone number or password';
+      const status = err?.status;
+      const code = err?.code;
+      const rawMessage = typeof err?.message === 'string' ? err.message : '';
+
+      let msg = rawMessage || 'Sign in failed. Please try again.';
+      if (code === 'network' || /failed to fetch|network request failed|load failed/i.test(rawMessage)) {
+        msg = 'Unable to reach server. Please ensure backend is running on http://localhost:8000.';
+      } else if (status === 401 || /invalid phone number or password/i.test(rawMessage)) {
+        msg = 'Invalid phone number or password';
+      }
+
       setError(msg);
     } finally {
       setLoading(false);
@@ -99,7 +111,12 @@ export default function LoginPage() {
       setDebugOtp(devOtp);
       startCooldown();
     } catch (err: any) {
-      setError(err?.message || 'Failed to send OTP');
+      const rawMessage = typeof err?.message === 'string' ? err.message : '';
+      if (err?.code === 'network' || /failed to fetch|network request failed|load failed/i.test(rawMessage)) {
+        setError('Unable to reach server. Please ensure backend is running on http://localhost:8000.');
+      } else {
+        setError(rawMessage || 'Failed to send OTP');
+      }
     } finally {
       setLoading(false);
     }
@@ -115,7 +132,12 @@ export default function LoginPage() {
       const loggedInUser = await loginWithOTP(phone, otp);
       router.push(getPostLoginRoute(loggedInUser.role));
     } catch (err: any) {
-      setError(err?.message || 'Invalid OTP');
+      const rawMessage = typeof err?.message === 'string' ? err.message : '';
+      if (err?.code === 'network' || /failed to fetch|network request failed|load failed/i.test(rawMessage)) {
+        setError('Unable to reach server. Please ensure backend is running on http://localhost:8000.');
+      } else {
+        setError(rawMessage || 'Invalid OTP');
+      }
     } finally {
       setLoading(false);
     }
@@ -147,10 +169,10 @@ export default function LoginPage() {
                 <Leaf className="w-8 h-8 text-cultivax-primary" />
               </div>
               <h1 className="text-2xl font-bold text-cultivax-text-primary">
-                Sign In
+                {t('auth.login')}
               </h1>
               <p className="text-sm text-cultivax-text-secondary mt-1">
-                Welcome back to CultivaX
+                {t('auth.welcome_back')}
               </p>
             </div>
 
@@ -165,7 +187,7 @@ export default function LoginPage() {
                 }`}
               >
                 <Lock className="w-3.5 h-3.5" />
-                Password
+                {t('auth.password_tab')}
               </button>
               <button
                 onClick={() => { setActiveTab('otp'); setError(''); setOtpSent(false); }}
@@ -176,7 +198,7 @@ export default function LoginPage() {
                 }`}
               >
                 <MessageSquare className="w-3.5 h-3.5" />
-                OTP Login
+                {t('auth.otp_tab')}
               </button>
             </div>
 
@@ -197,7 +219,7 @@ export default function LoginPage() {
               <form onSubmit={handlePasswordLogin} className="space-y-5">
                 {/* Phone field */}
                 <div>
-                  <label className="form-label">Phone Number</label>
+                  <label className="form-label">{t('auth.phone')}</label>
                   <div className="relative">
                     <div className="absolute left-0 top-0 bottom-0 flex items-center pl-3 pr-2 border-r border-cultivax-border text-sm text-cultivax-text-muted">
                       <Phone className="w-4 h-4 mr-1.5" />
@@ -217,7 +239,7 @@ export default function LoginPage() {
 
                 {/* Password field */}
                 <div>
-                  <label className="form-label">Password</label>
+                  <label className="form-label">{t('auth.password')}</label>
                   <div className="relative">
                     <div className="absolute left-3 top-1/2 -translate-y-1/2 text-cultivax-text-muted">
                       <Lock className="w-4 h-4" />
@@ -247,13 +269,13 @@ export default function LoginPage() {
                     onClick={() => { setActiveTab('otp'); setError(''); }}
                     className="text-sm text-cultivax-text-muted hover:text-cultivax-primary transition-colors"
                   >
-                    Use OTP instead
+                    {t('auth.use_otp')}
                   </button>
                   <Link
                     href="#"
                     className="text-sm text-cultivax-primary hover:text-cultivax-primary-hover transition-colors"
                   >
-                    Forgot password?
+                    {t('auth.forgot_password')}
                   </Link>
                 </div>
 
@@ -264,7 +286,7 @@ export default function LoginPage() {
                   className="btn-primary w-full flex items-center justify-center gap-2 py-3"
                 >
                   {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-                  {loading ? 'Signing in...' : 'Sign In'}
+                  {loading ? t('btn.loading') : t('auth.login')}
                 </button>
               </form>
             )}
@@ -274,7 +296,7 @@ export default function LoginPage() {
               <div className="space-y-5">
                 {/* Phone field */}
                 <div>
-                  <label className="form-label">Phone Number</label>
+                  <label className="form-label">{t('auth.phone')}</label>
                   <div className="relative">
                     <div className="absolute left-0 top-0 bottom-0 flex items-center pl-3 pr-2 border-r border-cultivax-border text-sm text-cultivax-text-muted">
                       <Phone className="w-4 h-4 mr-1.5" />
@@ -301,7 +323,7 @@ export default function LoginPage() {
                   >
                     {loading && <Loader2 className="w-4 h-4 animate-spin" />}
                     <MessageSquare className="w-4 h-4" />
-                    Send OTP
+                    {t('auth.send_otp')}
                   </button>
                 ) : (
                   /* OTP verification form */
@@ -310,13 +332,13 @@ export default function LoginPage() {
                     {debugOtp && (
                       <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg px-4 py-3 text-sm text-blue-400">
                         <span className="font-mono font-bold text-base">{debugOtp}</span>
-                        <span className="ml-2 text-blue-400/60">(Dev mode — OTP shown here)</span>
+                        <span className="ml-2 text-blue-400/60">{t('auth.dev_otp_hint')}</span>
                       </div>
                     )}
 
                     {/* OTP input */}
                     <div>
-                      <label className="form-label">Enter 6-digit OTP</label>
+                      <label className="form-label">{t('auth.otp')}</label>
                       <input
                         type="text"
                         inputMode="numeric"
@@ -338,7 +360,7 @@ export default function LoginPage() {
                     >
                       {loading && <Loader2 className="w-4 h-4 animate-spin" />}
                       <ArrowRight className="w-4 h-4" />
-                      Verify & Sign In
+                      {t('auth.verify_sign_in')}
                     </button>
 
                     {/* Resend */}
@@ -350,8 +372,8 @@ export default function LoginPage() {
                         className="text-sm text-cultivax-text-muted hover:text-cultivax-primary transition-colors disabled:opacity-50"
                       >
                         {otpCooldown > 0
-                          ? `Resend OTP in ${otpCooldown}s`
-                          : 'Resend OTP'}
+                          ? t('auth.resend_in', { count: otpCooldown })
+                          : t('auth.resend_otp')}
                       </button>
                     </div>
                   </form>
@@ -365,19 +387,19 @@ export default function LoginPage() {
             {/* Security badge */}
             <div className="flex items-center justify-center gap-2 text-xs text-cultivax-text-muted mb-4">
               <Shield className="w-3.5 h-3.5" />
-              Secured with HttpOnly cookies & Argon2 encryption
+              {t('auth.secure_badge')}
             </div>
 
             {/* Register link */}
             <div className="text-center">
               <p className="text-sm text-cultivax-text-secondary mb-3">
-                Don&apos;t have an account?
+                {t('auth.no_account')}
               </p>
               <Link
                 href="/register"
                 className="btn-secondary w-full inline-flex items-center justify-center"
               >
-                Create Account
+                {t('auth.register')}
               </Link>
             </div>
           </div>

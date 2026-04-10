@@ -5,8 +5,9 @@ Service providers in the SOE marketplace.
 TDD Section 2.5.1 + crop_specializations (Patch Sec 2 Enhancement).
 """
 
-from sqlalchemy import Column, String, Float, Integer, Boolean, ForeignKey, Text
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy import (Boolean, Column, Float, ForeignKey, Integer, String,
+                        Text)
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
 
 from app.models.base import BaseModel
@@ -16,7 +17,13 @@ class ServiceProvider(BaseModel):
     __tablename__ = "service_providers"
 
     # Link to user account
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, unique=True, index=True)
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
 
     # Provider details
     business_name = Column(String(255), nullable=True)
@@ -59,7 +66,9 @@ class ServiceProvider(BaseModel):
     # Relationships
     equipment = relationship("Equipment", back_populates="provider", lazy="dynamic")
     labor = relationship("Labor", back_populates="provider", lazy="dynamic")
-    service_requests = relationship("ServiceRequest", back_populates="provider", lazy="dynamic")
+    service_requests = relationship(
+        "ServiceRequest", back_populates="provider", lazy="dynamic"
+    )
 
     def __repr__(self):
         return f"<ServiceProvider {self.business_name} ({self.service_type})>"

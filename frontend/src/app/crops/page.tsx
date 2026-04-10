@@ -19,24 +19,27 @@ import { useFetch } from '@/hooks/useFetch';
 import Badge, { getStatusVariant } from '@/components/Badge';
 import FilterChips from '@/components/FilterChips';
 import TrustRing from '@/components/TrustRing';
+import DisclaimerBanner from '@/components/DisclaimerBanner';
+import { useTranslation } from 'react-i18next';
 
 const STATE_FILTERS = [
-  { label: 'All States', value: 'all' },
-  { label: 'Active', value: 'Active' },
-  { label: 'At Risk', value: 'AtRisk' },
-  { label: 'Delayed', value: 'Delayed' },
-  { label: 'Harvested', value: 'Harvested' },
-  { label: 'Closed', value: 'Closed' },
+  { label: 'crops.filter_all_states', fallback: 'All States', value: 'all' },
+  { label: 'crops.filter_active', fallback: 'Active', value: 'Active' },
+  { label: 'crops.filter_at_risk', fallback: 'At Risk', value: 'AtRisk' },
+  { label: 'crops.filter_delayed', fallback: 'Delayed', value: 'Delayed' },
+  { label: 'crops.filter_harvested', fallback: 'Harvested', value: 'Harvested' },
+  { label: 'crops.filter_closed', fallback: 'Closed', value: 'Closed' },
 ];
 
 const SEASON_FILTERS = [
-  { label: 'All Seasons', value: 'all' },
-  { label: 'Rabi', value: 'rabi' },
-  { label: 'Kharif', value: 'kharif' },
-  { label: 'Zaid', value: 'zaid' },
+  { label: 'crops.filter_all_seasons', fallback: 'All Seasons', value: 'all' },
+  { label: 'crops.filter_rabi', fallback: 'Rabi', value: 'rabi' },
+  { label: 'crops.filter_kharif', fallback: 'Kharif', value: 'kharif' },
+  { label: 'crops.filter_zaid', fallback: 'Zaid', value: 'zaid' },
 ];
 
 export default function CropsPage() {
+  const { t } = useTranslation();
   const [search, setSearch] = useState('');
   const [stateFilter, setStateFilter] = useState('all');
   const [seasonFilter, setSeasonFilter] = useState('all');
@@ -52,24 +55,25 @@ export default function CropsPage() {
     ...(seasonFilter !== 'all' ? { seasonal_window_category: seasonFilter } : {}),
     ...(search ? { search } : {}),
   });
-  const { data, loading } = useFetch(`/api/v1/crops?${queryParams}`);
+  const { data, loading } = useFetch(`/api/v1/crops/?${queryParams}`);
   const crops = data?.items || [];
   const totalPages = data?.total_pages || 1;
   const total = data?.total || 0;
 
   return (
     <ProtectedRoute requiredRole={["farmer", "admin"]}>
+    <DisclaimerBanner context="crops" />
     <div className="animate-fade-in">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-cultivax-text-primary">My Crops</h1>
+          <h1 className="text-2xl font-bold text-cultivax-text-primary">{t('crops.title')}</h1>
           <p className="text-sm text-cultivax-text-muted mt-0.5">
-            {total} crop{total !== 1 ? 's' : ''} total
+            {total} {total !== 1 ? t('crops.crop_total_plural', 'crops total') : t('crops.crop_total_singular', '1 crop total').replace('1 ', '')}
           </p>
         </div>
         <Link href="/crops/new" className="btn-primary flex items-center gap-2 w-fit">
-          <Plus className="w-4 h-4" /> New Crop
+          <Plus className="w-4 h-4" /> {t('crops.create_crop', '+ Create Crop')}
         </Link>
       </div>
 
@@ -109,8 +113,8 @@ export default function CropsPage() {
         </div>
 
         <div className="flex flex-wrap gap-3">
-          <FilterChips options={STATE_FILTERS} selected={stateFilter} onChange={setStateFilter} />
-          <FilterChips options={SEASON_FILTERS} selected={seasonFilter} onChange={setSeasonFilter} />
+          <FilterChips options={STATE_FILTERS.map(f => ({ ...f, label: t(f.label, f.fallback) }))} selected={stateFilter} onChange={setStateFilter} />
+          <FilterChips options={SEASON_FILTERS.map(f => ({ ...f, label: t(f.label, f.fallback) }))} selected={seasonFilter} onChange={setSeasonFilter} />
         </div>
       </div>
 
@@ -128,10 +132,10 @@ export default function CropsPage() {
       ) : crops.length === 0 ? (
         <div className="card text-center py-16">
           <Sprout className="w-12 h-12 text-cultivax-text-muted mx-auto mb-4" />
-          <h3 className="text-lg font-semibold mb-2">No crops yet</h3>
+          <h3 className="text-lg font-semibold mb-2">{t('crops.no_crops')}</h3>
           <p className="text-sm text-cultivax-text-muted mb-6">Create your first crop to get started</p>
           <Link href="/crops/new" className="btn-primary inline-flex items-center gap-2">
-            <Plus className="w-4 h-4" /> Create First Crop
+            <Plus className="w-4 h-4" /> {t('crops.create_crop', '+ Create Crop')}
           </Link>
         </div>
       ) : (
@@ -174,7 +178,7 @@ export default function CropsPage() {
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-cultivax-text-muted">
                     <span className="flex items-center gap-1">
                       <Calendar className="w-3 h-3" />
-                      Day {crop.current_day_number || '0'}
+                      {t('crops.day', 'Day')} {crop.current_day_number || '0'}
                     </span>
                     <span>{crop.stage || 'Germination'}</span>
                     {crop.region && (
@@ -189,7 +193,7 @@ export default function CropsPage() {
                   {crop.seasonal_window_category && (
                     <div className="mt-2">
                       <Badge variant="teal" size="sm">
-                        {crop.seasonal_window_category}
+                        {String(t('crops.season_' + (crop.seasonal_window_category || 'unknown').toLowerCase(), crop.seasonal_window_category))}
                       </Badge>
                     </div>
                   )}

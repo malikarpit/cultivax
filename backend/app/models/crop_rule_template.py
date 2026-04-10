@@ -8,8 +8,8 @@ MSDD 1.4 — Crop rules are versioned and effective from a specific date.
 march 26 : Phase 7A — Governance lifecycle: draft → validated → active (dual-approval).
 """
 
-from sqlalchemy import Column, String, Float, Integer, Date, DateTime, Text
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy import Column, Date, DateTime, Float, Integer, String, Text
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 
 from app.models.base import BaseModel
 
@@ -33,6 +33,7 @@ class CropRuleTemplate(BaseModel):
     - harvest_windows: expected harvest readiness indicators
     - drift_limits: max allowed deviation per stage (MSDD 1.9)
     """
+
     __tablename__ = "crop_rule_templates"
 
     crop_type = Column(String(100), nullable=False, index=True)
@@ -45,12 +46,18 @@ class CropRuleTemplate(BaseModel):
 
     # Governance lifecycle (Phase 7A)
     status = Column(
-        String(20), nullable=False, default="draft",
-        comment="draft → validated → active → deprecated"
+        String(20),
+        nullable=False,
+        default="draft",
+        comment="draft → validated → active → deprecated",
     )
-    approved_by = Column(UUID(as_uuid=True), nullable=True, comment="Second admin who approved")
+    approved_by = Column(
+        UUID(as_uuid=True), nullable=True, comment="Second admin who approved"
+    )
     approved_at = Column(DateTime, nullable=True, comment="Approval timestamp")
-    validation_errors = Column(JSONB, nullable=True, default=list, comment="Validation result details")
+    validation_errors = Column(
+        JSONB, nullable=True, default=list, comment="Validation result details"
+    )
 
     # Rule definitions (JSONB for flexibility)
     stage_definitions = Column(JSONB, nullable=False, default=list)

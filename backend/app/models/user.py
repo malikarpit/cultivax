@@ -6,8 +6,8 @@ Fields from TDD Section 2.3.1 + soft delete (MSDD 5.10)
 + accessibility_settings (MSDD 7.14) + is_onboarded (Patch Sec 10).
 """
 
-from sqlalchemy import Column, String, Boolean, DateTime, Text, Integer
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy import Boolean, Column, DateTime, Integer, String, Text
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
 
 from app.models.base import BaseModel
@@ -50,7 +50,9 @@ class User(BaseModel):
     deleted_at = Column(DateTime, nullable=True)
 
     # Relationships
-    crop_instances = relationship("CropInstance", back_populates="farmer", lazy="dynamic")
+    crop_instances = relationship(
+        "CropInstance", back_populates="farmer", lazy="dynamic"
+    )
 
     def __repr__(self):
         return f"<User {self.full_name} ({self.role})>"

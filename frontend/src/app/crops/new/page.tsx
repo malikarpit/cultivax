@@ -20,6 +20,7 @@ import ParcelSelector from '@/components/ParcelSelector';
 import { apiPost } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import type { LandParcel } from '@/lib/types';
+import { useTranslation } from 'react-i18next';
 
 const CROP_TYPES = [
   'Wheat', 'Rice', 'Maize', 'Cotton', 'Sugarcane',
@@ -35,6 +36,7 @@ const REGIONS = [
 type StepId = 1 | 2 | 3;
 
 export default function NewCropPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { refreshUser } = useAuth();
   const [step, setStep] = useState<StepId>(1);
@@ -88,7 +90,7 @@ export default function NewCropPage() {
         },
       };
 
-      await apiPost('/api/v1/crops', payload);
+      await apiPost('/api/v1/crops/', payload);
       await refreshUser();
       router.push('/crops');
     } catch (err: any) {
@@ -103,15 +105,9 @@ export default function NewCropPage() {
       <div className="animate-fade-in flex flex-col items-center">
       {/* Hero Header */}
       <div className="w-full max-w-4xl mb-10 text-center">
-        <span className="inline-block px-4 py-1.5 bg-m3-primary/10 text-m3-primary text-[10px] font-bold tracking-[0.2em] uppercase rounded-full mb-4">
-          Cultivation Protocol
-        </span>
-        <h1 className="text-4xl md:text-5xl font-extrabold tracking-tighter text-m3-on-surface mb-3">
-          New Crop Record
-        </h1>
-        <p className="text-m3-on-surface-variant max-w-lg mx-auto">
-          Initiate a new growth cycle by defining your seed variety and environmental parameters.
-        </p>
+        <span className="inline-block px-4 py-1.5 bg-m3-primary/10 text-m3-primary text-[10px] font-bold tracking-[0.2em] uppercase rounded-full mb-4">{t('crops.new.cultivation_protocol')}</span>
+        <h1 className="text-4xl md:text-5xl font-extrabold tracking-tighter text-m3-on-surface mb-3">{t('crops.new.new_crop_record')}</h1>
+        <p className="text-m3-on-surface-variant max-w-lg mx-auto">{t('crops.new.initiate_a_new_growth')}</p>
       </div>
 
       {/* Stepper */}
@@ -159,16 +155,14 @@ export default function NewCropPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Crop Type */}
                 <div className="space-y-2">
-                  <label className="text-[11px] font-bold uppercase tracking-widest text-m3-on-surface-variant block ml-1">
-                    Crop Type
-                  </label>
+                  <label className="text-[11px] font-bold uppercase tracking-widest text-m3-on-surface-variant block ml-1">{t('crops.new.crop_type')}</label>
                   <div className="relative">
                     <select
                       value={cropType}
                       onChange={(e) => setCropType(e.target.value)}
                       className="w-full bg-m3-surface-container-highest border-none rounded-lg px-4 py-3 text-m3-on-surface focus:ring-1 focus:ring-m3-primary/40 appearance-none transition-all"
                     >
-                      <option value="" disabled>Select species...</option>
+                      <option value="" disabled>{t('crops.new.select_species')}</option>
                       {CROP_TYPES.map((c) => (
                         <option key={c} value={c}>{c}</option>
                       ))}
@@ -179,14 +173,12 @@ export default function NewCropPage() {
 
                 {/* Variety */}
                 <div className="space-y-2">
-                  <label className="text-[11px] font-bold uppercase tracking-widest text-m3-on-surface-variant block ml-1">
-                    Variety
-                  </label>
+                  <label className="text-[11px] font-bold uppercase tracking-widest text-m3-on-surface-variant block ml-1">{t('crops.new.variety')}</label>
                   <input
                     type="text"
                     value={variety}
                     onChange={(e) => setVariety(e.target.value)}
-                    placeholder="e.g. HD-2967, Pusa Bold"
+                    placeholder={t('crops.new.e_g_hd_2967')}
                     className="w-full bg-m3-surface-container-highest border-none rounded-lg px-4 py-3 text-m3-on-surface focus:ring-1 focus:ring-m3-primary/40 placeholder:text-m3-on-surface-variant/30 transition-all"
                   />
                 </div>
@@ -195,9 +187,7 @@ export default function NewCropPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Sowing Date */}
                 <div className="space-y-2">
-                  <label className="text-[11px] font-bold uppercase tracking-widest text-m3-on-surface-variant block ml-1">
-                    Sowing Date
-                  </label>
+                  <label className="text-[11px] font-bold uppercase tracking-widest text-m3-on-surface-variant block ml-1">{t('crops.new.sowing_date')}</label>
                   <div className="relative">
                     <input
                       type="date"
@@ -211,16 +201,14 @@ export default function NewCropPage() {
 
                 {/* Region */}
                 <div className="space-y-2">
-                  <label className="text-[11px] font-bold uppercase tracking-widest text-m3-on-surface-variant block ml-1">
-                    Region
-                  </label>
+                  <label className="text-[11px] font-bold uppercase tracking-widest text-m3-on-surface-variant block ml-1">{t('crops.new.region')}</label>
                   <div className="relative">
                     <select
                       value={region}
                       onChange={(e) => setRegion(e.target.value)}
                       className="w-full bg-m3-surface-container-highest border-none rounded-lg px-4 py-3 text-m3-on-surface focus:ring-1 focus:ring-m3-primary/40 appearance-none transition-all"
                     >
-                      <option value="" disabled>Select zone...</option>
+                      <option value="" disabled>{t('crops.new.select_zone')}</option>
                       {REGIONS.map((r) => (
                         <option key={r} value={r}>{r}</option>
                       ))}
@@ -232,25 +220,19 @@ export default function NewCropPage() {
 
               {/* Land Area */}
               <div className="space-y-2">
-                <label className="text-[11px] font-bold uppercase tracking-widest text-m3-on-surface-variant block ml-1">
-                  Land Area (Square Meters)
-                </label>
+                <label className="text-[11px] font-bold uppercase tracking-widest text-m3-on-surface-variant block ml-1">{t('crops.new.land_area_square_meters')}</label>
                 <div className="relative">
                   <input
                     type="number"
                     value={landArea}
                     onChange={(e) => setLandArea(e.target.value)}
-                    placeholder="0.00"
+                    placeholder={t('crops.new.0_00')}
                     step="0.01"
                     className="w-full bg-m3-surface-container-highest border-none rounded-lg px-4 py-4 text-m3-on-surface font-mono focus:ring-1 focus:ring-m3-primary/40 transition-all"
                   />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-mono font-bold text-m3-primary">
-                    M²
-                  </span>
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-mono font-bold text-m3-primary">{t('crops.new.m')}</span>
                 </div>
-                <p className="text-[10px] text-m3-on-surface-variant/60 italic mt-1">
-                  Numerical precision required for biomass calculation.
-                </p>
+                <p className="text-[10px] text-m3-on-surface-variant/60 italic mt-1">{t('crops.new.numerical_precision_required_for')}</p>
               </div>
 
               <ParcelSelector
@@ -268,51 +250,45 @@ export default function NewCropPage() {
             <div className="space-y-6 animate-fade-in">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <label className="text-[11px] font-bold uppercase tracking-widest text-m3-on-surface-variant block ml-1">
-                    Soil Type
-                  </label>
+                  <label className="text-[11px] font-bold uppercase tracking-widest text-m3-on-surface-variant block ml-1">{t('crops.new.soil_type')}</label>
                   <select
                     value={soilType}
                     onChange={(e) => setSoilType(e.target.value)}
                     className="w-full bg-m3-surface-container-highest border-none rounded-lg px-4 py-3 text-m3-on-surface focus:ring-1 focus:ring-m3-primary/40 appearance-none transition-all"
                   >
-                    <option value="">Select soil type...</option>
-                    <option value="alluvial">Alluvial Soil</option>
-                    <option value="black">Black Cotton Soil</option>
-                    <option value="red">Red Soil</option>
-                    <option value="laterite">Laterite Soil</option>
-                    <option value="sandy">Sandy Loam</option>
-                    <option value="clay">Clay Soil</option>
+                    <option value="">{t('crops.new.select_soil_type')}</option>
+                    <option value="alluvial">{t('crops.new.alluvial_soil')}</option>
+                    <option value="black">{t('crops.new.black_cotton_soil')}</option>
+                    <option value="red">{t('crops.new.red_soil')}</option>
+                    <option value="laterite">{t('crops.new.laterite_soil')}</option>
+                    <option value="sandy">{t('crops.new.sandy_loam')}</option>
+                    <option value="clay">{t('crops.new.clay_soil')}</option>
                   </select>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[11px] font-bold uppercase tracking-widest text-m3-on-surface-variant block ml-1">
-                    Irrigation Method
-                  </label>
+                  <label className="text-[11px] font-bold uppercase tracking-widest text-m3-on-surface-variant block ml-1">{t('crops.new.irrigation_method')}</label>
                   <select
                     value={irrigationType}
                     onChange={(e) => setIrrigationType(e.target.value)}
                     className="w-full bg-m3-surface-container-highest border-none rounded-lg px-4 py-3 text-m3-on-surface focus:ring-1 focus:ring-m3-primary/40 appearance-none transition-all"
                   >
-                    <option value="">Select method...</option>
-                    <option value="drip">Drip Irrigation</option>
-                    <option value="sprinkler">Sprinkler</option>
-                    <option value="flood">Flood / Basin</option>
-                    <option value="canal">Canal Irrigation</option>
-                    <option value="rainfed">Rain-fed</option>
+                    <option value="">{t('crops.new.select_method')}</option>
+                    <option value="drip">{t('crops.new.drip_irrigation')}</option>
+                    <option value="sprinkler">{t('crops.new.sprinkler')}</option>
+                    <option value="flood">{t('crops.new.flood_basin')}</option>
+                    <option value="canal">{t('crops.new.canal_irrigation')}</option>
+                    <option value="rainfed">{t('crops.new.rain_fed')}</option>
                   </select>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-[11px] font-bold uppercase tracking-widest text-m3-on-surface-variant block ml-1">
-                  Additional Notes
-                </label>
+                <label className="text-[11px] font-bold uppercase tracking-widest text-m3-on-surface-variant block ml-1">{t('crops.new.additional_notes')}</label>
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Any observations about soil condition, previous crop, etc..."
+                  placeholder={t('crops.new.any_observations_about_soil')}
                   rows={4}
                   className="w-full bg-m3-surface-container-highest border-none rounded-lg px-4 py-3 text-m3-on-surface focus:ring-1 focus:ring-m3-primary/40 placeholder:text-m3-on-surface-variant/30 transition-all resize-none"
                 />
@@ -323,7 +299,7 @@ export default function NewCropPage() {
           {/* ═══ Step 3: Review ═══ */}
           {step === 3 && (
             <div className="space-y-6 animate-fade-in">
-              <h3 className="text-lg font-bold text-m3-on-surface">Review Your Crop Record</h3>
+              <h3 className="text-lg font-bold text-m3-on-surface">{t('crops.new.review_your_crop_record')}</h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {[
@@ -345,7 +321,7 @@ export default function NewCropPage() {
 
               {notes && (
                 <div className="bg-m3-surface-container-low rounded-lg p-4">
-                  <p className="mono-label mb-1">Notes</p>
+                  <p className="mono-label mb-1">{t('crops.new.notes')}</p>
                   <p className="text-sm text-m3-on-surface-variant">{notes}</p>
                 </div>
               )}
@@ -359,20 +335,14 @@ export default function NewCropPage() {
                 <Sprout className="w-8 h-8 text-m3-primary" />
               </div>
               <div className="space-y-1">
-                <h4 className="text-sm font-bold text-m3-on-surface uppercase tracking-wider">
-                  Protocol Overview
-                </h4>
+                <h4 className="text-sm font-bold text-m3-on-surface uppercase tracking-wider">{t('crops.new.protocol_overview')}</h4>
                 <div className="flex flex-wrap gap-4 text-[11px] font-mono text-m3-primary">
                   <span className="flex items-center gap-1">
-                    <Droplets className="w-3.5 h-3.5" /> AUTO_PH_SYNC
-                  </span>
+                    <Droplets className="w-3.5 h-3.5" />{t('crops.new.auto_ph_sync')}</span>
                   <span className="flex items-center gap-1">
-                    <Leaf className="w-3.5 h-3.5" /> OPTIMAL_H2O
-                  </span>
+                    <Leaf className="w-3.5 h-3.5" />{t('crops.new.optimal_h2o')}</span>
                 </div>
-                <p className="text-[11px] text-m3-on-surface-variant leading-relaxed">
-                  System will automatically calibrate irrigation cycles based on the selected variety and land area parameters.
-                </p>
+                <p className="text-[11px] text-m3-on-surface-variant leading-relaxed">{t('crops.new.system_will_automatically_calibrate')}</p>
               </div>
             </div>
           )}

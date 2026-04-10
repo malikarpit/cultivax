@@ -6,16 +6,16 @@ GET /api/v1/dashboard/admin-stats — Admin platform-wide stats
 """
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
 from sqlalchemy import func
+from sqlalchemy.orm import Session
 
-from app.database import get_db
 from app.api.deps import get_current_user, require_role
-from app.models.user import User
-from app.models.crop_instance import CropInstance
+from app.database import get_db
 from app.models.alert import Alert
-from app.models.service_request import ServiceRequest
+from app.models.crop_instance import CropInstance
 from app.models.service_provider import ServiceProvider
+from app.models.service_request import ServiceRequest
+from app.models.user import User
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
@@ -112,9 +112,7 @@ async def get_admin_stats(
         "total_providers": total_providers,
         "verified_providers": verified_providers,
         "pending_issues": pending_issues,
-        "region_breakdown": [
-            {"region": r, "count": c} for r, c in region_breakdown
-        ],
+        "region_breakdown": [{"region": r, "count": c} for r, c in region_breakdown],
     }
 
 
@@ -159,9 +157,7 @@ def _farmer_stats(db: Session, user: User) -> dict:
         .filter(
             ServiceRequest.farmer_id == user.id,
             ServiceRequest.is_deleted == False,
-            ServiceRequest.status.in_(
-                ["pending", "accepted", "in_progress"]
-            ),
+            ServiceRequest.status.in_(["pending", "accepted", "in_progress"]),
         )
         .scalar()
     ) or 0

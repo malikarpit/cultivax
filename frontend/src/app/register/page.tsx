@@ -16,9 +16,10 @@ import {
   Loader2, Sprout, Wrench, Check, X,
 } from 'lucide-react';
 import clsx from 'clsx';
-import { useAuth } from '@/context/AuthContext';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import Footer from '@/components/Footer';
+import { useTranslation } from 'react-i18next';
+import { useAuth } from '@/context/AuthContext';
 
 const INDIAN_STATES = [
   'Andhra Pradesh', 'Bihar', 'Chhattisgarh', 'Gujarat', 'Haryana',
@@ -71,6 +72,7 @@ function PasswordStrength({ password }: { password: string }) {
 }
 
 export default function RegisterPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { register } = useAuth();
 
@@ -157,9 +159,9 @@ export default function RegisterPage() {
               <div className="w-14 h-14 bg-cultivax-primary/15 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <Leaf className="w-8 h-8 text-cultivax-primary" />
               </div>
-              <h1 className="text-2xl font-bold">Join CultivaX</h1>
+              <h1 className="text-2xl font-bold">{t('auth.register')}</h1>
               <p className="text-sm text-cultivax-text-secondary mt-1">
-                Create your account to get started
+                {t('auth.create_account')}
               </p>
             </div>
 
@@ -172,7 +174,7 @@ export default function RegisterPage() {
             <form onSubmit={handleSubmit} className="space-y-5">
               {/* Full Name */}
               <div>
-                <label className="form-label">Full Name</label>
+                <label className="form-label">{t('auth.full_name')}</label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-cultivax-text-muted" />
                   <input
@@ -188,7 +190,7 @@ export default function RegisterPage() {
 
               {/* Phone */}
               <div>
-                <label className="form-label">Phone Number</label>
+                <label className="form-label">{t('auth.phone')}</label>
                 <div className="relative">
                   <div className="absolute left-0 top-0 bottom-0 flex items-center pl-3 pr-2 border-r border-cultivax-border text-sm text-cultivax-text-muted">
                     <Phone className="w-4 h-4 mr-1.5" />
@@ -207,7 +209,7 @@ export default function RegisterPage() {
 
               {/* Email (optional) */}
               <div>
-                <label className="form-label">Email (Optional)</label>
+                <label className="form-label">{t('auth.email_optional')}</label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-cultivax-text-muted" />
                   <input
@@ -222,7 +224,7 @@ export default function RegisterPage() {
 
               {/* Region */}
               <div>
-                <label className="form-label">Region</label>
+                <label className="form-label">{t('auth.region')}</label>
                 <div className="relative">
                   <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-cultivax-text-muted" />
                   <select
@@ -231,7 +233,7 @@ export default function RegisterPage() {
                     className="!pl-10"
                     required
                   >
-                    <option value="">Select your region</option>
+                    <option value="">{t('auth.select_region')}</option>
                     {INDIAN_STATES.map((s) => (
                       <option key={s} value={s}>{s}</option>
                     ))}
@@ -241,7 +243,7 @@ export default function RegisterPage() {
 
               {/* Preferred Language */}
               <div>
-                <label className="form-label">Preferred Language</label>
+                <label className="form-label">{t('auth.preferred_language')}</label>
                 <div className="flex gap-3">
                   {[
                     { code: 'en', label: 'English' },
@@ -266,7 +268,7 @@ export default function RegisterPage() {
 
               {/* Role segmented control */}
               <div>
-                <label className="form-label">I am a...</label>
+                <label className="form-label">{t('auth.i_am_a')}</label>
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
@@ -279,8 +281,8 @@ export default function RegisterPage() {
                     )}
                   >
                     <Sprout className={clsx('w-5 h-5 mb-2', form.role === 'farmer' ? 'text-cultivax-primary' : 'text-cultivax-text-muted')} />
-                    <p className="text-sm font-semibold">Farmer</p>
-                    <p className="text-xs text-cultivax-text-muted mt-0.5">I grow crops and need tools</p>
+                    <p className="text-sm font-semibold">{t('auth.farmer_label')}</p>
+                    <p className="text-xs text-cultivax-text-muted mt-0.5">{t('auth.farmer_desc')}</p>
                   </button>
                   <button
                     type="button"
@@ -293,15 +295,15 @@ export default function RegisterPage() {
                     )}
                   >
                     <Wrench className={clsx('w-5 h-5 mb-2', form.role === 'provider' ? 'text-cultivax-primary' : 'text-cultivax-text-muted')} />
-                    <p className="text-sm font-semibold">Service Provider</p>
-                    <p className="text-xs text-cultivax-text-muted mt-0.5">I offer ag services</p>
+                    <p className="text-sm font-semibold">{t('auth.provider_label')}</p>
+                    <p className="text-xs text-cultivax-text-muted mt-0.5">{t('auth.provider_desc')}</p>
                   </button>
                 </div>
               </div>
 
               {/* Password */}
               <div>
-                <label className="form-label">Password</label>
+                <label className="form-label">{t('auth.password')}</label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-cultivax-text-muted" />
                   <input
@@ -325,20 +327,20 @@ export default function RegisterPage() {
 
               {/* Confirm Password */}
               <div>
-                <label className="form-label">Confirm Password</label>
+                <label className="form-label">{t('auth.confirm_password')}</label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-cultivax-text-muted" />
                   <input
                     type="password"
                     value={form.confirmPassword}
                     onChange={(e) => handleChange('confirmPassword', e.target.value)}
-                    placeholder="Re-enter your password"
+                    placeholder={t('auth.reenter_password')}
                     className={clsx('!pl-10', passwordMismatch && '!border-red-500')}
                     required
                   />
                 </div>
                 {passwordMismatch && (
-                  <p className="text-xs text-red-400 mt-1">Passwords do not match</p>
+                  <p className="text-xs text-red-400 mt-1">{t('auth.passwords_mismatch')}</p>
                 )}
               </div>
 
@@ -352,10 +354,10 @@ export default function RegisterPage() {
                   required
                 />
                 <span className="text-sm text-cultivax-text-secondary leading-relaxed">
-                  I agree to the{' '}
-                  <Link href="#" className="text-cultivax-primary hover:underline">Terms of Service</Link>
-                  {' '}and{' '}
-                  <Link href="#" className="text-cultivax-primary hover:underline">Privacy Policy</Link>
+                  {t('auth.agree_terms')}{' '}
+                  <Link href="#" className="text-cultivax-primary hover:underline">{t('auth.terms_of_service')}</Link>
+                  {' '}{t('auth.and')}{' '}
+                  <Link href="#" className="text-cultivax-primary hover:underline">{t('auth.privacy_policy')}</Link>
                 </span>
               </label>
 
@@ -366,7 +368,7 @@ export default function RegisterPage() {
                 className="btn-primary w-full flex items-center justify-center gap-2 py-3"
               >
                 {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-                {loading ? 'Creating account...' : 'Create Account'}
+                {loading ? t('btn.loading') : t('auth.register')}
               </button>
             </form>
 
@@ -374,9 +376,9 @@ export default function RegisterPage() {
 
             <div className="text-center">
               <p className="text-sm text-cultivax-text-secondary">
-                Already have an account?{' '}
+                {t('auth.already_have_account')}{' '}
                 <Link href="/login" className="text-cultivax-primary hover:underline font-medium">
-                  Sign in here
+                  {t('auth.sign_in_here')}
                 </Link>
               </p>
             </div>

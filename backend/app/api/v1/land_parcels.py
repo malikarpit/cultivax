@@ -9,19 +9,17 @@ PUT    /api/v1/land-parcels/{parcel_id}
 DELETE /api/v1/land-parcels/{parcel_id}
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
 from typing import List
 from uuid import UUID
 
-from app.database import get_db
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.orm import Session
+
 from app.api.deps import get_current_user, require_role
+from app.database import get_db
 from app.models.user import User
-from app.schemas.land_parcel import (
-    LandParcelCreate,
-    LandParcelUpdate,
-    LandParcelResponse,
-)
+from app.schemas.land_parcel import (LandParcelCreate, LandParcelResponse,
+                                     LandParcelUpdate)
 from app.services.land_parcel_service import LandParcelService
 
 router = APIRouter(prefix="/land-parcels", tags=["Land Parcels"])

@@ -14,8 +14,9 @@
  *  5. Your Crops grid with image cards + SVG growth arcs
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   Sprout, AlertTriangle, ShoppingBag, Plus,
   FlaskConical, ClipboardList, Sun, Droplets, Cloud,
@@ -33,6 +34,7 @@ import { useFetch } from '@/hooks/useFetch';
 import { apiGet } from '@/lib/api';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import type { CropRecommendation } from '@/lib/types';
+import { useTranslation } from 'react-i18next';
 
 /* ─── Weather Icon Helper ────────────────────────────────── */
 
@@ -130,15 +132,29 @@ function GlassStatCard({
 /* ─── Dashboard Page ─────────────────────────────────────── */
 
 export default function DashboardPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [topRecommendations, setTopRecommendations] = useState<CropRecommendation[]>([]);
   const [recommendationsLoading, setRecommendationsLoading] = useState(false);
+  const [showQuickActions, setShowQuickActions] = useState(false);
+  const actionMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close Quick Actions menu on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (actionMenuRef.current && !actionMenuRef.current.contains(e.target as Node)) {
+        setShowQuickActions(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   // Fetch dashboard stats (real API — returns role-specific metrics)
   const { data: stats, loading: statsLoading, error: statsError } = useFetch('/api/v1/dashboard/stats');
 
   // Fetch crops for the grid
-  const { data: cropsData, loading: cropsLoading } = useFetch('/api/v1/crops?per_page=6');
+  const { data: cropsData, loading: cropsLoading } = useFetch('/api/v1/crops/?per_page=6');
 
   // Fetch weather data (real API)
   const { data: weatherData, loading: weatherLoading } = useFetch('/api/v1/weather');
@@ -182,28 +198,33 @@ export default function DashboardPage() {
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
           <h2 className="text-3xl md:text-4xl font-extrabold text-m3-on-surface tracking-tight mb-2">
-            Welcome back, {user?.full_name?.split(' ')[0] || 'Farmer'}.
+            {t('dashboard.welcome')} <span className="bg-gradient-to-r from-emerald-500 to-green-600 bg-clip-text text-transparent capitalize">{user?.full_name?.split(' ')[0] || t('dashboard.farmer_default')}</span>.
           </h2>
           <p className="text-m3-on-surface-variant font-medium">
-            Here&apos;s your farm overview for{' '}
+            {t('dashboard.farm_overview_for')}{' '}
             <span className="text-m3-primary font-mono tracking-tighter">{today}</span>.
           </p>
         </div>
-        <div className="flex items-center gap-4">
-          <button className="flex items-center gap-2 px-5 py-3 rounded-xl bg-m3-surface-container-high text-m3-on-surface border border-m3-outline-variant/15 hover:bg-m3-surface-container-highest transition-all duration-300">
+        <div className="flex items-center gap-4 relative" ref={actionMenuRef}>
+          <button 
+            onClick={() => setShowQuickActions(!showQuickActions)}
+            className="flex items-center gap-2 px-5 py-3 rounded-xl bg-m3-surface-container-high text-m3-on-surface border border-m3-outline-variant/15 hover:bg-m3-surface-container-highest transition-all duration-300"
+          >
             <Activity className="w-4 h-4 text-m3-primary" />
-            <span className="text-sm font-semibold">Quick Actions</span>
-            <ChevronDown className="w-3 h-3" />
+            <span className="text-sm font-semibold">{t('dashboard.quick_actions')}</span>
+            <ChevronDown className={clsx("w-3 h-3 transition-transform", showQuickActions && 'rotate-180')} />
           </button>
-          <div className="hidden md:flex items-center gap-2 p-1.5 bg-m3-surface-container-low rounded-xl">
-            <button className="p-2 text-m3-on-surface-variant hover:text-m3-primary transition-colors">
-              <Moon className="w-5 h-5" />
-            </button>
-            <button className="p-2 text-m3-on-surface-variant hover:text-m3-primary transition-colors relative">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-m3-secondary rounded-full" />
-            </button>
-          </div>
+          
+          {showQuickActions && (
+            <div className="absolute right-0 top-full mt-2 w-48 bg-m3-surface border border-m3-outline-variant/10 rounded-xl shadow-lg overflow-hidden z-50 animate-slide-down">
+              <Link href="/crops/new" className="flex items-center gap-2 px-4 py-3 text-sm text-m3-on-surface hover:bg-m3-surface-container-high transition-colors">
+                <Plus className="w-4 h-4 text-m3-primary" /> {t('dashboard.action_new_crop')}
+              </Link>
+              <Link href="/services" className="flex items-center gap-2 px-4 py-3 text-sm text-m3-on-surface hover:bg-m3-surface-container-high transition-colors">
+                <ShoppingBag className="w-4 h-4 text-m3-secondary" /> {t('dashboard.action_request_service')}
+              </Link>
+            </div>
+          )}
         </div>
       </header>
 
@@ -256,16 +277,16 @@ export default function DashboardPage() {
         <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <GlassStatCard
             icon={Sprout}
-            label="Active Crops"
+            label={t('dashboard.active_crops')}
             value={stats?.active_crops ?? 0}
-            tag={stats?.active_crops > 0 ? 'tracked' : undefined}
+            tag={stats?.active_crops > 0 ? t('dashboard.tracked', 'TRACKED') : undefined}
             tagColor="primary"
             iconColor="text-m3-primary"
             iconBg="bg-m3-primary/10"
           />
           <GlassStatCard
             icon={AlertTriangle}
-            label="Needs Action"
+            label={t('dashboard.needs_action')}
             value={stats?.crops_needing_action ?? 0}
             tag={stats?.crops_needing_action > 0 ? 'attention' : undefined}
             tagColor="warning"
@@ -274,7 +295,7 @@ export default function DashboardPage() {
           />
           <GlassStatCard
             icon={Bell}
-            label="Pending Alerts"
+            label={t('dashboard.pending_alerts')}
             value={stats?.alerts_due_today ?? 0}
             tag={stats?.alerts_due_today > 0 ? 'pending' : undefined}
             tagColor="info"
@@ -283,7 +304,7 @@ export default function DashboardPage() {
           />
           <GlassStatCard
             icon={CalendarDays}
-            label="Booked Services"
+            label={t('dashboard.booked_services')}
             value={stats?.services_booked ?? 0}
             tag={stats?.services_booked > 0 ? 'active' : undefined}
             tagColor="success"
@@ -301,25 +322,25 @@ export default function DashboardPage() {
           <div className="p-8 relative z-10 flex flex-col h-full justify-between">
             <div>
               <div className="flex items-center justify-between mb-8">
-                <p className="mono-label">Weather Forecast</p>
-                {getWeatherIcon(weatherData?.condition)}
+                <p className="mono-label">{t('dashboard.weather_forecast')}</p>
+                {getWeatherIcon(weatherData?.weather_data?.description)}
               </div>
               {weatherLoading ? (
                 <div className="flex items-baseline gap-2">
                   <div className="h-14 w-24 rounded bg-m3-surface-container-highest animate-pulse" />
                 </div>
-              ) : weatherData?.temperature == null ? (
+              ) : weatherData?.weather_data?.temperature == null ? (
                 <div className="flex items-center gap-2 text-m3-on-surface-variant opacity-60">
                   <Cloud className="w-8 h-8" />
-                  <span className="text-lg font-medium">Weather unavailable right now</span>
+                  <span className="text-lg font-medium">{t('dashboard.weather_unavailable')}</span>
                 </div>
               ) : (
                 <div className="flex items-baseline gap-2">
                   <h2 className="text-6xl font-black text-m3-on-surface font-headline tracking-tighter">
-                    {Math.round(weatherData.temperature)}°C
+                    {Math.round(weatherData.weather_data.temperature)}°C
                   </h2>
                   <span className="text-xl text-m3-on-surface-variant font-light capitalize">
-                    {weatherData.condition || '—'}
+                    {String(t('weather.desc_' + (weatherData.weather_data.description || '').toLowerCase().replace(/ /g, '_'), weatherData.weather_data.description || '—'))}
                   </span>
                 </div>
               )}
@@ -327,21 +348,21 @@ export default function DashboardPage() {
 
             <div className="mt-8 pt-6 border-t border-m3-outline-variant/10 grid grid-cols-3 gap-4">
               <div className="text-center">
-                <p className="mono-label mb-1">Humidity</p>
+                <p className="mono-label mb-1">{t('dashboard.weather_humidity', 'Humidity')}</p>
                 <p className="text-sm font-bold text-m3-primary">
-                  {weatherData?.humidity != null ? `${weatherData.humidity}%` : '—'}
+                  {weatherData?.weather_data?.humidity != null ? `${Math.round(weatherData.weather_data.humidity)}%` : '—'}
                 </p>
               </div>
               <div className="text-center">
-                <p className="mono-label mb-1">Wind</p>
+                <p className="mono-label mb-1">{t('dashboard.weather_wind', 'Wind')}</p>
                 <p className="text-sm font-bold text-m3-secondary">
-                  {weatherData?.wind_speed != null ? `${weatherData.wind_speed} km/h` : '—'}
+                  {weatherData?.weather_data?.wind_speed_kmh != null ? `${Math.round(weatherData.weather_data.wind_speed_kmh)} km/h` : '—'}
                 </p>
               </div>
               <div className="text-center">
-                <p className="mono-label mb-1">Precip</p>
+                <p className="mono-label mb-1">{t('dashboard.weather_precip', 'Precip')}</p>
                 <p className="text-sm font-bold text-m3-tertiary-container">
-                  {weatherData?.precipitation != null ? `${weatherData.precipitation}mm` : '—'}
+                  {weatherData?.weather_data?.precipitation_mm != null ? `${weatherData.weather_data.precipitation_mm}mm` : '—'}
                 </p>
               </div>
             </div>
@@ -353,11 +374,11 @@ export default function DashboardPage() {
         <div className="lg:col-span-8 glass-card rounded-xl border border-m3-outline-variant/10 p-8">
           <div className="flex items-center justify-between mb-8">
             <div>
-              <p className="mono-label">Farm Overview</p>
-              <p className="text-sm text-m3-on-surface font-medium mt-1">Crop Status Summary</p>
+              <p className="mono-label">{t('dashboard.farm_overview')}</p>
+              <p className="text-sm text-m3-on-surface font-medium mt-1">{t('dashboard.crop_status_summary')}</p>
             </div>
             <Link href="/crops" className="text-sm text-m3-primary font-semibold hover:underline transition-colors">
-              View All →
+              {t('dashboard.view_all')} →
             </Link>
           </div>
           {statsLoading ? (
@@ -369,22 +390,22 @@ export default function DashboardPage() {
               <div className="text-center p-4 rounded-xl bg-m3-primary/5 border border-m3-primary/10">
                 <Sprout className="w-6 h-6 text-m3-primary mx-auto mb-2" />
                 <p className="text-2xl font-bold text-m3-on-surface">{stats?.active_crops ?? 0}</p>
-                <p className="text-xs text-m3-on-surface-variant mt-1">Active Crops</p>
+                <p className="text-sm font-medium text-m3-on-surface-variant mt-1">{t('dashboard.active_crops')}</p>
               </div>
               <div className="text-center p-4 rounded-xl bg-m3-secondary/5 border border-m3-secondary/10">
                 <AlertTriangle className="w-6 h-6 text-m3-secondary mx-auto mb-2" />
                 <p className="text-2xl font-bold text-m3-on-surface">{stats?.crops_needing_action ?? 0}</p>
-                <p className="text-xs text-m3-on-surface-variant mt-1">Needs Action</p>
+                <p className="text-sm font-medium text-m3-on-surface-variant mt-1">{t('dashboard.needs_action')}</p>
               </div>
               <div className="text-center p-4 rounded-xl bg-m3-tertiary-container/5 border border-m3-tertiary-container/10">
                 <Bell className="w-6 h-6 text-m3-tertiary-container mx-auto mb-2" />
                 <p className="text-2xl font-bold text-m3-on-surface">{stats?.alerts_due_today ?? 0}</p>
-                <p className="text-xs text-m3-on-surface-variant mt-1">Pending Alerts</p>
+                <p className="text-sm font-medium text-m3-on-surface-variant mt-1">{t('dashboard.pending_alerts')}</p>
               </div>
               <div className="text-center p-4 rounded-xl bg-m3-primary-container/5 border border-m3-primary-container/10">
                 <TrendingUp className="w-6 h-6 text-m3-primary-container mx-auto mb-2" />
                 <p className="text-2xl font-bold text-m3-on-surface">{stats?.services_booked ?? 0}</p>
-                <p className="text-xs text-m3-on-surface-variant mt-1">Booked Services</p>
+                <p className="text-sm font-medium text-m3-on-surface-variant mt-1">{t('dashboard.booked_services')}</p>
               </div>
             </div>
           )}
@@ -399,14 +420,14 @@ export default function DashboardPage() {
               <AlertTriangle className="w-6 h-6 text-m3-secondary" />
             </div>
             <div className="flex-1">
-              <h3 className="text-lg font-bold text-m3-on-surface">Weather Advisory</h3>
+              <h3 className="text-lg font-bold text-m3-on-surface">{t('dashboard.weather_advisory', 'Weather Advisory')}</h3>
               <p className="text-sm text-m3-on-surface-variant mt-1">
-                Current risk score: <span className="text-m3-secondary font-bold">{Math.round(weatherData.risk_score * 100)}%</span>.
-                Take precautionary measures for your active crops.
+                {t('dashboard.current_risk_score', 'Current risk score:')} <span className="text-m3-secondary font-bold">{Math.round(weatherData.risk_score * 100)}%</span>.
+                {t('dashboard.precautionary_measures', 'Take precautionary measures for your active crops.')}
               </p>
             </div>
             <Link href="/weather" className="btn-primary text-sm px-5 whitespace-nowrap">
-              View Details
+              {t('dashboard.view_details', 'View Details')}
             </Link>
           </div>
         </section>
@@ -415,9 +436,9 @@ export default function DashboardPage() {
       {/* ═══════ Your Crops ═══════ */}
       <section>
         <div className="flex items-center justify-between mb-8">
-          <h3 className="text-2xl font-bold text-m3-on-surface tracking-tight">Your Crops</h3>
+          <h3 className="text-2xl font-bold text-m3-on-surface tracking-tight">{t('crops.title')}</h3>
           <Link href="/crops" className="text-sm font-bold text-m3-primary hover:underline transition-all">
-            View All Crops
+            {t('dashboard.view_all_crops', 'View All Crops')}
           </Link>
         </div>
 
@@ -443,9 +464,13 @@ export default function DashboardPage() {
                 className="glass-card rounded-2xl overflow-hidden border border-m3-outline-variant/10 group block"
               >
                 <div className="h-40 overflow-hidden relative bg-gradient-to-br from-m3-primary/10 to-m3-surface-container flex items-center justify-center">
-                  <Sprout className="w-12 h-12 text-m3-primary/30" />
+                  {(crop.crop_type?.toLowerCase().includes('rice') || crop.crop_type?.toLowerCase().includes('धान') || crop.crop_type?.toLowerCase().includes('chawal')) ? (
+                    <Image src="/images/rice_crop.png" alt="Rice Crop" fill className="object-cover" />
+                  ) : (
+                    <Sprout className="w-12 h-12 text-m3-primary/30" />
+                  )}
                   <div className="absolute top-4 right-4 bg-m3-primary/90 text-m3-on-primary px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest">
-                    {crop.state || 'Active'}
+                    {t(`crops.state_${(crop.state || 'active').toLowerCase()}`, { defaultValue: crop.state || 'Active' }) as string}
                   </div>
                 </div>
                 <div className="p-6">
@@ -457,16 +482,16 @@ export default function DashboardPage() {
                   </div>
                   <div className="flex gap-4 mb-6">
                     <div className="flex-1">
-                      <p className="mono-label mb-1">Stage</p>
+                      <p className="mono-label mb-1">{t('crops.stage', 'Stage')}</p>
                       <p className="text-sm font-bold">{crop.stage || 'Germination'}</p>
                     </div>
                     <div className="flex-1">
-                      <p className="mono-label mb-1">Day</p>
+                      <p className="mono-label mb-1">{t('crops.day', 'Day')}</p>
                       <p className="text-sm font-bold text-m3-primary">{crop.day_number || '—'}</p>
                     </div>
                   </div>
                   <button className="w-full py-3 rounded-xl bg-m3-surface-container-low border border-m3-outline-variant/10 text-sm font-bold hover:bg-m3-surface-container-highest transition-colors">
-                    Details
+                    {t('crops.details', 'Details')}
                   </button>
                 </div>
               </Link>
@@ -475,12 +500,12 @@ export default function DashboardPage() {
         ) : (
           <div className="glass-card rounded-2xl border border-m3-outline-variant/10 text-center py-16">
             <Sprout className="w-12 h-12 text-m3-on-surface-variant mx-auto mb-4 opacity-40" />
-            <p className="text-m3-on-surface font-semibold text-lg mb-1">No crops yet</p>
+            <p className="text-m3-on-surface font-semibold text-lg mb-1">{t('crops.no_crops')}</p>
             <p className="text-sm text-m3-on-surface-variant mb-6">
-              Create your first crop to start tracking and get recommendations
+              Start by tracking your first farm parcel.
             </p>
             <Link href="/crops/new" className="btn-primary text-sm px-8">
-              <Plus className="w-4 h-4 mr-1.5 inline" /> Add Crop
+              <Plus className="w-4 h-4 mr-1.5 inline" /> {t('crops.create')}
             </Link>
           </div>
         )}
@@ -489,20 +514,20 @@ export default function DashboardPage() {
       {/* ═══════ Top Recommendations ═══════ */}
       <section className="glass-card rounded-2xl border border-m3-outline-variant/10 p-6 sm:p-8">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-bold text-m3-on-surface tracking-tight">Top Recommendations</h3>
-          <span className="text-xs font-mono text-m3-on-surface-variant">AUTO-REFRESHED</span>
+          <h3 className="text-xl font-bold text-m3-on-surface tracking-tight">{t('dashboard.top_recommendations')}</h3>
+          <span className="text-xs font-mono text-m3-on-surface-variant">{t('dashboard.auto_refreshed')}</span>
         </div>
         {recommendationsLoading ? (
-          <p className="text-sm text-m3-on-surface-variant">Loading recommendations...</p>
+          <p className="text-sm text-m3-on-surface-variant">{t('dashboard.loading_recommendations', 'Loading recommendations...')}</p>
         ) : topRecommendations.length === 0 ? (
-          <p className="text-sm text-m3-on-surface-variant">No urgent recommendations available.</p>
+          <p className="text-sm text-m3-on-surface-variant">{t('dashboard.no_recommendations', 'No urgent recommendations available.')}</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {topRecommendations.map((rec) => (
               <div key={rec.id} className="rounded-xl border border-m3-outline-variant/15 bg-m3-surface-container-low p-4">
                 <p className="text-sm font-bold text-m3-on-surface capitalize">{rec.recommendation_type.replace('_', ' ')}</p>
                 <p className="text-xs text-m3-on-surface-variant mt-1">{rec.basis || rec.message_key}</p>
-                <p className="text-[11px] text-m3-primary mt-3">Priority {rec.priority_rank}</p>
+                <p className="text-[11px] text-m3-primary mt-3">{t('dashboard.priority', 'Priority')} {rec.priority_rank}</p>
               </div>
             ))}
           </div>

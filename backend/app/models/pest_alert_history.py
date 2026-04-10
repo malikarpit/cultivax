@@ -5,7 +5,7 @@ Historical pest detection records for crop instances.
 MSDD Section 6 Enhancement.
 """
 
-from sqlalchemy import Column, String, Float, ForeignKey
+from sqlalchemy import Column, Float, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
 
 from app.models.base import BaseModel

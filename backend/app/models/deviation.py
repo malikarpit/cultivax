@@ -5,7 +5,7 @@ Tracks consecutive deviations from expected crop timeline.
 MSDD Section 1.9.1 + TDD 2.3.4.
 """
 
-from sqlalchemy import Column, Integer, Float, Boolean, String, ForeignKey
+from sqlalchemy import Boolean, Column, Float, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 

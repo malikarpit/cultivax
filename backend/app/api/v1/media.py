@@ -5,30 +5,26 @@ POST /crops/{id}/media — upload image/video for a crop instance.
 """
 
 import logging
-from typing import List, Optional
 from datetime import datetime
-from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, BackgroundTasks
-from fastapi.responses import RedirectResponse, FileResponse
-from sqlalchemy.orm import Session
-from uuid import UUID
-from uuid import uuid4
+from typing import List, Optional
+from uuid import UUID, uuid4
 
-from app.api.deps import get_db, get_current_user, require_role
+from fastapi import (APIRouter, BackgroundTasks, Depends, File, Form,
+                     HTTPException, UploadFile)
+from fastapi.responses import FileResponse, RedirectResponse
+from sqlalchemy.orm import Session
+
+from app.api.deps import get_current_user, get_db, require_role
 from app.config import settings
-from app.models.user import User
-from app.models.media_file import MediaFile
-from app.models.crop_instance import CropInstance
-from app.schemas.media import (
-    MediaUploadResponse,
-    MediaDetailResponse,
-    MediaListResponse,
-    MediaRequestUploadRequest,
-    MediaRequestUploadResponse,
-    MediaConfirmUploadRequest,
-    MediaConfirmUploadResponse,
-)
-from app.services.media.upload_service import UploadService, CloudStorageClient
 from app.events.handlers import emit_upload_event
+from app.models.crop_instance import CropInstance
+from app.models.media_file import MediaFile
+from app.models.user import User
+from app.schemas.media import (MediaConfirmUploadRequest,
+                               MediaConfirmUploadResponse, MediaDetailResponse,
+                               MediaListResponse, MediaRequestUploadRequest,
+                               MediaRequestUploadResponse, MediaUploadResponse)
+from app.services.media.upload_service import CloudStorageClient, UploadService
 
 logger = logging.getLogger(__name__)
 
@@ -48,11 +44,15 @@ async def request_media_upload(
     Works with GCS-backed storage. For local storage environments, clients should
     use multipart upload at POST /api/v1/crops/{crop_id}/media.
     """
-    crop = db.query(CropInstance).filter(
-        CropInstance.id == data.crop_instance_id,
-        CropInstance.farmer_id == current_user.id,
-        CropInstance.is_deleted == False,
-    ).first()
+    crop = (
+        db.query(CropInstance)
+        .filter(
+            CropInstance.id == data.crop_instance_id,
+            CropInstance.farmer_id == current_user.id,
+            CropInstance.is_deleted == False,
+        )
+        .first()
+    )
     if not crop:
         raise HTTPException(status_code=404, detail="Crop not found")
 
@@ -64,7 +64,9 @@ async def request_media_upload(
 
     file_type = (data.file_type or "image").lower()
     if file_type not in {"image", "video"}:
-        raise HTTPException(status_code=422, detail="file_type must be one of: image, video")
+        raise HTTPException(
+            status_code=422, detail="file_type must be one of: image, video"
+        )
 
     default_ext = "jpg" if file_type == "image" else "mp4"
     content_type = "image/jpeg" if file_type == "image" else "video/mp4"
@@ -104,11 +106,16 @@ async def confirm_media_upload(
     """
     Confirm signed upload completion and enqueue analysis.
     """
-    media = db.query(MediaFile).join(CropInstance).filter(
-        MediaFile.id == data.media_id,
-        CropInstance.farmer_id == current_user.id,
-        MediaFile.deleted_at == None,
-    ).first()
+    media = (
+        db.query(MediaFile)
+        .join(CropInstance)
+        .filter(
+            MediaFile.id == data.media_id,
+            CropInstance.farmer_id == current_user.id,
+            MediaFile.deleted_at == None,
+        )
+        .first()
+    )
     if not media:
         raise HTTPException(status_code=404, detail="Media not found")
 
@@ -148,9 +155,9 @@ async def upload_media(
             source_channel=source_channel,
             geo_verified=geo_verified,
             capture_lat=capture_lat,
-            capture_lng=capture_lng
+            capture_lng=capture_lng,
         )
-        
+
         # Enqueue analysis job if not duplicate
         if not result.is_duplicate:
             # We defer analysis background task here without passing the Request DB session
@@ -158,9 +165,13 @@ async def upload_media(
 
         return MediaUploadResponse(
             media_id=result.media_id,
-            analysis_status="pending" if not result.is_duplicate else getattr(result, "analysis_status", "pending"),
+            analysis_status=(
+                "pending"
+                if not result.is_duplicate
+                else getattr(result, "analysis_status", "pending")
+            ),
             preview_url=f"/api/v1/media/{result.media_id}/download",
-            uploaded_at=datetime.utcnow()
+            uploaded_at=datetime.utcnow(),
         )
     except PermissionError as e:
         logger.warning(f"Permission error: {e}")
@@ -180,22 +191,24 @@ async def list_crop_media(
     current_user: User = Depends(get_current_user),
 ):
     """List paginated media for crop with optional filters."""
-    crop = db.query(CropInstance).filter(
-        CropInstance.id == crop_id,
-        CropInstance.farmer_id == current_user.id
-    ).first()
+    crop = (
+        db.query(CropInstance)
+        .filter(CropInstance.id == crop_id, CropInstance.farmer_id == current_user.id)
+        .first()
+    )
     if not crop:
         raise HTTPException(status_code=403, detail="Crop not found or not owned")
 
     query = db.query(MediaFile).filter(
-        MediaFile.crop_instance_id == crop_id,
-        MediaFile.deleted_at == None
+        MediaFile.crop_instance_id == crop_id, MediaFile.deleted_at == None
     )
 
     if status:
         query = query.filter(MediaFile.analysis_status == status)
 
-    items = query.order_by(MediaFile.created_at.desc()).offset(offset).limit(limit).all()
+    items = (
+        query.order_by(MediaFile.created_at.desc()).offset(offset).limit(limit).all()
+    )
     return items
 
 
@@ -206,11 +219,16 @@ async def get_media_detail(
     current_user: User = Depends(get_current_user),
 ):
     """Get detailed media info with analysis results."""
-    media = db.query(MediaFile).join(CropInstance).filter(
-        MediaFile.id == media_id,
-        CropInstance.farmer_id == current_user.id,
-        MediaFile.deleted_at == None,
-    ).first()
+    media = (
+        db.query(MediaFile)
+        .join(CropInstance)
+        .filter(
+            MediaFile.id == media_id,
+            CropInstance.farmer_id == current_user.id,
+            MediaFile.deleted_at == None,
+        )
+        .first()
+    )
 
     if not media:
         raise HTTPException(status_code=404, detail="Media not found")
@@ -228,18 +246,23 @@ async def download_media(
     current_user: User = Depends(get_current_user),
 ):
     """Download media via safe signed URL or stream local mock file."""
-    media = db.query(MediaFile).join(CropInstance).filter(
-        MediaFile.id == media_id,
-        CropInstance.farmer_id == current_user.id,
-        MediaFile.deleted_at == None,
-    ).first()
+    media = (
+        db.query(MediaFile)
+        .join(CropInstance)
+        .filter(
+            MediaFile.id == media_id,
+            CropInstance.farmer_id == current_user.id,
+            MediaFile.deleted_at == None,
+        )
+        .first()
+    )
 
     if not media:
         raise HTTPException(status_code=404, detail="Media not found")
 
     service = UploadService(db)
     download_url = service.get_download_url(str(media_id))
-    
+
     if media.storage_path.startswith("gs://"):
         return RedirectResponse(url=download_url)
     else:
@@ -254,11 +277,16 @@ async def delete_media(
     current_user: User = Depends(get_current_user),
 ):
     """Soft-delete media."""
-    media = db.query(MediaFile).join(CropInstance).filter(
-        MediaFile.id == media_id,
-        CropInstance.farmer_id == current_user.id,
-        MediaFile.deleted_at == None,
-    ).first()
+    media = (
+        db.query(MediaFile)
+        .join(CropInstance)
+        .filter(
+            MediaFile.id == media_id,
+            CropInstance.farmer_id == current_user.id,
+            MediaFile.deleted_at == None,
+        )
+        .first()
+    )
 
     if not media:
         raise HTTPException(status_code=404, detail="Media not found")

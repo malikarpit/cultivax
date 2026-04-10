@@ -10,20 +10,21 @@ DELETE /api/v1/labor/{id}   — soft-delete labor listing
 MSDD Section 2.6 — Labor Marketplace
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session, joinedload
-from uuid import UUID
+from datetime import datetime, timezone
 from typing import Optional
+from uuid import UUID
 
-from app.database import get_db
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.orm import Session, joinedload
+
 from app.api.deps import get_current_user
-from app.models.user import User
+from app.database import get_db
 from app.models.labor import Labor
 from app.models.service_provider import ServiceProvider
-from app.schemas.labor import LaborCreate, LaborResponse, LaborUpdate, LaborAvailabilityUpdate
+from app.models.user import User
 from app.schemas.common import PaginatedResponse
-
-from datetime import datetime, timezone
+from app.schemas.labor import (LaborAvailabilityUpdate, LaborCreate,
+                               LaborResponse, LaborUpdate)
 
 router = APIRouter(prefix="/labor", tags=["Labor"])
 
@@ -35,16 +36,24 @@ async def create_labor(
     current_user: User = Depends(get_current_user),
 ):
     """Create a new labor listing. User must be a registered provider."""
-    provider = db.query(ServiceProvider).filter(
-        ServiceProvider.user_id == current_user.id,
-        ServiceProvider.is_deleted == False,
-    ).first()
+    provider = (
+        db.query(ServiceProvider)
+        .filter(
+            ServiceProvider.user_id == current_user.id,
+            ServiceProvider.is_deleted == False,
+        )
+        .first()
+    )
 
     if not provider:
-        raise HTTPException(status_code=403, detail="Only registered providers can list labor")
+        raise HTTPException(
+            status_code=403, detail="Only registered providers can list labor"
+        )
 
     if provider.is_suspended:
-        raise HTTPException(status_code=403, detail="Suspended providers cannot create listings")
+        raise HTTPException(
+            status_code=403, detail="Suspended providers cannot create listings"
+        )
 
     labor = Labor(
         provider_id=provider.id,
@@ -72,8 +81,12 @@ async def list_labor(
     current_user: User = Depends(get_current_user),
 ):
     """List available labor with optional region and type filters."""
-    query = db.query(Labor).options(joinedload(Labor.provider)).filter(
-        Labor.is_deleted == False,
+    query = (
+        db.query(Labor)
+        .options(joinedload(Labor.provider))
+        .filter(
+            Labor.is_deleted == False,
+        )
     )
 
     if region:
@@ -113,10 +126,14 @@ async def get_labor(
     current_user: User = Depends(get_current_user),
 ):
     """Get a specific labor listing by ID."""
-    labor = db.query(Labor).filter(
-        Labor.id == labor_id,
-        Labor.is_deleted == False,
-    ).first()
+    labor = (
+        db.query(Labor)
+        .filter(
+            Labor.id == labor_id,
+            Labor.is_deleted == False,
+        )
+        .first()
+    )
     if not labor:
         raise HTTPException(status_code=404, detail="Labor listing not found")
     return LaborResponse.model_validate(labor)
@@ -130,25 +147,33 @@ async def update_labor(
     current_user: User = Depends(get_current_user),
 ):
     """Update a labor listing. Only the owning provider can update."""
-    labor = db.query(Labor).filter(
-        Labor.id == labor_id,
-        Labor.is_deleted == False,
-    ).first()
+    labor = (
+        db.query(Labor)
+        .filter(
+            Labor.id == labor_id,
+            Labor.is_deleted == False,
+        )
+        .first()
+    )
     if not labor:
         raise HTTPException(status_code=404, detail="Labor listing not found")
 
     # Verify ownership
-    provider = db.query(ServiceProvider).filter(
-        ServiceProvider.id == labor.provider_id,
-        ServiceProvider.user_id == current_user.id,
-    ).first()
+    provider = (
+        db.query(ServiceProvider)
+        .filter(
+            ServiceProvider.id == labor.provider_id,
+            ServiceProvider.user_id == current_user.id,
+        )
+        .first()
+    )
     if not provider:
         raise HTTPException(status_code=403, detail="You do not own this labor listing")
 
     update_data = data.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(labor, key, value)
-        
+
     labor.updated_at = datetime.now(timezone.utc)
 
     db.commit()
@@ -164,23 +189,31 @@ async def toggle_availability(
     current_user: User = Depends(get_current_user),
 ):
     """Toggle labor listing availability explicitly."""
-    labor = db.query(Labor).filter(
-        Labor.id == labor_id,
-        Labor.is_deleted == False,
-    ).first()
+    labor = (
+        db.query(Labor)
+        .filter(
+            Labor.id == labor_id,
+            Labor.is_deleted == False,
+        )
+        .first()
+    )
     if not labor:
         raise HTTPException(status_code=404, detail="Labor listing not found")
 
-    provider = db.query(ServiceProvider).filter(
-        ServiceProvider.id == labor.provider_id,
-        ServiceProvider.user_id == current_user.id,
-    ).first()
+    provider = (
+        db.query(ServiceProvider)
+        .filter(
+            ServiceProvider.id == labor.provider_id,
+            ServiceProvider.user_id == current_user.id,
+        )
+        .first()
+    )
     if not provider:
         raise HTTPException(status_code=403, detail="You do not own this labor listing")
 
     labor.is_available = data.is_available
     labor.updated_at = datetime.now(timezone.utc)
-    
+
     db.commit()
     db.refresh(labor)
     return LaborResponse.model_validate(labor)
@@ -193,17 +226,25 @@ async def delete_labor(
     current_user: User = Depends(get_current_user),
 ):
     """Soft-delete a labor listing. Only the owning provider can delete."""
-    labor = db.query(Labor).filter(
-        Labor.id == labor_id,
-        Labor.is_deleted == False,
-    ).first()
+    labor = (
+        db.query(Labor)
+        .filter(
+            Labor.id == labor_id,
+            Labor.is_deleted == False,
+        )
+        .first()
+    )
     if not labor:
         raise HTTPException(status_code=404, detail="Labor listing not found")
 
-    provider = db.query(ServiceProvider).filter(
-        ServiceProvider.id == labor.provider_id,
-        ServiceProvider.user_id == current_user.id,
-    ).first()
+    provider = (
+        db.query(ServiceProvider)
+        .filter(
+            ServiceProvider.id == labor.provider_id,
+            ServiceProvider.user_id == current_user.id,
+        )
+        .first()
+    )
     if not provider:
         raise HTTPException(status_code=403, detail="You do not own this labor listing")
 

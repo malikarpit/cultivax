@@ -6,7 +6,7 @@ Used to determine seasonal_window_category (Early/Optimal/Late).
 MSDD 1.9 + Patch Module 5.
 """
 
-from sqlalchemy import Column, String, Date, Integer
+from sqlalchemy import Column, Date, Integer, String
 
 from app.models.base import BaseModel
 

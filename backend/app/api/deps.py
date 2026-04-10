@@ -9,16 +9,17 @@ Security Features:
 - Automatic password hash migration on login
 """
 
-from fastapi import Depends, HTTPException, Request, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from sqlalchemy.orm import Session
 from typing import List, Optional
 from uuid import UUID
 
+from fastapi import Depends, HTTPException, Request, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy.orm import Session
+
 from app.database import get_db
+from app.models.user import User
 from app.security.auth import verify_token
 from app.security.secure_auth import get_token_from_request
-from app.models.user import User
 
 # HTTPBearer is optional — we prefer cookies but support headers for API clients
 security = HTTPBearer(auto_error=False)
@@ -82,11 +83,15 @@ async def get_current_user(
             detail="Invalid user ID format",
         )
 
-    user = db.query(User).filter(
-        User.id == user_uuid,
-        User.is_deleted == False,
-        User.is_active == True,
-    ).first()
+    user = (
+        db.query(User)
+        .filter(
+            User.id == user_uuid,
+            User.is_deleted == False,
+            User.is_active == True,
+        )
+        .first()
+    )
 
     if user is None:
         raise HTTPException(
@@ -112,6 +117,7 @@ def require_role(allowed_roles: List[str]):
         @router.get("/admin/users", dependencies=[Depends(require_role(["admin"]))])
         async def list_users(...):
     """
+
     async def role_checker(current_user: User = Depends(get_current_user)):
         if current_user.role not in allowed_roles:
             raise HTTPException(
@@ -119,4 +125,5 @@ def require_role(allowed_roles: List[str]):
                 detail=f"Role '{current_user.role}' is not authorized. Required: {allowed_roles}",
             )
         return current_user
+
     return role_checker

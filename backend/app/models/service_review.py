@@ -5,7 +5,7 @@ Immutable reviews for completed service requests.
 TDD Section 2.5.3. No hard deletion — reviews are immutable.
 """
 
-from sqlalchemy import Column, String, Float, Integer, ForeignKey, Text
+from sqlalchemy import Column, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -25,10 +25,17 @@ class ServiceReview(BaseModel):
     )
 
     # Reviewer (farmer)
-    reviewer_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    reviewer_id = Column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True
+    )
 
     # Provider
-    provider_id = Column(UUID(as_uuid=True), ForeignKey("service_providers.id"), nullable=False, index=True)
+    provider_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("service_providers.id"),
+        nullable=False,
+        index=True,
+    )
 
     # Rating
     rating = Column(Float, nullable=False)  # 1.0 - 5.0

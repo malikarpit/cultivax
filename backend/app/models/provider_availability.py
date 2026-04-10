@@ -5,7 +5,7 @@ Tracks provider availability by date.
 TDD Section 5.3.
 """
 
-from sqlalchemy import Column, Boolean, Date, ForeignKey
+from sqlalchemy import Boolean, Column, Date, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 
 from app.models.base import BaseModel

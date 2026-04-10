@@ -6,19 +6,20 @@ GET  /api/v1/ml/models
 POST /api/v1/ml/models  (admin only)
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
+from typing import Any, List, Optional
 from uuid import UUID
-from typing import Optional, List, Any
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
+from app.api.deps import get_current_user, require_role
+from app.database import get_db
 from app.models.admin_audit import AdminAuditLog
 from app.models.ml_feedback import MLFeedback
 from app.models.ml_training import MLTrainingAudit
-from app.services.admin_audit import create_audit_entry
-
-from app.database import get_db
-from app.api.deps import get_current_user, require_role
 from app.models.user import User
+from app.services.admin_audit import create_audit_entry
 from app.services.ml.model_registry import ModelRegistry
 
 router = APIRouter(prefix="/ml", tags=["ML Models"])
@@ -87,6 +88,7 @@ async def register_model(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+
 @router.post(
     "/models/{model_id}/activate",
     response_model=ModelResponse,
@@ -100,12 +102,14 @@ async def activate_ml_model(
 ):
     """Activate a model version, natively displacing the older instance."""
     if not reason:
-        raise HTTPException(status_code=400, detail="Missing required 'reason' parameter.")
-        
+        raise HTTPException(
+            status_code=400, detail="Missing required 'reason' parameter."
+        )
+
     registry = ModelRegistry(db)
     try:
         model = registry.activate_model(model_id)
-        
+
         # Admin Audit tracing via helper
         create_audit_entry(
             db=db,
@@ -114,9 +118,9 @@ async def activate_ml_model(
             entity_type="ml_model",
             entity_id=model.id,
             reason=reason,
-            after_value={"version": model.version, "model_name": model.model_name}
+            after_value={"version": model.version, "model_name": model.model_name},
         )
-        
+
         return ModelResponse.model_validate(model)
     except LookupError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -135,12 +139,14 @@ async def deactivate_ml_model(
 ):
     """Gracefully draft an active model removing it from predict paths."""
     if not reason:
-        raise HTTPException(status_code=400, detail="Missing required 'reason' parameter.")
-        
+        raise HTTPException(
+            status_code=400, detail="Missing required 'reason' parameter."
+        )
+
     registry = ModelRegistry(db)
     try:
         model = registry.deactivate_model(model_id)
-        
+
         # Admin Audit tracing via helper
         create_audit_entry(
             db=db,
@@ -149,14 +155,16 @@ async def deactivate_ml_model(
             entity_type="ml_model",
             entity_id=model.id,
             reason=reason,
-            after_value={"version": model.version, "model_name": model.model_name}
+            after_value={"version": model.version, "model_name": model.model_name},
         )
-        
+
         return ModelResponse.model_validate(model)
     except LookupError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
+
 # -- Feedback and Training --
+
 
 class MLFeedbackCreate(BaseModel):
     crop_instance_id: UUID
@@ -167,11 +175,12 @@ class MLFeedbackCreate(BaseModel):
     original_prediction: Optional[dict] = None
     original_confidence: Optional[float] = None
 
+
 @router.post("/feedback", status_code=201)
 async def create_ml_feedback(
     data: MLFeedbackCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Farmer feedback mapped straight to Model degradation audits."""
     fb = MLFeedback(**data.model_dump())
@@ -179,14 +188,18 @@ async def create_ml_feedback(
     db.commit()
     return {"status": "success", "id": str(fb.id)}
 
+
 @router.get("/feedback", dependencies=[Depends(require_role(["admin"]))])
 async def list_ml_feedback(
     limit: int = 50,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Read ML drift constraints via historical feedback."""
-    return db.query(MLFeedback).order_by(MLFeedback.created_at.desc()).limit(limit).all()
+    return (
+        db.query(MLFeedback).order_by(MLFeedback.created_at.desc()).limit(limit).all()
+    )
+
 
 class MLTrainingAuditCreate(BaseModel):
     model_id: UUID
@@ -196,11 +209,14 @@ class MLTrainingAuditCreate(BaseModel):
     loss: Optional[float] = None
     dataset_metadata: Optional[dict] = None
 
-@router.post("/training-audits", status_code=201, dependencies=[Depends(require_role(["admin"]))])
+
+@router.post(
+    "/training-audits", status_code=201, dependencies=[Depends(require_role(["admin"]))]
+)
 async def create_ml_training_audit(
     data: MLTrainingAuditCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Audit pipeline storing training outputs directly mapping accuracy jumps."""
     ta = MLTrainingAudit(**data.model_dump(), triggered_by=current_user.id)
@@ -208,15 +224,76 @@ async def create_ml_training_audit(
     db.commit()
     return {"status": "success", "id": str(ta.id)}
 
+
 @router.get("/training-audits", dependencies=[Depends(require_role(["admin"]))])
 async def list_ml_training_audits(
     model_id: Optional[UUID] = None,
     limit: int = 50,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Trace exact accuracy scores mapped against database models."""
     q = db.query(MLTrainingAudit)
     if model_id:
         q = q.filter(MLTrainingAudit.model_id == model_id)
     return q.order_by(MLTrainingAudit.created_at.desc()).limit(limit).all()
+
+
+# ---------------------------------------------------------------------------
+# FR-29 — ML Inference Audit Trail
+# ---------------------------------------------------------------------------
+
+
+@router.get("/inference-audits", dependencies=[Depends(require_role(["admin"]))])
+async def list_inference_audits(
+    model_version: Optional[str] = None,
+    crop_instance_id: Optional[UUID] = None,
+    inference_source: Optional[str] = None,
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    List ML inference audit records for compliance traceability (FR-29).
+    Filterable by model version, crop instance, and inference source.
+    """
+    from app.models.ml_inference_audit import MLInferenceAudit
+
+    q = db.query(MLInferenceAudit)
+    if model_version:
+        q = q.filter(MLInferenceAudit.model_version == model_version)
+    if crop_instance_id:
+        q = q.filter(MLInferenceAudit.crop_instance_id == crop_instance_id)
+    if inference_source:
+        q = q.filter(MLInferenceAudit.inference_source == inference_source)
+
+    total = q.count()
+    records = (
+        q.order_by(MLInferenceAudit.created_at.desc())
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+        .all()
+    )
+
+    return {
+        "items": [
+            {
+                "id": str(r.id),
+                "crop_instance_id": (
+                    str(r.crop_instance_id) if r.crop_instance_id else None
+                ),
+                "model_id": str(r.model_id) if r.model_id else None,
+                "model_version": r.model_version,
+                "inference_source": r.inference_source,
+                "prediction_value": r.prediction_value,
+                "confidence_score": r.confidence_score,
+                "risk_label": r.risk_label,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            }
+            for r in records
+        ],
+        "total": total,
+        "page": page,
+        "per_page": per_page,
+    }

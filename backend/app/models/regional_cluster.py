@@ -5,7 +5,7 @@ Stores aggregated regional learning data.
 TDD Section 5.6.2 + confidence interval (Patch Sec 4 Enhancement).
 """
 
-from sqlalchemy import Column, String, Float, Integer
+from sqlalchemy import Column, Float, Integer, String
 from sqlalchemy.dialects.postgresql import JSONB
 
 from app.models.base import BaseModel

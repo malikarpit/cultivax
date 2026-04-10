@@ -19,6 +19,7 @@ router = APIRouter(prefix="/security", tags=["Security"])
 
 class CSPReport(BaseModel):
     """Schema for browser CSP violation reports (report-to format)."""
+
     type: Optional[str] = None
     url: Optional[str] = None
     body: Optional[Dict[str, Any]] = None
@@ -54,9 +55,15 @@ async def receive_csp_report(request: Request):
     # Normalise across report-to vs report-uri formats
     if isinstance(body, dict):
         report_body = body.get("body") or body.get("csp-report") or body
-        blocked_uri = report_body.get("blocked-uri") or report_body.get("blockedURL", "unknown")
-        violated_directive = report_body.get("violated-directive") or report_body.get("effectiveDirective", "unknown")
-        document_uri = report_body.get("document-uri") or report_body.get("documentURL", "unknown")
+        blocked_uri = report_body.get("blocked-uri") or report_body.get(
+            "blockedURL", "unknown"
+        )
+        violated_directive = report_body.get("violated-directive") or report_body.get(
+            "effectiveDirective", "unknown"
+        )
+        document_uri = report_body.get("document-uri") or report_body.get(
+            "documentURL", "unknown"
+        )
 
         logger.warning(
             "CSP violation reported",

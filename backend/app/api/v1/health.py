@@ -8,8 +8,8 @@ GET /api/v1/health
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.database import get_db
 from app.config import settings
+from app.database import get_db
 
 router = APIRouter(prefix="/health", tags=["System"])
 

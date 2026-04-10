@@ -37,10 +37,14 @@ async def get_operation_status(
 
     Current implementation treats operation IDs as EventLog IDs.
     """
-    event = db.query(EventLog).filter(
-        EventLog.id == operation_id,
-        EventLog.is_deleted == False,
-    ).first()
+    event = (
+        db.query(EventLog)
+        .filter(
+            EventLog.id == operation_id,
+            EventLog.is_deleted == False,
+        )
+        .first()
+    )
     if not event:
         raise HTTPException(status_code=404, detail="Operation not found")
 

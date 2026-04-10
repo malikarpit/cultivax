@@ -6,10 +6,12 @@ Fields from TDD Section 2.3.2.
 Chronological integrity enforced at service layer.
 """
 
-from sqlalchemy import Column, String, Date, Integer, Float, Boolean, ForeignKey, DateTime
-from sqlalchemy.dialects.postgresql import UUID, JSONB
-from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
+
+from sqlalchemy import (Boolean, Column, Date, DateTime, Float, ForeignKey,
+                        Integer, String)
+from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.orm import relationship
 
 from app.models.base import BaseModel
 
@@ -47,7 +49,9 @@ class ActionLog(BaseModel):
     )  # Structural | Stage-Affecting | Stress-Affecting | Operational | Informational
 
     # Source channel (MSDD 1.6.1)
-    source = Column(String(50), nullable=False, default="web")  # web | whatsapp | offline | voice
+    source = Column(
+        String(50), nullable=False, default="web"
+    )  # web | whatsapp | offline | voice
 
     # Admin override (MSDD 1.6.1)
     is_override = Column(Boolean, default=False, nullable=False)
@@ -75,7 +79,9 @@ class ActionLog(BaseModel):
     idempotency_key = Column(String(255), unique=True, nullable=True)
 
     # Replay status
-    applied_in_replay = Column(String(20), default="pending")  # pending | applied | skipped
+    applied_in_replay = Column(
+        String(20), default="pending"
+    )  # pending | applied | skipped
 
     # Relationships
     crop_instance = relationship("CropInstance", back_populates="action_logs")

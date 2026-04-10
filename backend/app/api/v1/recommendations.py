@@ -4,20 +4,20 @@ Recommendations API
 GET /api/v1/crops/{crop_id}/recommendations
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
 from uuid import UUID
 
-from app.database import get_db
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+
 from app.api.deps import get_current_user, require_role
-from app.models.user import User
+from app.database import get_db
 from app.models.crop_instance import CropInstance
-from app.schemas.recommendation import (
-    RecommendationResponse,
-    RecommendationStatusUpdateRequest,
-    RecommendationStatusUpdateResponse,
-)
-from app.services.recommendations.recommendation_engine import RecommendationEngine
+from app.models.user import User
+from app.schemas.recommendation import (RecommendationResponse,
+                                        RecommendationStatusUpdateRequest,
+                                        RecommendationStatusUpdateResponse)
+from app.services.recommendations.recommendation_engine import \
+    RecommendationEngine
 
 router = APIRouter(prefix="/crops", tags=["Recommendations"])
 
@@ -35,10 +35,14 @@ async def get_recommendations(
 ):
     """Get prioritized recommendations for a crop instance. Owner only."""
     # Ownership check
-    crop = db.query(CropInstance).filter(
-        CropInstance.id == crop_id,
-        CropInstance.is_deleted == False,
-    ).first()
+    crop = (
+        db.query(CropInstance)
+        .filter(
+            CropInstance.id == crop_id,
+            CropInstance.is_deleted == False,
+        )
+        .first()
+    )
     if not crop:
         raise HTTPException(status_code=404, detail="Crop not found")
     if current_user.role != "admin" and crop.farmer_id != current_user.id:
@@ -48,7 +52,11 @@ async def get_recommendations(
         )
 
     engine = RecommendationEngine(db)
-    recs = engine.ensure_recommendations(crop_id) if on_demand else engine.get_recommendations(crop_id)
+    recs = (
+        engine.ensure_recommendations(crop_id)
+        if on_demand
+        else engine.get_recommendations(crop_id)
+    )
     return [RecommendationResponse.model_validate(r) for r in recs]
 
 
@@ -65,10 +73,14 @@ async def dismiss_recommendation(
     current_user: User = Depends(get_current_user),
 ):
     """Dismiss a recommendation for an owned crop instance."""
-    crop = db.query(CropInstance).filter(
-        CropInstance.id == crop_id,
-        CropInstance.is_deleted == False,
-    ).first()
+    crop = (
+        db.query(CropInstance)
+        .filter(
+            CropInstance.id == crop_id,
+            CropInstance.is_deleted == False,
+        )
+        .first()
+    )
     if not crop:
         raise HTTPException(status_code=404, detail="Crop not found")
     if current_user.role != "admin" and crop.farmer_id != current_user.id:
@@ -76,7 +88,9 @@ async def dismiss_recommendation(
 
     engine = RecommendationEngine(db)
     try:
-        rec = engine.update_status(crop_id, recommendation_id, "dismissed", reason=request.reason)
+        rec = engine.update_status(
+            crop_id, recommendation_id, "dismissed", reason=request.reason
+        )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -102,10 +116,14 @@ async def mark_recommendation_acted(
     current_user: User = Depends(get_current_user),
 ):
     """Mark a recommendation as acted/completed for an owned crop instance."""
-    crop = db.query(CropInstance).filter(
-        CropInstance.id == crop_id,
-        CropInstance.is_deleted == False,
-    ).first()
+    crop = (
+        db.query(CropInstance)
+        .filter(
+            CropInstance.id == crop_id,
+            CropInstance.is_deleted == False,
+        )
+        .first()
+    )
     if not crop:
         raise HTTPException(status_code=404, detail="Crop not found")
     if current_user.role != "admin" and crop.farmer_id != current_user.id:
@@ -113,7 +131,9 @@ async def mark_recommendation_acted(
 
     engine = RecommendationEngine(db)
     try:
-        rec = engine.update_status(crop_id, recommendation_id, "acted", reason=request.reason)
+        rec = engine.update_status(
+            crop_id, recommendation_id, "acted", reason=request.reason
+        )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -124,4 +144,3 @@ async def mark_recommendation_acted(
         updated_at=rec.updated_at,
         reason=request.reason,
     )
-

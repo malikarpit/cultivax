@@ -9,35 +9,38 @@ PUT  /api/v1/crops/{crop_id}
 PUT  /api/v1/crops/{crop_id}/sowing-date
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
-from sqlalchemy import desc
-from typing import Optional
-from uuid import UUID
 import hashlib
 import json
+from typing import Optional
+from uuid import UUID
 
-from app.database import get_db
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import desc
+from sqlalchemy.orm import Session
+
 from app.api.deps import get_current_user
-from app.models.user import User
+from app.database import get_db
+from app.models.action_log import ActionLog
 from app.models.crop_instance import CropInstance
 from app.models.deviation import DeviationProfile
-from app.models.snapshot import CropInstanceSnapshot
-from app.models.action_log import ActionLog
 from app.models.event_log import EventLog
-from app.schemas.crop_instance import (
-    CropInstanceCreate, CropInstanceResponse, CropInstanceUpdate,
-    SowingDateUpdate,
-)
+from app.models.snapshot import CropInstanceSnapshot
+from app.models.user import User
 from app.schemas.common import PaginatedResponse
+from app.schemas.crop_instance import (CropInstanceCreate,
+                                       CropInstanceResponse,
+                                       CropInstanceUpdate, SowingDateUpdate)
 from app.services.ctis.crop_service import CropService
-from app.services.ctis.seasonal_window import assign_seasonal_window
 from app.services.ctis.replay_engine import ReplayEngine, ReplayError
+from app.services.ctis.seasonal_window import assign_seasonal_window
+from app.services.event_dispatcher.mutation_guard import allow_ctis_mutation
 
 router = APIRouter(prefix="/crops", tags=["Crops"])
 
 
-def _get_crop_for_user(db: Session, crop_id: UUID, current_user: User) -> Optional[CropInstance]:
+def _get_crop_for_user(
+    db: Session, crop_id: UUID, current_user: User
+) -> Optional[CropInstance]:
     query = db.query(CropInstance).filter(
         CropInstance.id == crop_id,
         CropInstance.is_deleted == False,
@@ -47,7 +50,9 @@ def _get_crop_for_user(db: Session, crop_id: UUID, current_user: User) -> Option
     return query.first()
 
 
-@router.post("/", response_model=CropInstanceResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/", response_model=CropInstanceResponse, status_code=status.HTTP_201_CREATED
+)
 async def create_crop(
     data: CropInstanceCreate,
     db: Session = Depends(get_db),
@@ -434,34 +439,41 @@ async def clear_recovery_required(
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
 
-    crop = db.query(CropInstance).filter(
-        CropInstance.id == crop_id,
-        CropInstance.is_deleted == False,
-    ).first()
+    crop = (
+        db.query(CropInstance)
+        .filter(
+            CropInstance.id == crop_id,
+            CropInstance.is_deleted == False,
+        )
+        .first()
+    )
     if not crop:
         raise HTTPException(status_code=404, detail="Crop instance not found")
     if crop.state != "RecoveryRequired":
-        raise HTTPException(status_code=409, detail="Crop is not in RecoveryRequired state")
+        raise HTTPException(
+            status_code=409, detail="Crop is not in RecoveryRequired state"
+        )
 
-    crop.state = "Active"
     payload = {
         "crop_instance_id": str(crop_id),
         "cleared_by": str(current_user.id),
         "reason": reason,
     }
     hash_raw = f"RecoveryCleared:{crop_id}:{current_user.id}:{reason}"
-    db.add(
-        EventLog(
-            event_type="RecoveryCleared",
-            entity_type="crop_instance",
-            entity_id=crop_id,
-            partition_key=crop_id,
-            payload=payload,
-            module_target="ctis",
-            event_hash=hashlib.sha256(hash_raw.encode()).hexdigest(),
+    with allow_ctis_mutation():
+        crop.state = "Active"
+        db.add(
+            EventLog(
+                event_type="RecoveryCleared",
+                entity_type="crop_instance",
+                entity_id=crop_id,
+                partition_key=crop_id,
+                payload=payload,
+                module_target="ctis",
+                event_hash=hashlib.sha256(hash_raw.encode()).hexdigest(),
+            )
         )
-    )
-    db.commit()
+        db.commit()
     return {"crop_id": str(crop_id), "status": "recovery_cleared"}
 
 
@@ -475,32 +487,37 @@ async def retry_replay_for_recovery(
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
 
-    crop = db.query(CropInstance).filter(
-        CropInstance.id == crop_id,
-        CropInstance.is_deleted == False,
-    ).first()
+    crop = (
+        db.query(CropInstance)
+        .filter(
+            CropInstance.id == crop_id,
+            CropInstance.is_deleted == False,
+        )
+        .first()
+    )
     if not crop:
         raise HTTPException(status_code=404, detail="Crop instance not found")
 
-    crop.state = "Active"
     payload = {
         "crop_instance_id": str(crop_id),
         "triggered_by": str(current_user.id),
         "source": "admin_retry",
     }
     hash_raw = f"ReplayTriggered:{crop_id}:{current_user.id}:{json.dumps(payload, sort_keys=True)}"
-    db.add(
-        EventLog(
-            event_type="ReplayTriggered",
-            entity_type="crop_instance",
-            entity_id=crop_id,
-            partition_key=crop_id,
-            payload=payload,
-            module_target="ctis",
-            event_hash=hashlib.sha256(hash_raw.encode()).hexdigest(),
+    with allow_ctis_mutation():
+        crop.state = "Active"
+        db.add(
+            EventLog(
+                event_type="ReplayTriggered",
+                entity_type="crop_instance",
+                entity_id=crop_id,
+                partition_key=crop_id,
+                payload=payload,
+                module_target="ctis",
+                event_hash=hashlib.sha256(hash_raw.encode()).hexdigest(),
+            )
         )
-    )
-    db.commit()
+        db.commit()
 
     engine = ReplayEngine(db)
     try:

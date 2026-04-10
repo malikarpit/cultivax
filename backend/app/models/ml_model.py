@@ -5,7 +5,7 @@ Stores ML model metadata and versions.
 TDD Section 2.6.1.
 """
 
-from sqlalchemy import Column, String, Float, Integer, DateTime
+from sqlalchemy import Column, DateTime, Float, Integer, String
 from sqlalchemy.dialects.postgresql import JSONB
 
 from app.models.base import BaseModel

@@ -5,8 +5,8 @@ Records ML model training history for auditing.
 TDD Section 2.6.2.
 """
 
-from sqlalchemy import Column, String, Float, Integer, DateTime, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 
 from app.models.base import BaseModel
 
@@ -14,7 +14,9 @@ from app.models.base import BaseModel
 class MLTrainingAudit(BaseModel):
     __tablename__ = "ml_training_audit"
 
-    model_id = Column(UUID(as_uuid=True), ForeignKey("ml_models.id"), nullable=False, index=True)
+    model_id = Column(
+        UUID(as_uuid=True), ForeignKey("ml_models.id"), nullable=False, index=True
+    )
 
     # Training details
     dataset_size = Column(Integer, nullable=False)

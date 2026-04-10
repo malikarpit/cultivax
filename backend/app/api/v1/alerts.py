@@ -5,20 +5,18 @@ GET /api/v1/alerts
 PUT /api/v1/alerts/{alert_id}/acknowledge
 """
 
+from typing import Optional
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from uuid import UUID
-from typing import Optional
 
-from app.database import get_db
 from app.api.deps import get_current_user
-from app.models.user import User
+from app.database import get_db
 from app.models.alert import Alert
-from app.schemas.alert import (
-    AlertResponse,
-    BulkAcknowledgeRequest,
-    BulkAcknowledgeResponse,
-)
+from app.models.user import User
+from app.schemas.alert import (AlertResponse, BulkAcknowledgeRequest,
+                               BulkAcknowledgeResponse)
 from app.services.notifications import AlertService
 
 router = APIRouter(prefix="/alerts", tags=["Alerts"])
@@ -58,11 +56,15 @@ async def acknowledge_alert(
     current_user: User = Depends(get_current_user),
 ):
     """Acknowledge an alert."""
-    alert = db.query(Alert).filter(
-        Alert.id == alert_id,
-        Alert.user_id == current_user.id,
-        Alert.is_deleted == False,
-    ).first()
+    alert = (
+        db.query(Alert)
+        .filter(
+            Alert.id == alert_id,
+            Alert.user_id == current_user.id,
+            Alert.is_deleted == False,
+        )
+        .first()
+    )
 
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")

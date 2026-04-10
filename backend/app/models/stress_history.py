@@ -5,8 +5,8 @@ Records stress score snapshots per crop per stage.
 TDD Section 5.6.1.
 """
 
-from sqlalchemy import Column, String, Float, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy import Column, Float, ForeignKey, String
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 
 from app.models.base import BaseModel
 

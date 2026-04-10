@@ -30,4 +30,3 @@ def complete_onboarding(
         db.commit()
         db.refresh(current_user)
     return {"is_onboarded": current_user.is_onboarded}
-

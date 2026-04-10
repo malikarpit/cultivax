@@ -5,8 +5,8 @@ Stores yield submissions with dual truth: farmer-reported and ML-verified.
 TDD Section 2.3.5 + TDD 4.9 (Farmer Truth vs ML Truth).
 """
 
-from sqlalchemy import Column, Float, Boolean, String, Date, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy import Boolean, Column, Date, Float, ForeignKey, String
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
 
 from app.models.base import BaseModel

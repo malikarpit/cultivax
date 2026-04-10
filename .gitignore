@@ -55,8 +55,6 @@ htmlcov/
 .pytest_cache/
 
 # Documentation build artifacts
-docs/important documentation/extracted/
-docs/important documentation/extracted_pdfkit/
 *.resolved
 
 # Misc
@@ -71,9 +69,8 @@ docs/important documentation/extracted_pdfkit/
 backend/uploads/media/*
 !backend/uploads/media/.gitkeep
 
-# Helper Scripts (Local Only)
-build_history.sh
-build_history_random.sh
-
 # Working documents
 working docs/
+extra/
+trash/
+tests_sandbox/

@@ -5,8 +5,8 @@ Service requests from farmers to providers.
 TDD Section 2.5.2 + provider_acknowledged_at (Patch Sec 2).
 """
 
-from sqlalchemy import Column, String, Float, DateTime, ForeignKey, Text
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy import Column, DateTime, Float, ForeignKey, String, Text
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
 
 from app.models.base import BaseModel
@@ -16,12 +16,21 @@ class ServiceRequest(BaseModel):
     __tablename__ = "service_requests"
 
     # Parties
-    farmer_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
-    provider_id = Column(UUID(as_uuid=True), ForeignKey("service_providers.id"), nullable=False, index=True)
+    farmer_id = Column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True
+    )
+    provider_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("service_providers.id"),
+        nullable=False,
+        index=True,
+    )
 
     # Request details
     service_type = Column(String(100), nullable=False)
-    crop_instance_id = Column(UUID(as_uuid=True), ForeignKey("crop_instances.id"), nullable=True)
+    crop_instance_id = Column(
+        UUID(as_uuid=True), ForeignKey("crop_instances.id"), nullable=True
+    )
     description = Column(Text, nullable=True)
     region = Column(String(100), nullable=True)
     urgency = Column(String(50), default="normal")
@@ -50,8 +59,12 @@ class ServiceRequest(BaseModel):
 
     # Relationships
     provider = relationship("ServiceProvider", back_populates="service_requests")
-    review = relationship("ServiceReview", back_populates="service_request", uselist=False)
-    events = relationship("ServiceRequestEvent", back_populates="service_request", lazy="dynamic")
+    review = relationship(
+        "ServiceReview", back_populates="service_request", uselist=False
+    )
+    events = relationship(
+        "ServiceRequestEvent", back_populates="service_request", lazy="dynamic"
+    )
 
     def __repr__(self):
         return f"<ServiceRequest {self.service_type} [{self.status}]>"

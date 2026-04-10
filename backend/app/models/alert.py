@@ -6,9 +6,10 @@ Stores system-generated alerts for farmers.
 MSDD Enhancement Sec 14
 """
 
-from sqlalchemy import Column, String, Boolean, DateTime, Text
-from sqlalchemy.dialects.postgresql import UUID, JSONB
 from datetime import datetime, timezone
+
+from sqlalchemy import Boolean, Column, DateTime, String, Text
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 
 from app.models.base import BaseModel
 
@@ -19,10 +20,14 @@ class Alert(BaseModel):
     crop_instance_id = Column(UUID(as_uuid=True), nullable=True, index=True)
     user_id = Column(UUID(as_uuid=True), nullable=True, index=True)
     alert_type = Column(String(50), nullable=False, index=True)
-    severity = Column(String(20), nullable=False, default="info")  # info/warning/critical
+    severity = Column(
+        String(20), nullable=False, default="info"
+    )  # info/warning/critical
 
     # Urgency level (MSDD Enh 14.2)
-    urgency_level = Column(String(20), default="Medium")  # Low | Medium | High | Critical
+    urgency_level = Column(
+        String(20), default="Medium"
+    )  # Low | Medium | High | Critical
 
     message = Column(Text, nullable=False)
     details = Column(JSONB, nullable=True)

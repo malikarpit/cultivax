@@ -3,9 +3,10 @@ SystemHealth — subsystem health monitoring.
 Tracks operational status of ML, weather, media, events subsystems.
 """
 
-from sqlalchemy import Column, String, DateTime
-from sqlalchemy.dialects.postgresql import JSONB
 from datetime import datetime, timezone
+
+from sqlalchemy import Column, DateTime, String
+from sqlalchemy.dialects.postgresql import JSONB
 
 from app.models.base import BaseModel
 

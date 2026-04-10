@@ -5,8 +5,8 @@ Immutable, append-only log of all admin actions.
 TDD Section 2.8.1. No hard deletion allowed (MSDD Enhancement 10).
 """
 
-from sqlalchemy import Column, String, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy import Column, ForeignKey, String
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 
 from app.models.base import BaseModel
 
@@ -15,7 +15,9 @@ class AdminAuditLog(BaseModel):
     __tablename__ = "admin_audit_log"
 
     # Who did it
-    admin_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    admin_id = Column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True
+    )
 
     # What was done
     action = Column(String(100), nullable=False, index=True)

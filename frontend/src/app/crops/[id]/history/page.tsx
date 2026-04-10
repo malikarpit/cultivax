@@ -22,6 +22,7 @@ import {
 import clsx from 'clsx';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { apiGet } from '@/lib/api';
+import { useTranslation } from 'react-i18next';
 
 /* ─── Page Component ─────────────────────────────────────── */
 
@@ -43,6 +44,7 @@ const getActionColor = (type: string) => {
 /* ─── Page Component ─────────────────────────────────────── */
 
 export default function CropHistoryPage() {
+  const { t } = useTranslation();
   const params = useParams();
   const cropId = params.id;
   const [showMore, setShowMore] = useState(false);
@@ -82,25 +84,22 @@ export default function CropHistoryPage() {
         <div className="relative z-10 p-8 md:p-12">
           {/* Breadcrumb */}
           <nav className="flex items-center gap-2 text-[11px] font-mono text-m3-on-surface-variant mb-4">
-            <Link href="/crops" className="hover:text-m3-primary transition-colors">CROPS</Link>
+            <Link href="/crops" className="hover:text-m3-primary transition-colors">{t('crops.[id].history.crops')}</Link>
             <span>/</span>
-            <span className="text-m3-on-surface-variant">HD-2967</span>
+            <span className="text-m3-on-surface-variant">{t('crops.[id].history.hd_2967')}</span>
             <span>/</span>
-            <span className="text-m3-primary">Lifecycle History</span>
+            <span className="text-m3-primary">{t('crops.[id].history.lifecycle_history')}</span>
           </nav>
 
           <h1 className="text-4xl md:text-5xl font-extrabold tracking-tighter">
-            <span className="text-m3-on-surface">Wheat </span>
-            <span className="text-m3-primary">HD-2967</span>
+            <span className="text-m3-on-surface">{t('crops.[id].history.wheat')}</span>
+            <span className="text-m3-primary">{t('crops.[id].history.hd_2967')}</span>
           </h1>
-          <p className="text-m3-on-surface-variant mt-2 max-w-xl">
-            Deep-dive technical timeline. Monitoring biological progress and manual intervention records since planting.
-          </p>
+          <p className="text-m3-on-surface-variant mt-2 max-w-xl">{t('crops.[id].history.deep_dive_technical_timeline')}</p>
 
           <div className="flex flex-wrap gap-3 mt-4">
             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-m3-primary/10 text-m3-primary text-[10px] font-bold uppercase tracking-widest rounded-full">
-              <span className="w-1.5 h-1.5 bg-m3-primary rounded-full" /> Active Growth
-            </span>
+              <span className="w-1.5 h-1.5 bg-m3-primary rounded-full" />{t('crops.[id].history.active_growth')}</span>
             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-m3-secondary/10 text-m3-secondary text-[10px] font-bold uppercase tracking-widest rounded-full">
               📍 Sector 04B
             </span>
@@ -112,7 +111,7 @@ export default function CropHistoryPage() {
       <section className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         <div className="glass-card rounded-xl p-6 border-l-2 border-m3-primary border border-m3-outline-variant/10">
           <div className="flex items-center justify-between mb-3">
-            <p className="mono-label font-bold">Growth Index</p>
+            <p className="mono-label font-bold">{t('crops.[id].history.growth_index')}</p>
             <TrendingUp className="w-5 h-5 text-m3-primary" />
           </div>
           <p className="font-mono text-3xl font-black tracking-tighter">
@@ -125,24 +124,24 @@ export default function CropHistoryPage() {
 
         <div className="glass-card rounded-xl p-6 border border-m3-outline-variant/10">
           <div className="flex items-center justify-between mb-3">
-            <p className="mono-label font-bold">Logged Actions</p>
+            <p className="mono-label font-bold">{t('crops.[id].history.logged_actions')}</p>
             <ClipboardList className="w-5 h-5 text-m3-primary" />
           </div>
           <p className="font-mono text-3xl font-black tracking-tighter">
-            {actions.length} <span className="text-sm font-normal text-m3-primary">Items</span>
+            {actions.length} <span className="text-sm font-normal text-m3-primary">{t('crops.[id].history.items')}</span>
           </p>
-          <p className="text-[10px] text-m3-on-surface-variant mt-2">Overall history</p>
+          <p className="text-[10px] text-m3-on-surface-variant mt-2">{t('crops.[id].history.overall_history')}</p>
         </div>
 
         <div className="glass-card rounded-xl p-6 border border-m3-outline-variant/10">
           <div className="flex items-center justify-between mb-3">
-            <p className="mono-label font-bold">Hydration Avg</p>
+            <p className="mono-label font-bold">{t('crops.[id].history.hydration_avg')}</p>
             <Droplets className="w-5 h-5 text-m3-tertiary" />
           </div>
           <p className="font-mono text-3xl font-black tracking-tighter">
-            620 <span className="text-sm font-normal text-m3-on-surface-variant">mL/day</span>
+            620 <span className="text-sm font-normal text-m3-on-surface-variant">{t('crops.[id].history.ml_day')}</span>
           </p>
-          <p className="text-[10px] text-m3-on-surface-variant mt-2">Stable for 14 days</p>
+          <p className="text-[10px] text-m3-on-surface-variant mt-2">{t('crops.[id].history.stable_for_14_days')}</p>
         </div>
       </section>
 
@@ -153,9 +152,7 @@ export default function CropHistoryPage() {
 
         <div className="space-y-12 md:space-y-16">
           {actions.length === 0 && !loading && (
-            <div className="text-center py-10 text-m3-on-surface-variant">
-              No actions logged for this crop yet.
-            </div>
+            <div className="text-center py-10 text-m3-on-surface-variant">{t('crops.[id].history.no_actions_logged_for')}</div>
           )}
           {actions.map((action, index) => {
             const Icon = getActionIcon(action.action_type || '');
@@ -200,7 +197,7 @@ export default function CropHistoryPage() {
                     isLeft ? 'md:pl-16 md:order-2' : 'md:pr-16',
                   )}>
                     <p className="mono-label">{action.category || 'Maintenance'}</p>
-                    <p className="text-sm font-mono text-m3-on-surface-variant mt-1">Operator: You</p>
+                    <p className="text-sm font-mono text-m3-on-surface-variant mt-1">{t('crops.[id].history.operator_you')}</p>
                   </div>
                 </div>
               </div>
@@ -221,15 +218,13 @@ export default function CropHistoryPage() {
 
       {/* ═══ Related Intelligence ═══ */}
       <section>
-        <h3 className="text-2xl font-bold text-m3-on-surface mb-6">Related Intelligence</h3>
+        <h3 className="text-2xl font-bold text-m3-on-surface mb-6">{t('crops.[id].history.related_intelligence')}</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="glass-card rounded-2xl p-6 border border-m3-outline-variant/10 md:row-span-2 flex flex-col justify-between">
             <div>
               <Beaker className="w-8 h-8 text-m3-primary mb-4" />
-              <h4 className="text-lg font-bold text-m3-on-surface">Biological Analysis</h4>
-              <p className="text-sm text-m3-on-surface-variant mt-2">
-                Review full chemical and microbial breakdown for this crop batch.
-              </p>
+              <h4 className="text-lg font-bold text-m3-on-surface">{t('crops.[id].history.biological_analysis')}</h4>
+              <p className="text-sm text-m3-on-surface-variant mt-2">{t('crops.[id].history.review_full_chemical_and')}</p>
             </div>
             <button className="mt-4 text-sm font-bold text-m3-primary hover:underline flex items-center gap-1">
               Open Report <ArrowRight className="w-3 h-3" />
@@ -238,14 +233,14 @@ export default function CropHistoryPage() {
 
           <div className="glass-card rounded-2xl p-6 border border-m3-outline-variant/10">
             <AlertTriangle className="w-6 h-6 text-m3-secondary mb-3" />
-            <h4 className="font-bold text-m3-on-surface">Climate Overlay</h4>
-            <p className="text-xs text-m3-on-surface-variant mt-1">Environmental impact data correlations.</p>
+            <h4 className="font-bold text-m3-on-surface">{t('crops.[id].history.climate_overlay')}</h4>
+            <p className="text-xs text-m3-on-surface-variant mt-1">{t('crops.[id].history.environmental_impact_data_correlations')}</p>
           </div>
 
           <div className="glass-card rounded-2xl p-6 border border-m3-outline-variant/10">
             <Download className="w-6 h-6 text-m3-primary mb-3" />
-            <h4 className="font-bold text-m3-on-surface">Export Report</h4>
-            <p className="text-xs text-m3-on-surface-variant mt-1">PDF / CSV Formats</p>
+            <h4 className="font-bold text-m3-on-surface">{t('crops.[id].history.export_report')}</h4>
+            <p className="text-xs text-m3-on-surface-variant mt-1">{t('crops.[id].history.pdf_csv_formats')}</p>
           </div>
         </div>
       </section>
