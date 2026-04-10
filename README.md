@@ -2,221 +2,157 @@
 
 **Intelligent Crop Lifecycle Management & Service Orchestration Platform**
 
-CultivaX is a deterministic, event-driven agricultural management system that provides farmers with chronologically accurate crop timeline tracking, intelligent recommendations, and a service marketplace — all built with replay-safe architecture.
+CultivaX is a production-grade, event-driven agricultural management platform that gives farmers chronologically-accurate crop timeline tracking, AI-backed recommendations, a service marketplace, and government scheme discovery — all in 5 languages (English, Hindi, Tamil, Telugu, Marathi).
+
+[![Backend](https://img.shields.io/badge/backend-FastAPI%203.11-green)](http://localhost:8000/docs)
+[![Frontend](https://img.shields.io/badge/frontend-Next.js%2014-blue)](http://localhost:3000)
+[![DB](https://img.shields.io/badge/database-PostgreSQL%2015-blue)](https://postgresql.org)
+[![License](https://img.shields.io/badge/license-Academic-orange)](#license)
 
 ---
 
-## Tech Stack
+## Documentation
 
-| Layer | Technology |
-|-------|-----------|
-| Backend | Python 3.11, FastAPI, SQLAlchemy 2.0, Alembic |
-| Database | PostgreSQL 15 (Cloud SQL) |
-| Frontend | Next.js 14, React 18, TailwindCSS |
-| Auth | JWT (python-jose), bcrypt |
-| Cloud Storage | Google Cloud Storage (signed URLs) |
-| Deployment | Google Cloud Run, Cloud Build |
-| Containerization | Docker, docker-compose |
-| Type Checking | Pyright, Pyre2 |
+For deeper technical detail, refer to these docs:
 
----
-
-## Features
-
-### 🌾 CTIS — Crop Timeline Intelligence System
-- **Deterministic Replay Engine** — Rebuilds crop state from action logs with snapshot checkpoints
-- **Crop State Machine** — Enforces valid state transitions (Created → Active → Harvested/Closed)
-- **Stress Score Engine** — Multi-signal stress computation with deviation tracking
-- **What-If Simulation** — Test hypothetical actions in isolated memory context (MSDD 1.14)
-- **Drift Enforcement** — Clamps timeline drift to ±max per stage (MSDD 1.9)
-- **Behavioral Adapter** — Detects recurring farmer patterns, computes bounded ±7 day offsets (ML Enhancement 6)
-- **Temporal Anomaly Detection** — Rejects backdated/future-dated offline sync actions (MSDD 1.7.1)
-- **Yield Verification** — Farmer Truth vs ML Truth separation with biological limit caps (MSDD 1.12)
-- **Snapshot Manager** — Periodic checkpoints every N actions for fast replay recovery
-
-### 🛒 SOE — Service Orchestration Ecosystem
-- **Trust Score Engine** — 6-factor weighted trust computation with temporal decay
-- **Exposure Fairness Engine** — Provider ranking with 70% exposure cap and regional saturation control
-- **Fraud Detection** — 3-signal analysis (review patterns, rating spikes, timing anomalies)
-- **Service Request Lifecycle** — State machine with event emission on every transition
-- **Escalation Policy Engine** — Complaint routing and resolution workflows
-
-### 🤖 ML Module
-- **Risk Predictor** — Rule-based fallback with ML Kill Switch
-- **Model Registry** — Version lifecycle management (register, activate, deactivate)
-- **Status Transmitters** — Intelligent model confidence (`stub` vs `active`)
-
-### 🔔 Notifications & Recommendations
-- **Alert Service** — System-generated alerts with throttling (max 3 per crop per 24h)
-- **Recommendation Engine** — Daily prioritized action suggestions based on stress/risk/stage
+| Document | Covers |
+|----------|--------|
+| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design, CTIS internals, SOE, ML module, event dispatcher, database overview, infrastructure |
+| [API.md](docs/API.md) | Every API endpoint — auth requirements, request/response shapes, error codes, rate limits |
+| [DATA_MODEL.md](docs/DATA_MODEL.md) | All 35+ database tables, column types, constraints, and entity relationships |
+| [DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md) | How to add models, endpoints, pages, events; testing guide; debugging scenarios; git conventions |
+| [TECH_STACK.md](docs/TECH_STACK.md) | Rationale for every technology choice |
+| [SECURITY.md](docs/SECURITY.md) | Security hardening, middleware stack, RBAC |
+| [SECRETS_ROTATION.md](docs/SECRETS_ROTATION.md) | Key rotation and secret management runbook |
 
 ---
 
-## 🏆 Production Readiness & Compliance
+## Table of Contents
 
-CultivaX has undergone a deep code-to-docs compliance audit.
-- **Traceability** — 100% of the 369 `MUST` requirements in the MSDD/TDD are traced, implemented, and verified in code.
-- **Testing** — Deterministic test suite is robust with 280/280 passing tests covering offline-sync, trust limits, event queues, and temporal anomalies.
-- **Security Runbooks** — Fully documented [Key Rotation & Secret Management Runbook](docs/SECRETS_ROTATION.md) included.
-- **Docs-Drift Shield** — CI suite actively breaks builds if new undocumented API endpoints occur (`tests/test_docs_drift.py`).
-
----
-
-## API Endpoints
-
-| Module | Endpoint | Description |
-|--------|----------|-------------|
-| **Auth** | `POST /api/v1/auth/register` | User registration |
-| | `POST /api/v1/auth/login` | JWT login |
-| **Crops** | `GET/POST /api/v1/crops/` | List/create crop instances |
-| | `GET /api/v1/crops/{id}` | Crop detail with computed state |
-| **Actions** | `POST /api/v1/crops/{id}/actions` | Log farmer action |
-| **Simulation** | `POST /api/v1/crops/{id}/simulate` | What-if simulation |
-| **Yield** | `POST /api/v1/crops/{id}/yield` | Submit harvest yield |
-| **Recommendations** | `GET /api/v1/crops/{id}/recommendations` | Prioritized action suggestions |
-| **Providers** | `GET/POST /api/v1/providers/` | Service provider CRUD |
-| **Equipment** | `GET/POST /api/v1/equipment/` | Equipment management |
-| **Service Requests** | `POST /api/v1/service-requests/` | Create/accept/complete requests |
-| **Reviews** | `POST /api/v1/reviews/` | Submit service reviews |
-| **Alerts** | `GET /api/v1/alerts/` | Farmer alerts |
-| **Rules** | `GET/POST/PUT /api/v1/rules/` | Crop rule template CRUD |
-| **Features** | `GET/PUT /api/v1/features/` | Feature flag management |
-| **ML Models** | `GET/POST /api/v1/ml/models` | ML model registry |
-| **Sync** | `POST /api/v1/offline-sync/` | Offline bulk action sync |
-| **Admin** | `GET/PUT /api/v1/admin/*` | User management, provider governance |
-| **Media** | `POST /api/v1/media/upload` | File uploads (GCS / local) |
+1. [Quick Start (Docker)](#1-quick-start-docker--5-minutes)
+2. [Manual Setup](#2-manual-setup)
+3. [Environment Variables](#3-environment-variables)
+4. [Demo Accounts](#4-demo-accounts)
+5. [Features](#5-features)
+6. [Frontend Pages](#6-frontend-pages)
+7. [API Reference](#7-api-reference)
+8. [Project Structure](#8-project-structure)
+9. [Running Tests](#9-running-tests)
+10. [Cloud Deployment (GCP)](#10-cloud-deployment-gcp)
+11. [Architecture](#11-architecture)
+12. [Team](#12-team)
 
 ---
 
-## Frontend Pages
+## 1. Quick Start (Docker) — 5 Minutes
 
-| Page | Route | Description |
-|------|-------|-------------|
-| Dashboard | `/dashboard` | Crop cards with stats overview |
-| Crop List | `/crops` | Filterable crop instance list |
-| Crop Detail | `/crops/[id]` | Stats grid, timeline, action log |
-| New Crop | `/crops/new` | Crop creation form |
-| Yield Submission | `/crops/[id]/yield` | Harvest yield entry form |
-| Log Action | `/crops/[id]/log-action` | Action logging form |
-| Simulate | `/crops/[id]/simulate` | What-if simulation UI |
-| Services | `/services` | Service marketplace |
-| Labor | `/labor` | Labor management |
-| Provider Dashboard | `/provider` | Provider-side overview |
-| Admin | `/admin` | Admin dashboard with stats |
-| User Management | `/admin/users` | User CRUD |
-| Provider Management | `/admin/providers` | Provider governance |
-| Health Monitor | `/admin/health` | System health dashboard |
-| Dead Letters | `/admin/dead-letters` | Failed event queue |
-| Templates | `/admin/templates` | Crop rule template management |
-| Login | `/login` | JWT authentication |
-| Register | `/register` | User registration |
+> **Requirements:** [Docker Desktop](https://www.docker.com/products/docker-desktop/) (includes Docker Compose) — nothing else needed.
 
----
-
-## Project Structure
-
-```
-cultivax/
-├── backend/                    # FastAPI backend
-│   ├── app/
-│   │   ├── api/v1/             # 17 REST endpoint modules
-│   │   ├── models/             # 26 SQLAlchemy models
-│   │   ├── schemas/            # Pydantic request/response schemas
-│   │   ├── services/
-│   │   │   ├── ctis/           # Replay, stress, drift, simulation engines
-│   │   │   ├── soe/            # Trust, exposure, fraud engines
-│   │   │   ├── ml/             # Risk predictor, model registry
-│   │   │   ├── event_dispatcher/  # DB-backed FIFO event processing
-│   │   │   ├── notifications/  # Alert service with throttling
-│   │   │   ├── recommendations/ # Priority-scored recommendations
-│   │   │   ├── media/          # File upload service (GCS + local)
-│   │   │   └── weather/        # Weather API integration
-│   │   ├── middleware/         # Error handling, idempotency, rate limiting
-│   │   └── security/          # JWT, password hashing, RBAC
-│   ├── alembic/                # Database migrations
-│   ├── scripts/                # Seed data & utilities
-│   └── tests/                  # pytest test suite
-├── frontend/                   # Next.js 14 frontend
-│   └── src/
-│       ├── app/                # 18 pages (App Router)
-│       ├── components/         # 16 reusable UI components
-│       ├── context/            # Auth context
-│       ├── hooks/              # Custom hooks (useApi)
-│       └── lib/                # API client, auth utilities
-├── deploy/                     # Cloud Run deployment scripts
-│   ├── deploy-backend.sh       # Build → push → deploy to Cloud Run
-│   ├── run-migrations.sh       # Run Alembic migrations on Cloud SQL
-│   └── setup-cloud-sql.sh      # Provision Cloud SQL instance
-├── docs/                       # Project documentation (SRS, MSDD, TDD)
-├── docker-compose.yml          # Local development setup
-└── pyrightconfig.json          # Type checking configuration
-```
-
----
-
-## Prerequisites
-
-Before you begin, ensure you have:
-
-| Tool | Version | Purpose |
-|------|---------|---------|
-| Python | 3.11+ | Backend runtime |
-| Node.js | 18+ | Frontend runtime |
-| PostgreSQL | 15+ | Database (or use Docker) |
-| Docker | 20.10+ | Containerized development |
-| docker-compose | 2.0+ | Multi-service orchestration |
-| gcloud CLI | Latest | Cloud Run deployment (optional) |
-
----
-
-## Local Development Setup
-
-### Option 1: Docker (Recommended)
+### Step 1 — Clone the repository
 
 ```bash
-# Clone the repository
 git clone https://github.com/malikarpit/cultivax.git
 cd cultivax
-
-# Start all services (PostgreSQL + backend + frontend)
-docker-compose up -d
-
-# Verify
-curl http://localhost:8000/health     # Backend health check
-open http://localhost:3000             # Frontend
-open http://localhost:8000/docs        # API documentation (Swagger)
 ```
 
-### Option 2: Manual Setup
+### Step 2 — Create the environment file
 
-#### Backend
+```bash
+# Copy the template (no values required for basic local dev)
+cp .env.example .env
+```
+
+> **Optional:** If you want real SMS OTPs or live weather data, edit `.env` and fill in your Twilio and OpenWeatherMap keys. The app works fully without them using stub providers.
+
+### Step 3 — Start everything
+
+```bash
+docker compose up
+```
+
+This single command:
+- Starts **PostgreSQL 15** on port `5432`
+- Runs **all Alembic database migrations** automatically
+- Seeds **3 demo accounts** (admin, farmer, provider)
+- Starts the **FastAPI backend** on port `8000`
+- Starts the **Next.js frontend** on port `3000`
+
+> First run takes ~3–5 minutes to build Docker images. Subsequent starts are instant.
+
+### Step 4 — Open the app
+
+| Service | URL |
+|---------|-----|
+| 🌐 Frontend | http://localhost:3000 |
+| 📖 API Docs (Swagger) | http://localhost:8000/docs |
+| 🔍 API Health | http://localhost:8000/api/v1/health |
+
+Log in with any [demo account](#4-demo-accounts) — you're ready to go.
+
+### Stopping the app
+
+```bash
+# Stop (keep data)
+docker compose stop
+
+# Stop and remove containers + volumes (full reset)
+docker compose down -v
+```
+
+---
+
+## 2. Manual Setup
+
+Use this if you prefer to run services directly without Docker.
+
+### Prerequisites
+
+| Tool | Version | Install |
+|------|---------|---------|
+| Python | 3.11+ | [python.org](https://python.org) |
+| Node.js | 18+ | [nodejs.org](https://nodejs.org) |
+| PostgreSQL | 15+ | [postgresql.org](https://postgresql.org) |
+
+### 2a — Database
+
+```bash
+# Create PostgreSQL user and database
+psql -U postgres << 'EOF'
+CREATE USER cultivax_user WITH PASSWORD 'cultivax_pass';
+CREATE DATABASE cultivax_db OWNER cultivax_user;
+EOF
+```
+
+### 2b — Backend
 
 ```bash
 cd backend
 
-# Create and activate virtual environment
+# Create virtual environment
 python -m venv venv
-source venv/bin/activate            # macOS/Linux
-# venv\Scripts\activate             # Windows
+source venv/bin/activate        # macOS / Linux
+# venv\Scripts\activate         # Windows
 
 # Install dependencies
 pip install -r requirements.txt
 
-# Configure environment
+# Create environment file
 cp .env.example .env
-# Edit .env with your database credentials
+# Edit .env — set DATABASE_URL to: postgresql://cultivax_user:cultivax_pass@localhost:5432/cultivax_db
 
 # Run database migrations
 alembic upgrade head
 
-# Seed demo data (optional)
-python -m scripts.seed_data
+# Seed demo accounts
+python -m scripts.seed_demo_users
 
-# Start the development server
+# Start the API server
 uvicorn app.main:app --reload --port 8000
 ```
 
-#### Frontend
+Backend is available at http://localhost:8000
+
+### 2c — Frontend
 
 ```bash
 cd frontend
@@ -224,187 +160,401 @@ cd frontend
 # Install dependencies
 npm install
 
-# Configure environment
-cp .env.local.example .env.local
-# Ensure NEXT_PUBLIC_API_URL=http://localhost:8000
+# Create environment file
+echo "NEXT_PUBLIC_API_URL=http://localhost:8000" > .env.local
 
-# Start the development server
+# Start the dev server
 npm run dev
 ```
 
+Frontend is available at http://localhost:3000
+
 ---
 
-## Environment Variables
+## 3. Environment Variables
 
-### Backend (`backend/.env`)
+### Root `.env` (Docker Compose reads this)
 
-| Variable | Description | Default |
+Create this file at the project root. You can copy `.env.example` as a starting point.
+
+| Variable | Required | Description | Default |
+|----------|----------|-------------|---------|
+| `OPENWEATHER_API_KEY` | No | Live weather data. [Get free key](https://openweathermap.org/api) | Falls back to Open-Meteo (free, no key) |
+| `SMS_PROVIDER` | No | SMS backend: `stub` (logs to console) or `twilio` | `stub` |
+| `TWILIO_ACCOUNT_SID` | Only if `SMS_PROVIDER=twilio` | Twilio account SID | — |
+| `TWILIO_AUTH_TOKEN` | Only if `SMS_PROVIDER=twilio` | Twilio auth token | — |
+| `TWILIO_FROM_NUMBER` | Only if `SMS_PROVIDER=twilio` | Twilio sender phone e.g. `+1...` | — |
+
+### Backend `backend/.env` (Manual setup only)
+
+| Variable | Description | Example |
 |----------|-------------|---------|
 | `DATABASE_URL` | PostgreSQL connection string | `postgresql://cultivax_user:cultivax_pass@localhost:5432/cultivax_db` |
-| `SECRET_KEY` | JWT signing key (**change in prod!**) | `your-secret-key-change-in-production` |
+| `SECRET_KEY` | JWT signing secret — **change in production** | `some-random-secret-64-chars` |
 | `ALGORITHM` | JWT algorithm | `HS256` |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | Token expiry | `60` |
-| `CORS_ORIGINS` | Allowed origins (comma-separated) | `http://localhost:3000,http://localhost:8000` |
-| `APP_ENV` | Environment (`development` / `production`) | `development` |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | Token TTL | `60` |
+| `CORS_ORIGINS` | Allowed CORS origins (comma-separated) | `http://localhost:3000` |
+| `APP_ENV` | `development` or `production` | `development` |
 | `DEBUG` | Enable debug mode | `True` |
-| `GCS_BUCKET_NAME` | Google Cloud Storage bucket (empty = local storage) | `""` |
-| `GCS_SIGNED_URL_EXPIRY_MINUTES` | Signed URL expiry | `60` |
-| `CLOUD_SQL_CONNECTION_NAME` | Cloud SQL instance (for Cloud Run) | `""` |
-| `CLOUD_SQL_DB_NAME` | Cloud SQL database name | `cultivax_db` |
-| `CLOUD_SQL_DB_USER` | Cloud SQL user | `cultivax_user` |
-| `CLOUD_SQL_DB_PASSWORD` | Cloud SQL password | `""` |
+| `GCS_BUCKET_NAME` | GCS bucket for media uploads (empty = local disk) | `""` |
 
-### Frontend (`frontend/.env.local`)
+### Frontend `frontend/.env.local` (Manual setup only)
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `NEXT_PUBLIC_API_URL` | Backend API base URL | `http://localhost:8000` |
+| Variable | Description | Value |
+|----------|-------------|-------|
+| `NEXT_PUBLIC_API_URL` | Backend base URL | `http://localhost:8000` |
 
 ---
 
-## Database Setup
+## 4. Demo Accounts
 
-### Using Docker (automatic)
+These accounts are automatically created when the app starts (via seed script).
 
-```bash
-docker-compose up -d postgres
-```
+| Role | Phone | Password | Access |
+|------|-------|----------|--------|
+| **Admin** | `+919999999991` | `password123` | Full admin panel, user management, system health |
+| **Farmer** | `+919999999992` | `password123` | Crops, timeline, services, schemes, alerts |
+| **Provider** | `+919999999993` | `password123` | Equipment management, incoming service requests |
 
-This starts PostgreSQL 15 on port 5432 with:
-- User: `cultivax_user`
-- Password: `cultivax_pass`
-- Database: `cultivax_db`
-
-### Using Local PostgreSQL
-
-```bash
-# Create database and user
-psql -U postgres -c "CREATE USER cultivax_user WITH PASSWORD 'cultivax_pass';"
-psql -U postgres -c "CREATE DATABASE cultivax_db OWNER cultivax_user;"
-
-# Run migrations
-cd backend
-alembic upgrade head
-```
-
-### Seed Data
-
-```bash
-cd backend
-python -m scripts.seed_data
-```
-
-Creates:
-- 1 admin, 4 farmers, 3 providers (password: `Test@1234`)
-- 3 crop rule templates (wheat, rice, cotton)
-- 5 crop instances in various states
-- 3 sample service requests
+> Login uses phone number + password. OTP is **not required** for demo accounts.
 
 ---
 
-## Deployment (Google Cloud Run)
+## 5. Features
 
-### 1. Set Up Cloud SQL
+### 🌾 CTIS — Crop Timeline Intelligence System
+- **Deterministic Replay Engine** — Rebuilds crop state from the full action log with snapshot checkpoints for fast recovery
+- **Crop State Machine** — Enforces valid state transitions: `Created → Active → Harvested / Closed`
+- **Stress Score Engine** — Multi-signal stress computation with deviation tracking across growth stages
+- **What-If Simulation** — Test hypothetical actions in isolated memory (non-persistent) context
+- **Drift Enforcement** — Clamps timeline drift to ±max per lifecycle stage
+- **Behavioral Adapter** — Detects recurring farmer patterns, computes bounded ±7-day offsets
+- **Temporal Anomaly Detection** — Rejects backdated/future-dated offline sync actions
+- **Yield Verification** — Separates Farmer Truth vs ML Truth with biological limit caps
+- **Snapshot Manager** — Periodic checkpoints every N actions for fast replay recovery
 
-```bash
-./deploy/setup-cloud-sql.sh <PROJECT_ID>
+### 🛒 SOE — Service Orchestration Ecosystem
+- **Service Marketplace** — Browse and book equipment & labor providers by region
+- **Trust Score Engine** — 6-factor weighted trust computation with temporal decay
+- **Exposure Fairness Engine** — Provider ranking with 70% exposure cap and regional saturation control
+- **Fraud Detection** — 3-signal analysis (review patterns, rating spikes, timing anomalies)
+- **Service Request Lifecycle** — State machine with event emission on every transition
+- **Escalation Policy Engine** — Complaint routing and resolution workflows
+
+### 🏛️ Government Schemes Browser
+- Browse official government agricultural schemes filtered by region and category
+- Categories: subsidy, insurance, advisory, loan
+- Direct portal redirect with audit trail logging
+
+### 🤖 ML Module
+- **Risk Predictor** — Rule-based fallback with ML Kill Switch (graceful degradation)
+- **Model Registry** — Version lifecycle management (register, activate, deactivate)
+- **Inference Audit** — Every inference is logged with confidence scores and model version
+
+### 🔔 Smart Notifications & Recommendations
+- **Alert Service** — System-generated alerts with throttling (max 3 per crop per 24h)
+- **Recommendation Engine** — Daily prioritized action suggestions based on stress/risk/stage
+- **SMS Notifications** — OTP and critical alerts via Twilio (or `stub` for development)
+
+### 🌍 Internationalization (i18n)
+- Full UI translation in **5 languages**: English, Hindi (हिंदी), Tamil (தமிழ்), Telugu (తెలుగు), Marathi (मराठी)
+- Language switcher in the navigation header
+- All labels, error messages, and dynamic text are translated
+
+### 📱 Offline PWA
+- Service worker for offline capability
+- Offline action queue — actions logged without internet sync automatically when reconnected
+- Optimistic UI updates with SWR
+
+---
+
+## 6. Frontend Pages
+
+| Page | Route | Who Sees It |
+|------|-------|-------------|
+| Landing | `/` | Everyone |
+| Login | `/login` | Everyone |
+| Register | `/register` | Everyone |
+| Dashboard | `/dashboard` | Farmers |
+| Crop List | `/crops` | Farmers |
+| Crop Detail | `/crops/[id]` | Farmers |
+| New Crop | `/crops/new` | Farmers |
+| Log Action | `/crops/[id]/log-action` | Farmers |
+| Crop History | `/crops/[id]/history` | Farmers |
+| Simulate | `/crops/[id]/simulate` | Farmers |
+| Land Parcels | `/land-parcels` | Farmers |
+| Weather | `/weather` | Farmers |
+| Services | `/services` | Farmers |
+| Labor | `/labor` | Farmers |
+| Alerts | `/alerts` | Farmers |
+| Schemes | `/schemes` | Farmers |
+| Disputes | `/disputes` | Farmers |
+| Profile | `/profile` | All logged-in |
+| Settings | `/settings` | All logged-in |
+| Privacy | `/privacy` | Everyone |
+| Terms | `/terms` | Everyone |
+| Support | `/support` | Everyone |
+| Provider Dashboard | `/provider` | Providers |
+| Equipment | `/provider/equipment` | Providers |
+| Provider Onboarding | `/provider/onboarding` | Providers |
+| Reviews | `/provider/reviews` | Providers |
+| Admin Dashboard | `/admin` | Admins |
+| User Management | `/admin/users` | Admins |
+| Provider Management | `/admin/providers` | Admins |
+| Templates | `/admin/templates` | Admins |
+| System Health | `/admin/health` | Admins |
+| Dead Letters | `/admin/dead-letters` | Admins |
+| ML Models | `/admin/ml-models` | Admins |
+| Feature Flags | `/admin/features` | Admins |
+| Security | `/admin/security` | Admins |
+| Analytics | `/admin/analytics` | Admins |
+| Reports | `/admin/reports` | Admins |
+
+---
+
+## 7. API Reference
+
+Full interactive documentation: **http://localhost:8000/docs**
+
+| Module | Endpoint | Method | Description |
+|--------|----------|--------|-------------|
+| **Health** | `/api/v1/health` | GET | Service health check |
+| **Auth** | `/api/v1/auth/register` | POST | Register new user |
+| | `/api/v1/auth/login` | POST | Login — returns JWT |
+| | `/api/v1/auth/refresh` | POST | Refresh access token |
+| **Crops** | `/api/v1/crops/` | GET, POST | List / create crop instances |
+| | `/api/v1/crops/{id}` | GET, PUT, DELETE | Crop detail / update / delete |
+| | `/api/v1/crops/{id}/actions` | POST | Log a farmer action |
+| | `/api/v1/crops/{id}/simulate` | POST | What-if simulation |
+| | `/api/v1/crops/{id}/yield` | POST | Submit harvest yield |
+| | `/api/v1/crops/{id}/recommendations` | GET | Prioritized action suggestions |
+| | `/api/v1/crops/{id}/history` | GET | Full action log + replay |
+| **Providers** | `/api/v1/providers/` | GET, POST | Browse / register providers |
+| **Equipment** | `/api/v1/equipment/` | GET, POST | Equipment management |
+| **Labor** | `/api/v1/labor/` | GET, POST | Labor listing |
+| **Service Requests** | `/api/v1/service-requests/` | GET, POST | Create / list requests |
+| | `/api/v1/service-requests/{id}` | PUT | Accept / complete / cancel |
+| **Reviews** | `/api/v1/reviews/` | POST | Submit service review |
+| **Alerts** | `/api/v1/alerts/` | GET | Farmer notifications |
+| **Schemes** | `/api/v1/schemes/` | GET | Browse government schemes |
+| | `/api/v1/schemes/{id}/redirect` | POST | Log scheme portal visit |
+| **Weather** | `/api/v1/weather/` | GET | Current weather for region |
+| **Land Parcels** | `/api/v1/land-parcels/` | GET, POST | Field/parcel management |
+| **Rules** | `/api/v1/rules/` | GET, POST, PUT | Crop rule templates |
+| **Features** | `/api/v1/features/` | GET, PUT | Feature flag management |
+| **ML Models** | `/api/v1/ml/models` | GET, POST | Model registry |
+| **Media** | `/api/v1/media/upload` | POST | File upload (GCS / local) |
+| **Sync** | `/api/v1/sync/` | POST | Bulk offline action sync |
+| **Analytics** | `/api/v1/analytics/` | GET | Platform analytics |
+| **Admin** | `/api/v1/admin/*` | GET, PUT | User mgmt, provider governance |
+| **Disputes** | `/api/v1/disputes/` | GET, POST | Dispute management |
+| **Reports** | `/api/v1/reports/` | GET | Generated reports |
+
+---
+
+## 8. Project Structure
+
+```
+cultivax/
+├── backend/                         # FastAPI backend (Python 3.11)
+│   ├── app/
+│   │   ├── api/v1/                  # 30+ REST API modules
+│   │   │   ├── auth.py              # Registration, login, OTP, JWT refresh
+│   │   │   ├── crops.py             # Crop CRUD + action logging
+│   │   │   ├── schemes.py           # Government schemes browser
+│   │   │   ├── disputes.py          # Dispute resolution
+│   │   │   └── ...                  # (all other controllers)
+│   │   ├── models/                  # 35+ SQLAlchemy ORM models
+│   │   │   ├── official_scheme.py   # Government schemes
+│   │   │   ├── dispute_case.py      # Dispute cases
+│   │   │   ├── user_consent.py      # GDPR-style consent logs
+│   │   │   └── ...
+│   │   ├── schemas/                 # Pydantic v2 request/response schemas
+│   │   ├── services/
+│   │   │   ├── ctis/                # Replay, stress, drift, simulation engines
+│   │   │   ├── soe/                 # Trust, exposure, fraud engines
+│   │   │   ├── ml/                  # Risk predictor, model registry
+│   │   │   ├── event_dispatcher/    # DB-backed FIFO event processing
+│   │   │   ├── notifications/       # SMS + in-app alerts
+│   │   │   ├── recommendations/     # Priority-scored suggestions
+│   │   │   ├── media/               # File upload service (GCS + local)
+│   │   │   └── weather/             # Weather API integration
+│   │   ├── middleware/              # Rate limiting, error handling, idempotency
+│   │   ├── security/                # JWT, bcrypt, RBAC guards
+│   │   └── main.py                  # FastAPI app entrypoint
+│   ├── alembic/
+│   │   └── versions/                # 15+ database migration files
+│   ├── scripts/
+│   │   └── seed_demo_users.py       # Creates demo accounts on startup
+│   ├── tests/                       # pytest test suite (280+ tests)
+│   ├── requirements.txt
+│   └── Dockerfile
+│
+├── frontend/                        # Next.js 14 (App Router)
+│   └── src/
+│       ├── app/                     # 30+ pages using file-based routing
+│       │   ├── admin/               # Admin panel pages
+│       │   ├── crops/               # Crop management pages
+│       │   ├── schemes/             # Government schemes browser
+│       │   ├── disputes/            # Dispute management
+│       │   └── ...
+│       ├── components/              # Reusable UI components
+│       │   ├── Sidebar.tsx          # Role-based navigation
+│       │   ├── LanguageSwitcher.tsx # i18n language toggle
+│       │   └── ...
+│       ├── context/                 # Auth context, SWR provider
+│       ├── hooks/                   # useFetch, useOfflineActions, etc.
+│       ├── lib/
+│       │   ├── i18n.ts              # Inline translation dictionaries (5 languages)
+│       │   └── api.ts               # Typed API client
+│       └── worker/                  # PWA service worker
+│
+├── deploy/                          # GCP deployment scripts
+│   ├── deploy-backend.sh            # Cloud Run deploy
+│   ├── run-migrations.sh            # Cloud SQL migrations
+│   └── setup-cloud-sql.sh           # Cloud SQL provisioning
+│
+├── docs/                            # SRS, MSDD, TDD, architecture docs
+├── docker-compose.yml               # Local dev orchestration
+├── .env                             # Secrets file (gitignored — create from .env.example)
+├── .env.example                     # Template for .env
+└── pyrightconfig.json               # Pyright type checking config
 ```
 
-### 2. Deploy Backend
+---
+
+## 9. Running Tests
 
 ```bash
-./deploy/deploy-backend.sh <PROJECT_ID> [REGION] [TAG]
+# Run all backend tests
+cd backend
+pytest
+
+# Run with coverage report
+pytest --cov=app --cov-report=html
+# Open htmlcov/index.html to view coverage
+
+# Run a specific test module
+pytest tests/test_official_schemes.py -v
+pytest tests/test_dispute_resolution.py -v
+pytest tests/test_soe_flow.py -v
+
+# Run tests matching a keyword
+pytest -k "trust" -v
+
+# Run inside Docker (no local Python needed)
+docker compose exec backend pytest
+```
+
+---
+
+## 10. Cloud Deployment (GCP)
+
+### Prerequisites
+
+```bash
+# Install gcloud CLI and authenticate
+gcloud auth login
+gcloud auth configure-docker
+```
+
+### Step 1 — Provision Cloud SQL
+
+```bash
+./deploy/setup-cloud-sql.sh <YOUR_GCP_PROJECT_ID>
+```
+
+### Step 2 — Deploy Backend to Cloud Run
+
+```bash
+./deploy/deploy-backend.sh <YOUR_GCP_PROJECT_ID> [REGION] [IMAGE_TAG]
+# Example:
+./deploy/deploy-backend.sh my-project asia-south1 v1.0
 ```
 
 This will:
-- Enable required GCP APIs
+- Enable required GCP APIs (Cloud Run, Cloud Build, Cloud SQL)
 - Build the Docker image via Cloud Build
+- Push to Google Container Registry
 - Deploy to Cloud Run with Cloud SQL connectivity
-- Auto-run database migrations on startup
+- Auto-run `alembic upgrade head` on startup
 
-### 3. Run Migrations (Manual)
+### Step 3 — Run Migrations Manually (if needed)
 
 ```bash
-./deploy/run-migrations.sh <PROJECT_ID>
+./deploy/run-migrations.sh <YOUR_GCP_PROJECT_ID>
 ```
 
-### 4. Verify Deployment
+### Step 4 — Verify
 
 ```bash
-# Get the service URL
 SERVICE_URL=$(gcloud run services describe cultivax-backend \
   --project=<PROJECT_ID> --region=asia-south1 --format="value(status.url)")
 
-# Health check
-curl ${SERVICE_URL}/health
-
-# API docs
+curl ${SERVICE_URL}/api/v1/health
 open ${SERVICE_URL}/docs
 ```
 
 ---
 
-## Running Tests
+## 11. Architecture
 
-```bash
-cd backend
-
-# Run all tests
-pytest
-
-# Run with coverage
-pytest --cov=app --cov-report=html
-
-# Run specific test file
-pytest tests/test_soe_flow.py -v
-
-# Run security tests
-pytest tests/test_security.py -v
 ```
+┌──────────────────────────────────────────────────────┐
+│                   Next.js 14 Frontend                 │
+│  30+ pages · 5 languages · PWA offline · SWR cache  │
+└──────────────────────────┬───────────────────────────┘
+                           │ HTTP / REST
+┌──────────────────────────▼───────────────────────────┐
+│                  FastAPI Backend (Python 3.11)        │
+│   30+ API modules · JWT RBAC · idempotent endpoints  │
+└───┬──────────────────────┬─────────────────────┬─────┘
+    │                      │                     │
+┌───▼────────┐   ┌─────────▼──────┐   ┌─────────▼──────┐
+│   CTIS      │   │     SOE        │   │   ML Module    │
+│ ─────────── │   │ ─────────────  │   │ ──────────── ─ │
+│ Replay Eng  │   │ Trust Engine   │   │ Risk Predictor │
+│ State Mach  │   │ Fraud Detect   │   │ Model Registry │
+│ Stress Eng  │   │ Exposure Eng   │   │ Inference Audit│
+│ Drift Enf   │   │ Request Svc    │   │ Kill Switch    │
+│ WhatIf Sim  │   │ Escalation     │   └────────────────┘
+│ Yield Verif │   └────────────────┘
+└─────────────┘
+    │
+┌───▼──────────────┐   ┌────────────────┐   ┌────────────────┐
+│  Event Dispatcher │   │   PostgreSQL 15 │   │  Cloud Storage │
+│  DB-backed FIFO   │   │  35+ tables    │   │  GCS + local   │
+│  SKIP LOCKED      │   │  15+ migrations│   │  Signed URLs   │
+└───────────────────┘   └────────────────┘   └────────────────┘
+```
+
+### Key Design Decisions
+
+| Decision | Rationale |
+|----------|-----------|
+| DB-backed event queue (not Redis) | Eliminates external dependency; ACID-safe; survives restarts |
+| Inline i18n dictionary (not remote API) | Full offline support; no translation CDN dependency |
+| Snapshot checkpoints in CTIS | Fast replay recovery without re-processing entire history |
+| Idempotency keys on mutations | Safe to retry offline-synced actions |
+| JWT + bcrypt (no OAuth) | Simpler auth for low-connectivity rural environments |
+| Open-Meteo as primary weather | Completely free, no API key required |
 
 ---
 
-## Architecture
+## 12. Team
 
-```
-┌─────────────────┐     ┌──────────────────┐     ┌──────────────────┐
-│   Next.js UI    │────▶│   FastAPI REST    │────▶│   PostgreSQL     │
-│  (React 18)     │     │   (17 endpoints)  │     │   (26 tables)    │
-└─────────────────┘     └──────┬───────────┘     └──────────────────┘
-                               │
-          ┌────────────────────┼────────────────────┐
-          ▼                    ▼                    ▼
-   ┌──────────────┐   ┌──────────────┐   ┌──────────────┐
-   │     CTIS     │   │     SOE      │   │   ML Module  │
-   │ Replay Engine│   │ Trust Engine │   │ Risk Predict │
-   │ State Machine│   │ Exposure Eng │   │ Model Regist │
-   │ Stress Score │   │ Fraud Detect │   │ Kill Switch  │
-   │ What-If Sim  │   │ Request Svc  │   └──────────────┘
-   │ Drift Enforce│   │ Escalation   │
-   │ Yield Verify │   └──────────────┘
-   └──────────────┘
-          │
-   ┌──────────────┐   ┌──────────────┐
-   │Event Dispatch │   │ Cloud Storage│
-   │ DB-backed     │   │ GCS + Local  │
-   │ FIFO Queue    │   │ Signed URLs  │
-   └──────────────┘   └──────────────┘
-```
-
----
-
-## Team
-
-| Member | Role | Key Contributions |
-|--------|------|-------------------|
-| **Arpit** | Lead | Backend architecture, CTIS engines (replay, stress, drift, simulation), event system, deployment |
-| **Ayush Kumar Meena** | Backend | Auth system, middleware, admin APIs, feature flags, test fixtures |
-| **Ravi Patel** | Backend | SOE module (trust engine, exposure fairness, fraud detection), service requests, reviews |
-| **Prince** | Frontend | All UI pages (18), components (16), dashboard, crop management, admin panel |
-| **Shivam Yadav** | Backend | ML module (risk predictor, model registry), media uploads, weather API, seed data |
+| Member | Role & Contributions |
+|--------|----------------------|
+| **Arpit** | Lead Developer — Core FastAPI architecture, CTIS engines (stress, drift, simulator), recommendation & alert systems, i18n system (5-language dictionaries), infrastructure & Cloud Run deployment |
+| **Shivam Yadav** | Full-Stack — ML inference runtime & model registry, media analysis workers, frontend PWA service worker, offline sync hooks |
+| **Ravi Patel** | Full-Stack — V1 API controllers & RBAC, SOE trust module, government schemes & analytics APIs, admin dashboard UI, provider/service marketplace frontend |
+| **Ayush Kumar Meena** | Full-Stack — CTIS replay engine & DB-backed event dispatcher, auth system & security middleware, dispute resolution API, testing infrastructure |
+| **Prince** | Frontend — All UI pages (30+), MapLibre GL integration, data grids, charts, stat cards, offline sync UI, overall frontend polish |
 
 ---
 
 ## License
 
-This project is developed as part of the Software Engineering course at FOT, DU.
+Developed as part of the Software Engineering course at the Faculty of Technology, Delhi University.
+
+> This project is for academic evaluation purposes. Production deployment with real API keys (Twilio, GCS) requires proper secret management — never commit `.env` to version control.
