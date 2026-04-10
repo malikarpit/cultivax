@@ -23,6 +23,7 @@ import {
   Wrench,
   Star,
   Shield,
+  Landmark,
   UserCheck,
   FileText,
   Heart,
@@ -38,6 +39,7 @@ import {
 import clsx from 'clsx';
 import { useAuth } from '@/context/AuthContext';
 import { useUnreadAlertsCount } from '@/hooks/useUnreadAlertsCount';
+import { useTranslation } from 'react-i18next';
 
 interface NavItem {
   label: string;
@@ -47,28 +49,30 @@ interface NavItem {
 }
 
 const FARMER_NAV: NavItem[] = [
-  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { label: 'My Crops', href: '/crops', icon: Sprout, highlight: true },
-  { label: 'My Fields', href: '/land-parcels', icon: MapPin },
-  { label: 'Weather', href: '/weather', icon: CloudSun },
-  { label: 'Marketplace', href: '/services', icon: ShoppingBag },
-  { label: 'Labor', href: '/labor', icon: Users },
-  { label: 'Alerts', href: '/alerts', icon: Bell },
+  { label: 'nav.dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { label: 'nav.crops', href: '/crops', icon: Sprout, highlight: true },
+  { label: 'nav.my_fields', href: '/land-parcels', icon: MapPin },
+  { label: 'nav.weather', href: '/weather', icon: CloudSun },
+  { label: 'nav.services', href: '/services', icon: ShoppingBag },
+  { label: 'nav.labor', href: '/labor', icon: Users },
+  { label: 'nav.alerts', href: '/alerts', icon: Bell },
+  { label: 'nav.marketplace', href: '/marketplace', icon: ShoppingBag },
+  { label: 'nav.schemes', href: '/schemes', icon: Landmark },
 ];
 
 const PROVIDER_NAV: NavItem[] = [
-  { label: 'Dashboard', href: '/provider', icon: LayoutDashboard },
-  { label: 'Equipment', href: '/provider/equipment', icon: Wrench },
-  { label: 'Reviews', href: '/provider/reviews', icon: Star },
+  { label: 'nav.dashboard', href: '/provider', icon: LayoutDashboard },
+  { label: 'nav.equipment', href: '/provider/equipment', icon: Wrench },
+  { label: 'nav.reviews', href: '/provider/reviews', icon: Star },
 ];
 
 const ADMIN_NAV: NavItem[] = [
-  { label: 'Dashboard', href: '/admin', icon: LayoutDashboard },
-  { label: 'User Management', href: '/admin/users', icon: UserCheck },
-  { label: 'Provider Management', href: '/admin/providers', icon: Shield },
-  { label: 'Rule Templates', href: '/admin/templates', icon: FileText },
-  { label: 'System Health', href: '/admin/health', icon: Activity },
-  { label: 'Dead Letter Queue', href: '/admin/dead-letters', icon: Skull },
+  { label: 'nav.dashboard', href: '/admin', icon: LayoutDashboard },
+  { label: 'nav.user_management', href: '/admin/users', icon: UserCheck },
+  { label: 'nav.provider_management', href: '/admin/providers', icon: Shield },
+  { label: 'nav.rule_templates', href: '/admin/templates', icon: FileText },
+  { label: 'nav.system_health', href: '/admin/health', icon: Activity },
+  { label: 'nav.dead_letters', href: '/admin/dead-letters', icon: Skull },
 ];
 
 interface SidebarProps {
@@ -84,6 +88,7 @@ export default function Sidebar({ isOpen, onToggle, isCollapsed: controlledColla
   const { user } = useAuth();
   const { count: unreadAlertsCount } = useUnreadAlertsCount({ enabled: !!user });
   const [internalCollapsed, setInternalCollapsed] = useState(false);
+  const { t } = useTranslation();
 
   // Controlled mode: parent (layout) owns collapse state
   // Uncontrolled mode: sidebar manages its own state
@@ -149,7 +154,7 @@ export default function Sidebar({ isOpen, onToggle, isCollapsed: controlledColla
           </Link>
 
           {/* Close on mobile */}
-          <button onClick={onToggle} className="btn-icon md:hidden">
+          <button onClick={onToggle} className="btn-icon md:hidden" title="Close Sidebar" aria-label="Close Sidebar">
             <X className="w-5 h-5" />
           </button>
 
@@ -157,6 +162,8 @@ export default function Sidebar({ isOpen, onToggle, isCollapsed: controlledColla
           <button
             onClick={handleCollapse}
             className="btn-icon hidden md:flex"
+            title="Toggle Sidebar"
+            aria-label="Toggle Sidebar"
           >
             {isCollapsed ? (
               <ChevronRight className="w-4 h-4" />
@@ -189,7 +196,7 @@ export default function Sidebar({ isOpen, onToggle, isCollapsed: controlledColla
                     : 'text-cultivax-text-secondary hover:bg-cultivax-elevated hover:text-cultivax-text-primary',
                   showPulse && !active && 'onboarding-pulse'
                 )}
-                title={isCollapsed ? item.label : undefined}
+                title={isCollapsed ? t(item.label) : undefined}
               >
                 <Icon
                   className={clsx(
@@ -199,7 +206,7 @@ export default function Sidebar({ isOpen, onToggle, isCollapsed: controlledColla
                       : 'text-cultivax-text-muted group-hover:text-cultivax-text-secondary'
                   )}
                 />
-                {!isCollapsed && <span>{item.label}</span>}
+                {!isCollapsed && <span>{t(item.label)}</span>}
 
                 {item.href === '/alerts' && unreadAlertsCount > 0 && (
                   <span
@@ -227,15 +234,15 @@ export default function Sidebar({ isOpen, onToggle, isCollapsed: controlledColla
         {role === 'farmer' && !isCollapsed && (
           <div className="mx-3 mb-4 p-3 bg-cultivax-primary/5 rounded-lg border border-cultivax-primary/20">
             <span className="block text-xs font-semibold text-cultivax-primary mb-1 flex items-center gap-1">
-              <ShoppingBag className="w-3 h-3" /> Earn with CultivaX
+              <ShoppingBag className="w-3 h-3" /> {t('nav.earn_cultivax', 'Earn with CultivaX')}
             </span>
-            <p className="text-[10px] text-cultivax-text-muted mb-2">Offer your idle equipment and labor to others.</p>
+            <p className="text-[10px] text-cultivax-text-muted mb-2">{t('nav.offer_idle', 'Offer your idle equipment and labor to others.')}</p>
             <Link 
               href="/provider/onboarding" 
               className="text-xs font-semibold text-cultivax-primary hover:underline flex items-center gap-1"
               onClick={() => { if (window.innerWidth < 768) onToggle(); }}
             >
-              Become a Provider <ArrowRight className="w-3 h-3" />
+              {t('nav.become_provider', 'Become a Provider')} <ArrowRight className="w-3 h-3" />
             </Link>
           </div>
         )}

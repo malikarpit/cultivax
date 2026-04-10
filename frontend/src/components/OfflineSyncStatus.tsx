@@ -1,6 +1,5 @@
 import React from 'react';
 import { useOfflineActions } from '@/hooks/useOfflineActions';
-import { useTranslations } from 'next-intl';
 import { WifiOff, RefreshCcw, Activity } from 'lucide-react';
 
 interface OfflineSyncStatusProps {
@@ -12,7 +11,6 @@ export const OfflineSyncStatus: React.FC<OfflineSyncStatusProps> = ({
   cropId,
   showActions = true
 }) => {
-  const t = useTranslations();
   const {
     pendingCount,
     syncInProgress,

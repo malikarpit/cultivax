@@ -12,22 +12,23 @@ PUT    /api/v1/admin/providers/{provider_id}/suspend
 GET    /api/v1/admin/audit
 """
 
-from fastapi import APIRouter, Body, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
-from uuid import UUID
-from typing import Optional
 from datetime import datetime, timezone
+from typing import Optional
+from uuid import UUID
 
-from app.database import get_db
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
+from sqlalchemy.orm import Session
+
 from app.api.deps import get_current_user, require_role
-from app.models.user import User
-from app.models.service_provider import ServiceProvider
-from app.models.admin_audit import AdminAuditLog
-from app.services.admin_audit import create_audit_entry
+from app.database import get_db
 from app.models.active_session import ActiveSession
+from app.models.admin_audit import AdminAuditLog
 from app.models.alert import Alert
-from app.schemas.user import UserResponse
+from app.models.service_provider import ServiceProvider
+from app.models.user import User
 from app.schemas.admin import AdminAuditResponse
+from app.schemas.user import UserResponse
+from app.services.admin_audit import create_audit_entry
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
@@ -47,7 +48,7 @@ async def list_users(
 ):
     """List all users (admin only) with pagination and filters."""
     query = db.query(User)
-    
+
     if is_deleted is not None:
         query = query.filter(User.is_deleted == is_deleted)
     if role:
@@ -55,9 +56,9 @@ async def list_users(
     if search:
         search_term = f"%{search}%"
         query = query.filter(
-            (User.full_name.ilike(search_term)) |
-            (User.phone.ilike(search_term)) |
-            (User.email.ilike(search_term))
+            (User.full_name.ilike(search_term))
+            | (User.phone.ilike(search_term))
+            | (User.email.ilike(search_term))
         )
 
     total = query.count()
@@ -67,12 +68,12 @@ async def list_users(
         .limit(per_page)
         .all()
     )
-    
+
     return {
         "items": [UserResponse.model_validate(u) for u in users],
         "total": total,
         "page": page,
-        "per_page": per_page
+        "per_page": per_page,
     }
 
 
@@ -89,7 +90,10 @@ async def update_user_role(
 ):
     """Change a user's role (admin only)."""
     if new_role not in ("farmer", "provider", "admin"):
-        raise HTTPException(status_code=400, detail="INVALID_ROLE: Role must be one of farmer, provider, admin")
+        raise HTTPException(
+            status_code=400,
+            detail="INVALID_ROLE: Role must be one of farmer, provider, admin",
+        )
 
     user = db.query(User).filter(User.id == user_id, User.is_deleted == False).first()
     if not user:
@@ -100,13 +104,14 @@ async def update_user_role(
 
     # Session revocation hook if downgrading from admin
     if old_role == "admin" and new_role != "admin":
-        active_sessions = db.query(ActiveSession).filter(
-            ActiveSession.user_id == user_id,
-            ActiveSession.is_revoked == False
-        ).all()
+        active_sessions = (
+            db.query(ActiveSession)
+            .filter(ActiveSession.user_id == user_id, ActiveSession.is_revoked == False)
+            .all()
+        )
         for session in active_sessions:
             session.revoke()
-            
+
     # Audit log entry
     create_audit_entry(
         db=db,
@@ -114,7 +119,7 @@ async def update_user_role(
         action="role_change",
         entity_type="user",
         entity_id=user_id,
-        after_value={"old_role": old_role, "new_role": new_role}
+        after_value={"old_role": old_role, "new_role": new_role},
     )
     db.commit()
     db.refresh(user)
@@ -141,10 +146,11 @@ async def soft_delete_user(
     user.deleted_by = current_user.id
 
     # Revoke all sessions on soft delete
-    active_sessions = db.query(ActiveSession).filter(
-        ActiveSession.user_id == user_id,
-        ActiveSession.is_revoked == False
-    ).all()
+    active_sessions = (
+        db.query(ActiveSession)
+        .filter(ActiveSession.user_id == user_id, ActiveSession.is_revoked == False)
+        .all()
+    )
     for session in active_sessions:
         session.revoke()
 
@@ -154,7 +160,7 @@ async def soft_delete_user(
         admin_id=current_user.id,
         action="user_deleted",
         entity_type="user",
-        entity_id=user_id
+        entity_id=user_id,
     )
     db.commit()
 
@@ -172,7 +178,10 @@ async def restore_user(
     """Restore a soft-deleted user (admin only)."""
     user = db.query(User).filter(User.id == user_id, User.is_deleted == True).first()
     if not user:
-        raise HTTPException(status_code=400, detail="INVALID_OPERATION: User is not deleted or not found")
+        raise HTTPException(
+            status_code=400,
+            detail="INVALID_OPERATION: User is not deleted or not found",
+        )
 
     user.is_deleted = False
     user.deleted_at = None
@@ -183,7 +192,7 @@ async def restore_user(
         admin_id=current_user.id,
         action="user_restored",
         entity_type="user",
-        entity_id=user_id
+        entity_id=user_id,
     )
     db.commit()
     db.refresh(user)
@@ -204,30 +213,30 @@ async def get_providers(
 ):
     """Retrieve all service providers natively filtered for Administrative tracking."""
     query = db.query(ServiceProvider)
-    
+
     if is_verified is not None:
         query = query.filter(ServiceProvider.is_verified == is_verified)
-    
+
     if is_suspended is not None:
         query = query.filter(ServiceProvider.is_suspended == is_suspended)
-        
+
     if search:
         query = query.filter(
             or_(
                 ServiceProvider.business_name.ilike(f"%{search}%"),
-                ServiceProvider.service_type.ilike(f"%{search}%")
+                ServiceProvider.service_type.ilike(f"%{search}%"),
             )
         )
-        
+
     total = query.count()
-    providers = query.order_by(ServiceProvider.created_at.desc()).offset((page - 1) * per_page).limit(per_page).all()
-    
-    return {
-        "items": providers,
-        "total": total,
-        "page": page,
-        "per_page": per_page
-    }
+    providers = (
+        query.order_by(ServiceProvider.created_at.desc())
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+        .all()
+    )
+
+    return {"items": providers, "total": total, "page": page, "per_page": per_page}
 
 
 @router.put(
@@ -240,15 +249,22 @@ async def verify_provider(
     current_user: User = Depends(get_current_user),
 ):
     """Verify a service provider (admin only)."""
-    provider = db.query(ServiceProvider).filter(
-        ServiceProvider.id == provider_id,
-        ServiceProvider.is_deleted == False,
-    ).first()
+    provider = (
+        db.query(ServiceProvider)
+        .filter(
+            ServiceProvider.id == provider_id,
+            ServiceProvider.is_deleted == False,
+        )
+        .first()
+    )
     if not provider:
         raise HTTPException(status_code=404, detail="Provider not found")
 
     if provider.is_suspended:
-        raise HTTPException(status_code=400, detail="Cannot verify a suspended provider. Unsuspend first.")
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot verify a suspended provider. Unsuspend first.",
+        )
 
     if provider.is_verified:
         return {"status": "already_verified", "provider_id": str(provider_id)}
@@ -262,18 +278,18 @@ async def verify_provider(
         admin_id=current_user.id,
         action="provider_verified",
         entity_type="service_provider",
-        entity_id=provider_id
+        entity_id=provider_id,
     )
-    
+
     alert = Alert(
         user_id=provider.user_id,
         alert_type="GovernanceAction",
         severity="info",
         urgency_level="Medium",
-        message="Your provider profile has been successfully verified! You are now visible in public search listings."
+        message="Your provider profile has been successfully verified! You are now visible in public search listings.",
     )
     db.add(alert)
-    
+
     db.commit()
     return {"status": "verified", "provider_id": str(provider_id)}
 
@@ -289,35 +305,39 @@ async def unverify_provider(
     current_user: User = Depends(get_current_user),
 ):
     """Remove verification from a service provider (admin only)."""
-    provider = db.query(ServiceProvider).filter(
-        ServiceProvider.id == provider_id,
-        ServiceProvider.is_deleted == False,
-    ).first()
+    provider = (
+        db.query(ServiceProvider)
+        .filter(
+            ServiceProvider.id == provider_id,
+            ServiceProvider.is_deleted == False,
+        )
+        .first()
+    )
     if not provider:
         raise HTTPException(status_code=404, detail="Provider not found")
-        
+
     if not provider.is_verified:
         raise HTTPException(status_code=400, detail="Provider is already unverified.")
-        
+
     provider.is_verified = False
     provider.verified_at = None
     provider.verified_by = None
-    
+
     create_audit_entry(
         db=db,
         admin_id=current_user.id,
         action="provider_unverified",
         entity_type="service_provider",
         entity_id=provider_id,
-        reason=reason
+        reason=reason,
     )
-    
+
     alert = Alert(
         user_id=provider.user_id,
         alert_type="GovernanceAction",
         severity="warning",
         urgency_level="High",
-        message=f"Your provider verification was removed. Reason: {reason}. You are no longer visible in public verified bounds."
+        message=f"Your provider verification was removed. Reason: {reason}. You are no longer visible in public verified bounds.",
     )
     db.add(alert)
     db.commit()
@@ -337,11 +357,15 @@ async def suspend_provider(
     """Suspend a service provider (admin only)."""
     if not reason or len(reason.strip()) == 0:
         raise HTTPException(status_code=400, detail="Suspension requires a reason.")
-        
-    provider = db.query(ServiceProvider).filter(
-        ServiceProvider.id == provider_id,
-        ServiceProvider.is_deleted == False,
-    ).first()
+
+    provider = (
+        db.query(ServiceProvider)
+        .filter(
+            ServiceProvider.id == provider_id,
+            ServiceProvider.is_deleted == False,
+        )
+        .first()
+    )
     if not provider:
         raise HTTPException(status_code=404, detail="Provider not found")
 
@@ -357,18 +381,18 @@ async def suspend_provider(
         action="provider_suspended",
         entity_type="service_provider",
         entity_id=provider_id,
-        reason=reason
+        reason=reason,
     )
-    
+
     alert = Alert(
         user_id=provider.user_id,
         alert_type="GovernanceAction",
         severity="critical",
         urgency_level="Critical",
-        message=f"Your provider profile has been suspended. Reason: {reason}. You have been removed from the platform. Contact support to appeal."
+        message=f"Your provider profile has been suspended. Reason: {reason}. You have been removed from the platform. Contact support to appeal.",
     )
     db.add(alert)
-    
+
     db.commit()
     return {"status": "suspended", "provider_id": str(provider_id), "reason": reason}
 
@@ -385,17 +409,25 @@ async def unsuspend_provider(
 ):
     """Unsuspend a service provider (admin only)."""
     if not reason or len(reason.strip()) == 0:
-        raise HTTPException(status_code=400, detail="Unsuspension requires a justification.")
-        
-    provider = db.query(ServiceProvider).filter(
-        ServiceProvider.id == provider_id,
-        ServiceProvider.is_deleted == False,
-    ).first()
+        raise HTTPException(
+            status_code=400, detail="Unsuspension requires a justification."
+        )
+
+    provider = (
+        db.query(ServiceProvider)
+        .filter(
+            ServiceProvider.id == provider_id,
+            ServiceProvider.is_deleted == False,
+        )
+        .first()
+    )
     if not provider:
         raise HTTPException(status_code=404, detail="Provider not found")
 
     if not provider.is_suspended:
-        raise HTTPException(status_code=400, detail="Provider is not currently suspended.")
+        raise HTTPException(
+            status_code=400, detail="Provider is not currently suspended."
+        )
 
     provider.is_suspended = False
     provider.suspension_reason = None
@@ -406,18 +438,18 @@ async def unsuspend_provider(
         action="provider_unsuspended",
         entity_type="service_provider",
         entity_id=provider_id,
-        reason=reason
+        reason=reason,
     )
-    
+
     alert = Alert(
         user_id=provider.user_id,
         alert_type="GovernanceAction",
         severity="info",
         urgency_level="Medium",
-        message=f"Your profile suspension was lifted! Reason: {reason}."
+        message=f"Your profile suspension was lifted! Reason: {reason}.",
     )
     db.add(alert)
-    
+
     db.commit()
     return {"status": "unsuspended", "provider_id": str(provider_id)}
 
@@ -425,6 +457,7 @@ async def unsuspend_provider(
 # ──────────────────────────────────────────────────────────────────────────────
 # Maintenance Status & Cron Observability
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 @router.get(
     "/maintenance/status",
@@ -439,6 +472,7 @@ async def get_maintenance_status(
     This endpoint reads in-memory state — no DB query required.
     """
     from app.services.cron import get_maintenance_status
+
     return get_maintenance_status()
 
 
@@ -461,9 +495,13 @@ async def trigger_maintenance(
       - force: bypass min-interval cadence guards
     """
     from app.services.cron import run_scheduled_tasks
+
     if cadence and cadence not in ("hourly", "daily", "weekly"):
         from fastapi import HTTPException
-        raise HTTPException(status_code=400, detail="cadence must be one of: hourly, daily, weekly")
+
+        raise HTTPException(
+            status_code=400, detail="cadence must be one of: hourly, daily, weekly"
+        )
 
     result = await run_scheduled_tasks(db, cadence=cadence, force=force)
     return result
@@ -473,7 +511,6 @@ async def trigger_maintenance(
     "/audit",
     dependencies=[Depends(require_role(["admin"]))],
 )
-
 async def get_audit_log(
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
@@ -505,102 +542,18 @@ async def get_audit_log(
         .limit(per_page)
         .all()
     )
-    
+
     return {
         "items": [AdminAuditResponse.model_validate(log) for log in logs],
         "total": total,
         "page": page,
         "per_page": per_page,
-        "total_pages": (total + per_page - 1) // per_page
+        "total_pages": (total + per_page - 1) // per_page,
     }
-
-
-# --- Dead Letter Queue Management (MSDD Enhancement Sec 3) ---
-
-@router.get(
-    "/dead-letters",
-    dependencies=[Depends(require_role(["admin"]))],
-)
-async def list_dead_letters(
-    page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
-    event_type: Optional[str] = None,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """List all events in the Dead Letter Queue."""
-    from app.models.event_log import EventLog
-
-    query = db.query(EventLog).filter(EventLog.status == "DeadLetter")
-    if event_type:
-        query = query.filter(EventLog.event_type == event_type)
-
-    total = query.count()
-    events = (
-        query.order_by(EventLog.created_at.desc())
-        .offset((page - 1) * per_page)
-        .limit(per_page)
-        .all()
-    )
-
-    return {
-        "items": [
-            {
-                "id": str(e.id),
-                "event_type": e.event_type,
-                "entity_type": e.entity_type,
-                "entity_id": str(e.entity_id),
-                "failure_reason": e.failure_reason,
-                "retry_count": e.retry_count,
-                "max_retries": e.max_retries,
-                "created_at": e.created_at.isoformat() if e.created_at else None,
-            }
-            for e in events
-        ],
-        "total": total,
-        "page": page,
-        "per_page": per_page,
-    }
-
-
-@router.post(
-    "/dead-letters/{event_id}/retry",
-    dependencies=[Depends(require_role(["admin"]))],
-)
-async def retry_dead_letter(
-    event_id: UUID,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """Retry a dead-lettered event by resetting it back to Created status."""
-    from app.models.event_log import EventLog
-
-    event = db.query(EventLog).filter(
-        EventLog.id == event_id,
-        EventLog.status == "DeadLetter",
-    ).first()
-
-    if not event:
-        raise HTTPException(status_code=404, detail="Dead letter event not found")
-
-    event.status = "Created"
-    event.retry_count = 0
-    event.failure_reason = None
-
-    # Audit via helper
-    create_audit_entry(
-        db=db,
-        admin_id=current_user.id,
-        action="dead_letter_retry",
-        entity_type="event_log",
-        entity_id=event_id,
-        after_value={"event_type": event.event_type}
-    )
-
-    return {"status": "retried", "event_id": str(event_id)}
 
 
 # --- Farmer Data Export (MSDD 5.10 — Data Portability) ---
+
 
 @router.get(
     "/farmers/{farmer_id}/export",
@@ -615,19 +568,23 @@ async def export_farmer_data(
     Export all farmer data as JSON (data portability per MSDD 5.10).
     Returns: user profile, crop instances, action logs, media files, alerts.
     """
-    from app.models.crop_instance import CropInstance
     from app.models.action_log import ActionLog
-    from app.models.media_file import MediaFile
     from app.models.alert import Alert
+    from app.models.crop_instance import CropInstance
+    from app.models.media_file import MediaFile
 
     user = db.query(User).filter(User.id == farmer_id, User.is_deleted == False).first()
     if not user:
         raise HTTPException(status_code=404, detail="Farmer not found")
 
-    crops = db.query(CropInstance).filter(
-        CropInstance.farmer_id == farmer_id,
-        CropInstance.is_deleted == False,
-    ).all()
+    crops = (
+        db.query(CropInstance)
+        .filter(
+            CropInstance.farmer_id == farmer_id,
+            CropInstance.is_deleted == False,
+        )
+        .all()
+    )
 
     crop_ids = [c.id for c in crops]
 
@@ -635,18 +592,30 @@ async def export_farmer_data(
     media = []
     alerts_data = []
     if crop_ids:
-        actions = db.query(ActionLog).filter(
-            ActionLog.crop_instance_id.in_(crop_ids),
-            ActionLog.is_deleted == False,
-        ).all()
-        media = db.query(MediaFile).filter(
-            MediaFile.crop_instance_id.in_(crop_ids),
-            MediaFile.is_deleted == False,
-        ).all()
-        alerts_data = db.query(Alert).filter(
-            Alert.user_id == farmer_id,
-            Alert.is_deleted == False,
-        ).all()
+        actions = (
+            db.query(ActionLog)
+            .filter(
+                ActionLog.crop_instance_id.in_(crop_ids),
+                ActionLog.is_deleted == False,
+            )
+            .all()
+        )
+        media = (
+            db.query(MediaFile)
+            .filter(
+                MediaFile.crop_instance_id.in_(crop_ids),
+                MediaFile.is_deleted == False,
+            )
+            .all()
+        )
+        alerts_data = (
+            db.query(Alert)
+            .filter(
+                Alert.user_id == farmer_id,
+                Alert.is_deleted == False,
+            )
+            .all()
+        )
 
     return {
         "farmer": {
@@ -675,7 +644,9 @@ async def export_farmer_data(
                 "id": str(a.id),
                 "crop_instance_id": str(a.crop_instance_id),
                 "action_type": a.action_type,
-                "effective_date": a.effective_date.isoformat() if a.effective_date else None,
+                "effective_date": (
+                    a.effective_date.isoformat() if a.effective_date else None
+                ),
                 "notes": a.notes,
             }
             for a in actions
@@ -704,6 +675,7 @@ async def export_farmer_data(
 
 
 # --- Abuse Flag Review Pipeline ---
+
 
 @router.get(
     "/abuse-flags",
@@ -763,10 +735,14 @@ async def get_abuse_flag(
     """Get abuse flag detail."""
     from app.models.abuse_flag import AbuseFlag
 
-    flag = db.query(AbuseFlag).filter(
-        AbuseFlag.id == flag_id,
-        AbuseFlag.is_deleted == False,
-    ).first()
+    flag = (
+        db.query(AbuseFlag)
+        .filter(
+            AbuseFlag.id == flag_id,
+            AbuseFlag.is_deleted == False,
+        )
+        .first()
+    )
 
     if not flag:
         raise HTTPException(status_code=404, detail="Abuse flag not found")
@@ -802,10 +778,14 @@ async def review_abuse_flag(
     if new_status not in ("reviewed", "dismissed", "actioned"):
         raise HTTPException(status_code=422, detail="Invalid status")
 
-    flag = db.query(AbuseFlag).filter(
-        AbuseFlag.id == flag_id,
-        AbuseFlag.is_deleted == False,
-    ).first()
+    flag = (
+        db.query(AbuseFlag)
+        .filter(
+            AbuseFlag.id == flag_id,
+            AbuseFlag.is_deleted == False,
+        )
+        .first()
+    )
 
     if not flag:
         raise HTTPException(status_code=404, detail="Abuse flag not found")
@@ -820,7 +800,7 @@ async def review_abuse_flag(
         action="abuse_flag_reviewed",
         entity_type="abuse_flag",
         entity_id=flag_id,
-        after_value={"new_status": new_status, "notes": review_notes}
+        after_value={"new_status": new_status, "notes": review_notes},
     )
 
     return {
@@ -843,6 +823,7 @@ async def admin_health_detail(
     Returns subsystem details, error messages, freshness, and latency probes.
     """
     from app.services.system_health_service import SystemHealthService
+
     service = SystemHealthService(db)
     summary = service.get_status_summary(admin_detail=True)
     return summary
@@ -850,15 +831,19 @@ async def admin_health_detail(
 
 # --- DLQ & Event Recovery ---
 
-from typing import List, Any
+from typing import Any, List
+
 from pydantic import BaseModel
+
 from app.models.event_log import EventLog
+
 
 class BulkRetryRequest(BaseModel):
     event_type: Optional[str] = None
     older_than_minutes: Optional[int] = None
     limit: int = 100
     reason: str
+
 
 @router.get(
     "/dead-letters",
@@ -873,14 +858,14 @@ async def list_dead_letters(
 ):
     """List failed DeadLetter events with full diagnostic parameters."""
     query = db.query(EventLog).filter(EventLog.status == "DeadLetter")
-    
+
     if event_type:
         query = query.filter(EventLog.event_type == event_type)
-        
+
     query = query.order_by(EventLog.created_at.desc())
     total_count = query.count()
     events = query.offset((page - 1) * per_page).limit(per_page).all()
-    
+
     results = []
     now = datetime.now(timezone.utc)
     for e in events:
@@ -888,28 +873,28 @@ async def list_dead_letters(
         if created and created.tzinfo is None:
             created = created.replace(tzinfo=timezone.utc)
         age_seconds = (now - created).total_seconds() if created else 0
-        
-        results.append({
-            "id": str(e.id),
-            "event_type": e.event_type,
-            "entity_type": e.entity_type,
-            "entity_id": str(e.entity_id),
-            "status": e.status,
-            "retry_count": e.retry_count,
-            "max_retries": e.max_retries,
-            "failure_reason": e.failure_reason,
-            "last_error": e.last_error,
-            "created_at": e.created_at.isoformat() if e.created_at else None,
-            "last_failed_at": e.last_failed_at.isoformat() if e.last_failed_at else None,
-            "age_seconds": round(age_seconds)
-        })
-        
-    return {
-        "items": results,
-        "total": total_count,
-        "page": page,
-        "per_page": per_page
-    }
+
+        results.append(
+            {
+                "id": str(e.id),
+                "event_type": e.event_type,
+                "entity_type": e.entity_type,
+                "entity_id": str(e.entity_id),
+                "status": e.status,
+                "retry_count": e.retry_count,
+                "max_retries": e.max_retries,
+                "failure_reason": e.failure_reason,
+                "last_error": e.last_error,
+                "created_at": e.created_at.isoformat() if e.created_at else None,
+                "last_failed_at": (
+                    e.last_failed_at.isoformat() if e.last_failed_at else None
+                ),
+                "age_seconds": round(age_seconds),
+            }
+        )
+
+    return {"items": results, "total": total_count, "page": page, "per_page": per_page}
+
 
 @router.post(
     "/dead-letters/{event_id}/retry",
@@ -924,25 +909,28 @@ async def retry_single_dead_letter(
     event = db.query(EventLog).filter(EventLog.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
-        
+
     if event.status != "DeadLetter":
-        raise HTTPException(status_code=400, detail=f"Cannot retry event in {event.status} state")
-        
+        raise HTTPException(
+            status_code=400, detail=f"Cannot retry event in {event.status} state"
+        )
+
     event.status = "Created"
     event.retry_count = 0  # Re-allow max_retries attempts
     event.failure_reason = f"Manually retried by admin {current_user.email}"
     event.next_retry_at = None
-    
+
     create_audit_entry(
         db=db,
         admin_id=current_user.id,
         action="retry_dead_letter",
         entity_type="event_log",
         entity_id=event.id,
-        reason="Manual UI recovery"
+        reason="Manual UI recovery",
     )
-    
+
     return {"status": "success", "event_id": str(event.id), "new_state": "Created"}
+
 
 @router.post(
     "/dead-letters/bulk-retry",
@@ -955,17 +943,18 @@ async def bulk_retry_dead_letters(
 ):
     """Safely reset multiple DeadLetter events matching constraints."""
     query = db.query(EventLog).filter(EventLog.status == "DeadLetter")
-    
+
     if req.event_type:
         query = query.filter(EventLog.event_type == req.event_type)
-        
+
     if req.older_than_minutes:
         from datetime import timedelta
+
         cutoff = datetime.now(timezone.utc) - timedelta(minutes=req.older_than_minutes)
         query = query.filter(EventLog.created_at <= cutoff)
-        
+
     events = query.order_by(EventLog.created_at.asc()).limit(req.limit).all()
-    
+
     retried_count = 0
     for event in events:
         event.status = "Created"
@@ -973,7 +962,7 @@ async def bulk_retry_dead_letters(
         event.failure_reason = f"Bulk retry: {req.reason}"
         event.next_retry_at = None
         retried_count += 1
-        
+
     if retried_count > 0:
         create_audit_entry(
             db=db,
@@ -985,15 +974,16 @@ async def bulk_retry_dead_letters(
             after_value={
                 "event_type_filter": req.event_type,
                 "limit": req.limit,
-                "retried_count": retried_count
-            }
+                "retried_count": retried_count,
+            },
         )
-        
+
     return {
         "retried": retried_count,
         "skipped": req.limit - retried_count if retried_count < req.limit else 0,
-        "errors": []
+        "errors": [],
     }
+
 
 @router.delete(
     "/dead-letters/{event_id}",
@@ -1008,24 +998,28 @@ async def discard_dead_letter(
     event = db.query(EventLog).filter(EventLog.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
-        
+
     if event.status != "DeadLetter":
-        raise HTTPException(status_code=400, detail=f"Cannot discard event in {event.status} state")
-        
+        raise HTTPException(
+            status_code=400, detail=f"Cannot discard event in {event.status} state"
+        )
+
     event.is_deleted = True
     event.deleted_at = datetime.now(timezone.utc)
     event.deleted_by = current_user.id
-    event.failure_reason = f"Discarded by admin {current_user.email}: {event.failure_reason}"
-    
+    event.failure_reason = (
+        f"Discarded by admin {current_user.email}: {event.failure_reason}"
+    )
+
     create_audit_entry(
         db=db,
         admin_id=current_user.id,
         action="discard_dead_letter",
         entity_type="event_log",
         entity_id=event.id,
-        reason="Manual UI discard"
+        reason="Manual UI discard",
     )
-    
+
     return {"status": "success", "event_id": str(event.id), "new_state": "Discarded"}
 
 
@@ -1040,22 +1034,21 @@ async def get_security_events(
     """Retrieve recent security events (rate limits, payload issues) from in-memory ring buffer (Admin only)."""
     try:
         from app.security.events import get_recent_security_events
+
         events = get_recent_security_events(limit=limit)
-        return {
-            "success": True,
-            "events": events
-        }
+        return {"success": True, "events": events}
     except ImportError:
         return {
             "success": True,
             "events": [],
-            "warning": "Security event store not available"
+            "warning": "Security event store not available",
         }
 
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Force-Replay endpoint (MSDD API-0083 / TDD-8-C0038)
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 @router.post(
     "/crops/{crop_id}/force-replay",
@@ -1077,26 +1070,33 @@ async def force_crop_replay(
     """
     from app.models.crop_instance import CropInstance
 
-    crop = db.query(CropInstance).filter(
-        CropInstance.id == crop_id,
-        CropInstance.is_deleted == False,
-    ).first()
+    crop = (
+        db.query(CropInstance)
+        .filter(
+            CropInstance.id == crop_id,
+            CropInstance.is_deleted == False,
+        )
+        .first()
+    )
     if not crop:
         raise HTTPException(status_code=404, detail="Crop instance not found")
 
     # Emit a domain event to trigger replay via the event pipeline
-    from app.models.event_log import EventLog
     import json
+
+    from app.models.event_log import EventLog
 
     replay_event = EventLog(
         event_type="ctis.replay_requested",
         entity_type="crop_instance",
         entity_id=crop_id,
-        payload=json.dumps({
-            "crop_id": str(crop_id),
-            "requested_by": str(current_user.id),
-            "reason": "admin_force_replay",
-        }),
+        payload=json.dumps(
+            {
+                "crop_id": str(crop_id),
+                "requested_by": str(current_user.id),
+                "reason": "admin_force_replay",
+            }
+        ),
         partition_key=str(crop_id),
         module_target="ctis",
         priority=10,  # High priority
@@ -1124,6 +1124,7 @@ async def force_crop_replay(
 # ──────────────────────────────────────────────────────────────────────────────
 # Admin event trace (MSDD API-0015 / MSDD-8-C0076)
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 @router.get(
     "/events/{crop_instance_id}",
@@ -1175,4 +1176,3 @@ async def get_crop_event_trace(
             for e in events
         ],
     }
-

@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { offlineQueue } from '@/services/offlineQueue';
-import { useTranslations } from 'next-intl';
 
 interface QueuedAction {
   id: string;
@@ -20,7 +19,6 @@ interface OfflineActionsListProps {
 export const OfflineActionsList: React.FC<OfflineActionsListProps> = ({
   cropId
 }) => {
-  const t = useTranslations();
   const [actions, setActions] = useState<QueuedAction[]>([]);
   const [loading, setLoading] = useState(true);
 

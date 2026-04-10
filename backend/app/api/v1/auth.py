@@ -27,43 +27,29 @@ import logging
 import secrets
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import (APIRouter, Depends, HTTPException, Request, Response,
+                     status)
 from sqlalchemy.orm import Session
 
-from app.database import get_db
-from app.models.user import User, MAX_FAILED_LOGIN_ATTEMPTS, LOCKOUT_DURATION_MINUTES
-from app.models.active_session import ActiveSession
-from app.models.otp_code import OTPCode, OTP_TTL_MINUTES, OTP_MAX_PER_HOUR
-from app.models.event_log import EventLog
-from app.schemas.user import (
-    UserCreate,
-    UserLogin,
-    UserResponse,
-    TokenResponse,
-    LoginResponse,
-    OTPRequest,
-    OTPVerify,
-    OTPResponse,
-    ActiveSessionsResponse,
-    SessionInfo,
-    UserPreferencesUpdate,
-    UserPreferencesResponse,
-)
-from app.security.auth import (
-    hash_password,
-    verify_password,
-    needs_rehash,
-    create_access_token,
-    create_refresh_token,
-    verify_refresh_token,
-)
-from app.security.secure_auth import (
-    set_auth_cookies,
-    clear_auth_cookies,
-    get_refresh_token_from_cookie,
-)
 from app.api.deps import get_current_user
 from app.config import settings
+from app.database import get_db
+from app.models.active_session import ActiveSession
+from app.models.event_log import EventLog
+from app.models.otp_code import OTP_MAX_PER_HOUR, OTP_TTL_MINUTES, OTPCode
+from app.models.user import (LOCKOUT_DURATION_MINUTES,
+                             MAX_FAILED_LOGIN_ATTEMPTS, User)
+from app.schemas.user import (ActiveSessionsResponse, LoginResponse,
+                              OTPRequest, OTPResponse, OTPVerify, SessionInfo,
+                              TokenResponse, UserCreate, UserLogin,
+                              UserPreferencesResponse, UserPreferencesUpdate,
+                              UserResponse)
+from app.security.auth import (create_access_token, create_refresh_token,
+                               hash_password, needs_rehash, verify_password,
+                               verify_refresh_token)
+from app.security.secure_auth import (clear_auth_cookies,
+                                      get_refresh_token_from_cookie,
+                                      set_auth_cookies)
 from app.utils.phone import normalize_phone
 
 logger = logging.getLogger(__name__)
@@ -74,6 +60,7 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _get_client_ip(request: Request) -> str:
     """Extract the real client IP, respecting X-Forwarded-For for proxies."""
@@ -96,7 +83,8 @@ def _create_session(
         device_fingerprint=request.headers.get("X-Device-Fingerprint"),
         ip_address=_get_client_ip(request),
         user_agent=request.headers.get("User-Agent", "")[:500],
-        expires_at=datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
+        expires_at=datetime.now(timezone.utc)
+        + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
     )
     db.add(session)
     return session
@@ -110,8 +98,8 @@ def _log_auth_event(
 ):
     """Publish an authentication event to the event log."""
     try:
-        import uuid as _uuid
         import hashlib
+        import uuid as _uuid
 
         # Generate unique event hash for idempotency
         raw = f"{event_type}:{user_id}:{datetime.now(timezone.utc).isoformat()}"
@@ -159,7 +147,10 @@ def _set_tokens_and_cookies(
 # POST /register
 # ---------------------------------------------------------------------------
 
-@router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
+
+@router.post(
+    "/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED
+)
 async def register(
     user_data: UserCreate,
     request: Request,
@@ -213,11 +204,16 @@ async def register(
     access_token, refresh_token = _set_tokens_and_cookies(response, user, db, request)
 
     # Log event
-    _log_auth_event(db, "UserRegistered", user.id, {
-        "phone": user.phone,
-        "role": user.role,
-        "ip": _get_client_ip(request),
-    })
+    _log_auth_event(
+        db,
+        "UserRegistered",
+        user.id,
+        {
+            "phone": user.phone,
+            "role": user.role,
+            "ip": _get_client_ip(request),
+        },
+    )
 
     db.commit()
     db.refresh(user)
@@ -232,6 +228,7 @@ async def register(
 # ---------------------------------------------------------------------------
 # POST /login
 # ---------------------------------------------------------------------------
+
 
 @router.post("/login", response_model=TokenResponse)
 async def login(
@@ -255,18 +252,27 @@ async def login(
     normalized_phone = normalize_phone(credentials.phone)
 
     # Find user
-    user = db.query(User).filter(
-        User.phone == normalized_phone,
-        User.is_deleted == False,
-    ).first()
+    user = (
+        db.query(User)
+        .filter(
+            User.phone == normalized_phone,
+            User.is_deleted == False,
+        )
+        .first()
+    )
 
     if not user:
         # Log failed attempt (unknown user) — use constant-time behavior
-        _log_auth_event(db, "UserLoginFailed", None, {
-            "phone": credentials.phone,
-            "reason": "user_not_found",
-            "ip": client_ip,
-        })
+        _log_auth_event(
+            db,
+            "UserLoginFailed",
+            None,
+            {
+                "phone": credentials.phone,
+                "reason": "user_not_found",
+                "ip": client_ip,
+            },
+        )
         db.commit()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -280,11 +286,16 @@ async def login(
 
     if locked_until and locked_until > datetime.now(timezone.utc):
         remaining = int((locked_until - datetime.now(timezone.utc)).total_seconds())
-        _log_auth_event(db, "UserLoginFailed", user.id, {
-            "reason": "account_locked",
-            "ip": client_ip,
-            "locked_until": locked_until.isoformat(),
-        })
+        _log_auth_event(
+            db,
+            "UserLoginFailed",
+            user.id,
+            {
+                "reason": "account_locked",
+                "ip": client_ip,
+                "locked_until": locked_until.isoformat(),
+            },
+        )
         db.commit()
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
@@ -298,17 +309,24 @@ async def login(
         user.failed_login_attempts = (user.failed_login_attempts or 0) + 1
 
         if user.failed_login_attempts >= MAX_FAILED_LOGIN_ATTEMPTS:
-            user.locked_until = datetime.now(timezone.utc) + timedelta(minutes=LOCKOUT_DURATION_MINUTES)
+            user.locked_until = datetime.now(timezone.utc) + timedelta(
+                minutes=LOCKOUT_DURATION_MINUTES
+            )
             logger.warning(
                 f"Account locked: user={user.id} phone={user.phone} "
                 f"attempts={user.failed_login_attempts} ip={client_ip}"
             )
 
-        _log_auth_event(db, "UserLoginFailed", user.id, {
-            "reason": "wrong_password",
-            "attempt_number": user.failed_login_attempts,
-            "ip": client_ip,
-        })
+        _log_auth_event(
+            db,
+            "UserLoginFailed",
+            user.id,
+            {
+                "reason": "wrong_password",
+                "attempt_number": user.failed_login_attempts,
+                "ip": client_ip,
+            },
+        )
         db.commit()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -341,6 +359,7 @@ async def login(
     # Anomaly detection (non-blocking)
     try:
         from app.security.anomaly_detector import get_anomaly_detector
+
         detector = get_anomaly_detector()
         is_anomalous, score, reasons = detector.analyze_request(
             user_id=str(user.id),
@@ -352,19 +371,29 @@ async def login(
             logger.warning(
                 f"Anomalous login: user={user.id} score={score:.2f} reasons={reasons}"
             )
-            _log_auth_event(db, "AnomalousLogin", user.id, {
-                "score": score,
-                "reasons": reasons,
-                "ip": client_ip,
-            })
+            _log_auth_event(
+                db,
+                "AnomalousLogin",
+                user.id,
+                {
+                    "score": score,
+                    "reasons": reasons,
+                    "ip": client_ip,
+                },
+            )
     except Exception as e:
         logger.debug(f"Anomaly detection skipped: {e}")
 
     # Log successful login event
-    _log_auth_event(db, "UserLoggedIn", user.id, {
-        "ip": client_ip,
-        "user_agent": request.headers.get("User-Agent", "")[:200],
-    })
+    _log_auth_event(
+        db,
+        "UserLoggedIn",
+        user.id,
+        {
+            "ip": client_ip,
+            "user_agent": request.headers.get("User-Agent", "")[:200],
+        },
+    )
 
     db.commit()
     db.refresh(user)
@@ -379,6 +408,7 @@ async def login(
 # ---------------------------------------------------------------------------
 # POST /refresh
 # ---------------------------------------------------------------------------
+
 
 @router.post("/refresh", response_model=TokenResponse)
 async def refresh_token(
@@ -414,11 +444,15 @@ async def refresh_token(
 
     # Validate session exists and is not revoked
     token_hash = ActiveSession.hash_token(token)
-    session = db.query(ActiveSession).filter(
-        ActiveSession.refresh_token_hash == token_hash,
-        ActiveSession.is_revoked == False,
-        ActiveSession.is_deleted == False,
-    ).first()
+    session = (
+        db.query(ActiveSession)
+        .filter(
+            ActiveSession.refresh_token_hash == token_hash,
+            ActiveSession.is_revoked == False,
+            ActiveSession.is_deleted == False,
+        )
+        .first()
+    )
 
     if not session or not session.is_valid():
         # Potential token reuse attack — revoke ALL sessions for this user
@@ -431,9 +465,14 @@ async def refresh_token(
             db.query(ActiveSession).filter(
                 ActiveSession.user_id == user_id,
             ).update({"is_revoked": True, "revoked_at": datetime.now(timezone.utc)})
-            _log_auth_event(db, "TokenReuseDetected", user_id, {
-                "ip": _get_client_ip(request),
-            })
+            _log_auth_event(
+                db,
+                "TokenReuseDetected",
+                user_id,
+                {
+                    "ip": _get_client_ip(request),
+                },
+            )
             db.commit()
             clear_auth_cookies(response)
 
@@ -444,11 +483,15 @@ async def refresh_token(
 
     # Fetch user
     user_id = payload.get("sub")
-    user = db.query(User).filter(
-        User.id == user_id,
-        User.is_deleted == False,
-        User.is_active == True,
-    ).first()
+    user = (
+        db.query(User)
+        .filter(
+            User.id == user_id,
+            User.is_deleted == False,
+            User.is_active == True,
+        )
+        .first()
+    )
 
     if not user:
         raise HTTPException(
@@ -460,7 +503,9 @@ async def refresh_token(
     session.revoke()
 
     # Issue new tokens + session
-    access_token, refresh_token_new = _set_tokens_and_cookies(response, user, db, request)
+    access_token, refresh_token_new = _set_tokens_and_cookies(
+        response, user, db, request
+    )
 
     db.commit()
 
@@ -475,6 +520,7 @@ async def refresh_token(
 # POST /logout
 # ---------------------------------------------------------------------------
 
+
 @router.post("/logout")
 async def logout(
     request: Request,
@@ -488,14 +534,23 @@ async def logout(
     token = get_refresh_token_from_cookie(request)
     if token:
         token_hash = ActiveSession.hash_token(token)
-        session = db.query(ActiveSession).filter(
-            ActiveSession.refresh_token_hash == token_hash,
-        ).first()
+        session = (
+            db.query(ActiveSession)
+            .filter(
+                ActiveSession.refresh_token_hash == token_hash,
+            )
+            .first()
+        )
         if session:
             session.revoke()
-            _log_auth_event(db, "UserLoggedOut", session.user_id, {
-                "ip": _get_client_ip(request),
-            })
+            _log_auth_event(
+                db,
+                "UserLoggedOut",
+                session.user_id,
+                {
+                    "ip": _get_client_ip(request),
+                },
+            )
             db.commit()
 
     # Always clear cookies, even if session not found
@@ -507,6 +562,7 @@ async def logout(
 # ---------------------------------------------------------------------------
 # POST /send-otp
 # ---------------------------------------------------------------------------
+
 
 @router.post("/send-otp", response_model=OTPResponse)
 async def send_otp(
@@ -526,10 +582,14 @@ async def send_otp(
     normalized_phone = normalize_phone(data.phone)
 
     # Verify phone number is registered
-    user = db.query(User).filter(
-        User.phone == normalized_phone,
-        User.is_deleted == False,
-    ).first()
+    user = (
+        db.query(User)
+        .filter(
+            User.phone == normalized_phone,
+            User.is_deleted == False,
+        )
+        .first()
+    )
 
     if not user:
         # Don't reveal whether phone is registered — return identical
@@ -542,10 +602,14 @@ async def send_otp(
 
     # Rate limit: max OTPs per hour
     one_hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
-    recent_count = db.query(OTPCode).filter(
-        OTPCode.phone == normalized_phone,
-        OTPCode.created_at > one_hour_ago,
-    ).count()
+    recent_count = (
+        db.query(OTPCode)
+        .filter(
+            OTPCode.phone == normalized_phone,
+            OTPCode.created_at > one_hour_ago,
+        )
+        .count()
+    )
 
     if recent_count >= OTP_MAX_PER_HOUR:
         raise HTTPException(
@@ -563,11 +627,29 @@ async def send_otp(
         expires_at=OTPCode.generate_expiry(),
     )
     db.add(otp_record)
+    db.commit() # Commit OTP BEFORE SMS attempt to prevent nested rollback wpage
 
-    _log_auth_event(db, "OTPSent", user.id, {
-        "phone": normalized_phone,
-        "ip": client_ip,
-    })
+    from app.services.notifications.sms_provider import send_sms_with_log
+
+    message = f"Your CultivaX verification code is {otp_plain}. Valid for {OTP_TTL_MINUTES} minutes. Never share this code."
+    
+    # Try sending via SMS Provider (Twilio/Stub)
+    sms_sent = send_sms_with_log(db, user.id, normalized_phone, message, template="auth_otp")
+    if not sms_sent:
+        logger.error(f"Failed to push SMS OTP for {normalized_phone}")
+        # We don't raise an exception here because the OTP is still created and we don't 
+        # want to block the user if it's just a provider glitch (they could use fallback/email).
+
+    _log_auth_event(
+        db,
+        "OTPSent",
+        user.id,
+        {
+            "phone": normalized_phone,
+            "ip": client_ip,
+            "provider_delivery_attempted": True,
+        },
+    )
 
     db.commit()
 
@@ -587,6 +669,7 @@ async def send_otp(
 # POST /verify-otp
 # ---------------------------------------------------------------------------
 
+
 @router.post("/verify-otp", response_model=TokenResponse)
 async def verify_otp(
     data: OTPVerify,
@@ -604,10 +687,15 @@ async def verify_otp(
     normalized_phone = normalize_phone(data.phone)
 
     # Find the latest unused OTP for this phone
-    otp_record = db.query(OTPCode).filter(
-        OTPCode.phone == normalized_phone,
-        OTPCode.is_used == False,
-    ).order_by(OTPCode.created_at.desc()).first()
+    otp_record = (
+        db.query(OTPCode)
+        .filter(
+            OTPCode.phone == normalized_phone,
+            OTPCode.is_used == False,
+        )
+        .order_by(OTPCode.created_at.desc())
+        .first()
+    )
 
     if not otp_record or not otp_record.is_valid():
         raise HTTPException(
@@ -624,11 +712,15 @@ async def verify_otp(
         )
 
     # Find user
-    user = db.query(User).filter(
-        User.phone == normalized_phone,
-        User.is_deleted == False,
-        User.is_active == True,
-    ).first()
+    user = (
+        db.query(User)
+        .filter(
+            User.phone == normalized_phone,
+            User.is_deleted == False,
+            User.is_active == True,
+        )
+        .first()
+    )
 
     if not user:
         raise HTTPException(
@@ -645,9 +737,14 @@ async def verify_otp(
     # Generate tokens & set cookies
     access_token, refresh_token = _set_tokens_and_cookies(response, user, db, request)
 
-    _log_auth_event(db, "UserLoggedInViaOTP", user.id, {
-        "ip": client_ip,
-    })
+    _log_auth_event(
+        db,
+        "UserLoggedInViaOTP",
+        user.id,
+        {
+            "ip": client_ip,
+        },
+    )
 
     db.commit()
     db.refresh(user)
@@ -663,6 +760,7 @@ async def verify_otp(
 # GET /me
 # ---------------------------------------------------------------------------
 
+
 @router.get("/me", response_model=UserResponse)
 async def get_me(current_user: User = Depends(get_current_user)):
     """
@@ -675,6 +773,7 @@ async def get_me(current_user: User = Depends(get_current_user)):
 # ---------------------------------------------------------------------------
 # PATCH /me  — Update user preferences (language, accessibility)
 # ---------------------------------------------------------------------------
+
 
 @router.patch("/me", response_model=UserPreferencesResponse)
 async def update_preferences(
@@ -711,10 +810,15 @@ async def update_preferences(
     db.refresh(current_user)
 
     # Audit log
-    _log_auth_event(db, "PreferencesUpdated", current_user.id, {
-        "changed_fields": list(changes.keys()),
-        "preferred_language": current_user.preferred_language,
-    })
+    _log_auth_event(
+        db,
+        "PreferencesUpdated",
+        current_user.id,
+        {
+            "changed_fields": list(changes.keys()),
+            "preferred_language": current_user.preferred_language,
+        },
+    )
     db.commit()
 
     return UserPreferencesResponse.model_validate(current_user)
@@ -723,6 +827,7 @@ async def update_preferences(
 # ---------------------------------------------------------------------------
 # GET /sessions
 # ---------------------------------------------------------------------------
+
 
 @router.get("/sessions", response_model=ActiveSessionsResponse)
 async def list_sessions(
@@ -733,11 +838,16 @@ async def list_sessions(
     """List all active (non-revoked) sessions for the current user."""
     from app.security.secure_auth import get_refresh_token_from_cookie
 
-    sessions = db.query(ActiveSession).filter(
-        ActiveSession.user_id == current_user.id,
-        ActiveSession.is_revoked == False,
-        ActiveSession.is_deleted == False,
-    ).order_by(ActiveSession.created_at.desc()).all()
+    sessions = (
+        db.query(ActiveSession)
+        .filter(
+            ActiveSession.user_id == current_user.id,
+            ActiveSession.is_revoked == False,
+            ActiveSession.is_deleted == False,
+        )
+        .order_by(ActiveSession.created_at.desc())
+        .all()
+    )
 
     # Determine current session
     current_token = get_refresh_token_from_cookie(request)
@@ -748,7 +858,9 @@ async def list_sessions(
         if s.is_expired():
             continue
         info = SessionInfo.model_validate(s)
-        info.is_current = (s.refresh_token_hash == current_hash) if current_hash else False
+        info.is_current = (
+            (s.refresh_token_hash == current_hash) if current_hash else False
+        )
         session_list.append(info)
 
     return ActiveSessionsResponse(sessions=session_list, total=len(session_list))
@@ -757,6 +869,7 @@ async def list_sessions(
 # ---------------------------------------------------------------------------
 # POST /sessions/revoke-all
 # ---------------------------------------------------------------------------
+
 
 @router.post("/sessions/revoke-all")
 async def revoke_all_sessions(
@@ -772,19 +885,30 @@ async def revoke_all_sessions(
     current_token = get_refresh_token_from_cookie(request)
     current_hash = ActiveSession.hash_token(current_token) if current_token else None
 
-    revoked_count = db.query(ActiveSession).filter(
-        ActiveSession.user_id == current_user.id,
-        ActiveSession.is_revoked == False,
-        ActiveSession.refresh_token_hash != current_hash,
-    ).update({
-        "is_revoked": True,
-        "revoked_at": datetime.now(timezone.utc),
-    })
+    revoked_count = (
+        db.query(ActiveSession)
+        .filter(
+            ActiveSession.user_id == current_user.id,
+            ActiveSession.is_revoked == False,
+            ActiveSession.refresh_token_hash != current_hash,
+        )
+        .update(
+            {
+                "is_revoked": True,
+                "revoked_at": datetime.now(timezone.utc),
+            }
+        )
+    )
 
-    _log_auth_event(db, "AllSessionsRevoked", current_user.id, {
-        "revoked_count": revoked_count,
-        "ip": _get_client_ip(request),
-    })
+    _log_auth_event(
+        db,
+        "AllSessionsRevoked",
+        current_user.id,
+        {
+            "revoked_count": revoked_count,
+            "ip": _get_client_ip(request),
+        },
+    )
 
     db.commit()
 
