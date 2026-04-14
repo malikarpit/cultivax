@@ -60,6 +60,11 @@ class ServiceProvider(BaseModel):
     is_suspended = Column(Boolean, default=False, nullable=False)
     suspension_reason = Column(String(500), nullable=True)
 
+    # Listing freshness (FR-15, OR-2)
+    listing_status = Column(
+        String(20), server_default="active", nullable=False
+    )  # active | stale | reconfirmed
+
     # Description
     description = Column(Text, nullable=True)
 

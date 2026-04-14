@@ -25,9 +25,10 @@ class Recommendation(BaseModel):
     message_key = Column(String(100), nullable=False)
     message_parameters = Column(JSONB, nullable=True)
     basis = Column(Text, nullable=True)  # Explanation of why this was recommended
+    rationale = Column(JSONB, nullable=True)  # FR-9: structured rationale object
     valid_from = Column(DateTime(timezone=True), nullable=True)
     valid_until = Column(DateTime(timezone=True), nullable=True)
-    status = Column(String(20), default="active")  # active/dismissed/acted/expired
+    status = Column(String(20), default="active")  # active/dismissed/acted/expired/overridden
 
     def __repr__(self):
         return f"<Recommendation(type={self.recommendation_type}, priority={self.priority_rank})>"

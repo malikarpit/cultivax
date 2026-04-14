@@ -11,7 +11,6 @@ dispatcher loop). The ordering invariant is enforced at the query layer.
 """
 
 import threading
-import time
 from uuid import uuid4
 from datetime import datetime, timezone, timedelta
 
@@ -19,14 +18,13 @@ import pytest
 from sqlalchemy.orm import Session
 
 from app.models.event_log import EventLog
-from app.services.event_dispatcher.db_dispatcher import DBEventDispatcher
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _seed_partition_events(db: Session, partition_key: str, count: int, base_offset_seconds: int = 0):
+def _seed_partition_events(db: Session, partition_key, count: int, base_offset_seconds: int = 0):
     """Seed `count` Created events for a given partition, spaced 1 second apart."""
     events = []
     for i in range(count):
@@ -35,11 +33,11 @@ def _seed_partition_events(db: Session, partition_key: str, count: int, base_off
             id=uuid4(),
             event_type="test.partition.event",
             entity_type="TestEntity",
-            entity_id=str(uuid4()),
+            entity_id=uuid4(),
             partition_key=partition_key,
             payload={"seq": i},
             status="Created",
-            event_hash=f"partition-{partition_key[:8]}-{i}-{uuid4().hex[:6]}",
+            event_hash=f"partition-{uuid4().hex[:12]}-{i}-{uuid4().hex[:6]}",
             created_at=ts,
         )
         db.add(ev)
@@ -57,10 +55,11 @@ def test_partition_events_returned_in_fifo_order(db: Session):
     Events in the same partition must be returned by the dispatcher in
     strict ascending created_at order (FIFO per partition).
     """
-    partition_key = f"partition-fifo-{uuid4().hex[:8]}"
+    partition_key = uuid4()
     seeded = _seed_partition_events(db, partition_key, count=5, base_offset_seconds=0)
 
-    # Query the same way DBEventDispatcher would: filter by partition, order by created_at ASC
+    db.expire_all()
+
     fetched = (
         db.query(EventLog)
         .filter(
@@ -84,11 +83,13 @@ def test_partition_isolation_two_partitions_do_not_interleave(db: Session):
     Events from partition A and partition B must remain isolated —
     querying partition A returns only partition A events in order.
     """
-    pk_a = f"partition-A-{uuid4().hex[:8]}"
-    pk_b = f"partition-B-{uuid4().hex[:8]}"
+    pk_a = uuid4()
+    pk_b = uuid4()
 
     _seed_partition_events(db, pk_a, count=3, base_offset_seconds=0)
     _seed_partition_events(db, pk_b, count=3, base_offset_seconds=0)
+
+    db.expire_all()
 
     for pk in (pk_a, pk_b):
         fetched = (
@@ -112,8 +113,8 @@ def test_interleaved_seed_fifo_preserved_per_partition(db: Session):
     Even when events from two partitions are seeded interleaved in DB-insertion
     order, per-partition queries must still return FIFO order within each partition.
     """
-    pk_x = f"interleave-X-{uuid4().hex[:8]}"
-    pk_y = f"interleave-Y-{uuid4().hex[:8]}"
+    pk_x = uuid4()
+    pk_y = uuid4()
 
     # Interleave events: X0, Y0, X1, Y1, X2, Y2
     base = datetime.now(timezone.utc)
@@ -123,15 +124,16 @@ def test_interleaved_seed_fifo_preserved_per_partition(db: Session):
                 id=uuid4(),
                 event_type="test.interleave",
                 entity_type="TestEntity",
-                entity_id=str(uuid4()),
+                entity_id=uuid4(),
                 partition_key=pk,
                 payload={"label": label, "seq": i},
                 status="Created",
-                event_hash=f"il-{label}-{i}-{uuid4().hex[:6]}",
+                event_hash=f"il-{label}-{i}-{uuid4().hex[:12]}",
                 created_at=base + timedelta(milliseconds=i * 100),
             )
             db.add(ev)
     db.commit()
+    db.expire_all()
 
     for pk in (pk_x, pk_y):
         fetched = (
@@ -159,8 +161,8 @@ def test_concurrent_workers_process_different_partitions_independently(db: Sessi
     complete and retrieve all their events without interference.
     This validates partition-level isolation under concurrent access.
     """
-    pk_1 = f"concurrent-1-{uuid4().hex[:8]}"
-    pk_2 = f"concurrent-2-{uuid4().hex[:8]}"
+    pk_1 = uuid4()
+    pk_2 = uuid4()
 
     _seed_partition_events(db, pk_1, count=4)
     _seed_partition_events(db, pk_2, count=4)
@@ -168,9 +170,8 @@ def test_concurrent_workers_process_different_partitions_independently(db: Sessi
     results = {pk_1: [], pk_2: []}
     errors = []
 
-    def worker(partition_key: str, session_factory):
+    def worker(partition_key):
         try:
-            # Each worker gets its own session (mimics separate workers)
             from tests.conftest import TestingSessionLocal
             worker_db = TestingSessionLocal()
             try:
@@ -191,8 +192,8 @@ def test_concurrent_workers_process_different_partitions_independently(db: Sessi
             errors.append(str(e))
 
     threads = [
-        threading.Thread(target=worker, args=(pk_1, None)),
-        threading.Thread(target=worker, args=(pk_2, None)),
+        threading.Thread(target=worker, args=(pk_1,)),
+        threading.Thread(target=worker, args=(pk_2,)),
     ]
     for t in threads:
         t.start()
@@ -214,14 +215,14 @@ def test_partition_key_uniqueness_hash_stable(db: Session):
     NOT be re-inserted due to hash collision — deduplication relies on
     event_hash being content-addressed.
     """
-    partition_key = f"dedup-{uuid4().hex[:8]}"
+    partition_key = uuid4()
     shared_hash = f"stable-hash-{uuid4().hex[:8]}"
 
     ev = EventLog(
         id=uuid4(),
         event_type="test.dedup",
         entity_type="TestEntity",
-        entity_id=str(uuid4()),
+        entity_id=uuid4(),
         partition_key=partition_key,
         payload={"key": "value"},
         status="Created",
@@ -232,25 +233,25 @@ def test_partition_key_uniqueness_hash_stable(db: Session):
 
     # Attempting to re-insert same hash must fail (unique constraint) or be skipped
     try:
+        nested = db.begin_nested()
         duplicate = EventLog(
             id=uuid4(),
             event_type="test.dedup",
             entity_type="TestEntity",
-            entity_id=str(uuid4()),
+            entity_id=uuid4(),
             partition_key=partition_key,
             payload={"key": "value"},
             status="Created",
             event_hash=shared_hash,  # same hash
         )
         db.add(duplicate)
-        db.commit()
+        db.flush()
+        nested.commit()
         # If no exception, check there's only one for this hash after dedup
         count = db.query(EventLog).filter(EventLog.event_hash == shared_hash).count()
-        # Duplicate may have been silently accepted — at minimum verify no extra rows
-        # from a second publisher if dispatcher deduplicates
         assert count >= 1  # At least original exists
     except Exception:
-        db.rollback()
+        nested.rollback()
         # Unique constraint — correct behaviour
         count = db.query(EventLog).filter(EventLog.event_hash == shared_hash).count()
         assert count == 1

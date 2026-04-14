@@ -13,7 +13,9 @@ from app.api.deps import get_current_user, require_role
 from app.database import get_db
 from app.models.crop_instance import CropInstance
 from app.models.user import User
-from app.schemas.recommendation import (RecommendationResponse,
+from app.schemas.recommendation import (RecommendationOverrideRequest,
+                                        RecommendationOverrideResponse,
+                                        RecommendationResponse,
                                         RecommendationStatusUpdateRequest,
                                         RecommendationStatusUpdateResponse)
 from app.services.recommendations.recommendation_engine import \
@@ -144,3 +146,68 @@ async def mark_recommendation_acted(
         updated_at=rec.updated_at,
         reason=request.reason,
     )
+
+
+@router.post(
+    "/{crop_id}/recommendations/{recommendation_id}/override",
+    response_model=RecommendationOverrideResponse,
+    dependencies=[Depends(require_role(["farmer", "admin"]))],
+)
+async def override_recommendation(
+    crop_id: UUID,
+    recommendation_id: UUID,
+    request: RecommendationOverrideRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """FR-7/FR-8: Override a recommendation with tracking."""
+    crop = (
+        db.query(CropInstance)
+        .filter(CropInstance.id == crop_id, CropInstance.is_deleted == False)
+        .first()
+    )
+    if not crop:
+        raise HTTPException(status_code=404, detail="Crop not found")
+    if current_user.role != "admin" and crop.farmer_id != current_user.id:
+        raise HTTPException(status_code=403, detail="You do not own this crop")
+
+    engine = RecommendationEngine(db)
+    try:
+        override = engine.override_recommendation(
+            crop_instance_id=crop_id,
+            recommendation_id=recommendation_id,
+            farmer_id=current_user.id,
+            override_action=request.action,
+            farmer_reason=request.reason,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+    return RecommendationOverrideResponse.model_validate(override)
+
+
+@router.get(
+    "/{crop_id}/recommendations/overrides",
+    response_model=list[RecommendationOverrideResponse],
+    dependencies=[Depends(require_role(["farmer", "admin"]))],
+)
+async def get_override_history(
+    crop_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """FR-8: Get override history for a crop instance."""
+    crop = (
+        db.query(CropInstance)
+        .filter(CropInstance.id == crop_id, CropInstance.is_deleted == False)
+        .first()
+    )
+    if not crop:
+        raise HTTPException(status_code=404, detail="Crop not found")
+    if current_user.role != "admin" and crop.farmer_id != current_user.id:
+        raise HTTPException(status_code=403, detail="You do not own this crop")
+
+    engine = RecommendationEngine(db)
+    overrides = engine.get_overrides(crop_id)
+    return [RecommendationOverrideResponse.model_validate(o) for o in overrides]
+

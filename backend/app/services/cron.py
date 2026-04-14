@@ -50,6 +50,8 @@ TASK_CADENCES: dict[str, timedelta] = {
     "log_compression": timedelta(hours=6),
     "trust_decay": timedelta(hours=24),
     "audit_retention": timedelta(hours=24),  # NFR-34: daily retention purge
+    "database_backup": timedelta(hours=24),  # NFR-8: automated daily backups
+    "listing_reconfirmation": timedelta(hours=24),  # FR-15/OR-2: stale listing check
 }
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -364,6 +366,143 @@ async def _run_critical_sms_dispatch(db: Session, force: bool) -> dict:
         return _task_result("error", ms, error=str(e))
 
 
+async def _run_database_backup(db: Session, force: bool) -> dict:
+    """NFR-8: Create a logical backup and log the result."""
+    import os
+    import subprocess
+
+    should, reason = _should_run("database_backup", force)
+    if not should:
+        return {"status": "skipped", "reason": reason}
+
+    t0 = _now_ms()
+    try:
+        from app.models.backup_log import BackupLog
+
+        backup_log = BackupLog(
+            backup_type="logical",
+            result="pending",
+            notes="Automated cron backup",
+        )
+        db.add(backup_log)
+        db.commit()
+        db.refresh(backup_log)
+
+        db_url = os.getenv("DATABASE_URL", "")
+        if db_url and "postgresql" in db_url:
+            timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+            backup_dir = os.getenv("BACKUP_DIR", "/tmp")
+            backup_path = os.path.join(backup_dir, f"cultivax_backup_{timestamp}.sql")
+            try:
+                result = subprocess.run(
+                    ["pg_dump", db_url, "-f", backup_path],
+                    capture_output=True,
+                    timeout=300,
+                )
+                backup_log.result = "success" if result.returncode == 0 else "failure"
+                if result.returncode != 0:
+                    backup_log.notes = f"pg_dump stderr: {result.stderr.decode()[:500]}"
+            except FileNotFoundError:
+                backup_log.result = "skipped"
+                backup_log.notes = "pg_dump binary not found — skipping"
+            except subprocess.TimeoutExpired:
+                backup_log.result = "failure"
+                backup_log.notes = "pg_dump timed out after 300s"
+        else:
+            backup_log.result = "skipped"
+            backup_log.notes = "Non-PostgreSQL DB — backup not applicable"
+
+        db.commit()
+        _record_run("database_backup")
+        _reset_failures("database_backup")
+        return _task_result("ok", _elapsed(t0), backup_result=backup_log.result)
+    except Exception as e:
+        ms = _elapsed(t0)
+        _record_failure("database_backup", db, str(e))
+        logger.error(f"database_backup failed: {e}")
+        return _task_result("error", ms, error=str(e))
+
+
+LISTING_STALE_DAYS = 90  # FR-15: listings not updated in 90 days are stale
+LISTING_AUTO_SUSPEND_DAYS = 104  # Auto-suspend after 14 days of stale notice
+
+
+async def _run_listing_reconfirmation(db: Session, force: bool) -> dict:
+    """FR-15/OR-2: Flag stale listings and notify providers to re-confirm."""
+    should, reason = _should_run("listing_reconfirmation", force)
+    if not should:
+        return {"status": "skipped", "reason": reason}
+
+    t0 = _now_ms()
+    try:
+        from app.models.service_provider import ServiceProvider
+
+        stale_cutoff = datetime.now(timezone.utc) - timedelta(days=LISTING_STALE_DAYS)
+        suspend_cutoff = datetime.now(timezone.utc) - timedelta(
+            days=LISTING_AUTO_SUSPEND_DAYS
+        )
+
+        # Phase 1: Flag stale providers
+        stale_providers = (
+            db.query(ServiceProvider)
+            .filter(
+                ServiceProvider.updated_at < stale_cutoff,
+                ServiceProvider.is_deleted == False,
+                ServiceProvider.is_suspended == False,
+                ServiceProvider.listing_status != "stale",
+            )
+            .all()
+        )
+        for provider in stale_providers:
+            provider.listing_status = "stale"
+
+        # Phase 2: Auto-suspend providers who stayed stale beyond grace period
+        auto_suspend = (
+            db.query(ServiceProvider)
+            .filter(
+                ServiceProvider.updated_at < suspend_cutoff,
+                ServiceProvider.is_deleted == False,
+                ServiceProvider.is_suspended == False,
+                ServiceProvider.listing_status == "stale",
+            )
+            .all()
+        )
+        for provider in auto_suspend:
+            provider.is_suspended = True
+            provider.suspension_reason = (
+                "Auto-suspended: listing not re-confirmed within grace period"
+            )
+
+        # Phase 3: Reset recently updated providers back to active
+        reconfirmed = (
+            db.query(ServiceProvider)
+            .filter(
+                ServiceProvider.updated_at >= stale_cutoff,
+                ServiceProvider.listing_status == "stale",
+                ServiceProvider.is_deleted == False,
+            )
+            .all()
+        )
+        for provider in reconfirmed:
+            provider.listing_status = "active"
+
+        db.commit()
+        _record_run("listing_reconfirmation")
+        _reset_failures("listing_reconfirmation")
+        return _task_result(
+            "ok",
+            _elapsed(t0),
+            stale_flagged=len(stale_providers),
+            auto_suspended=len(auto_suspend),
+            reconfirmed=len(reconfirmed),
+        )
+    except Exception as e:
+        ms = _elapsed(t0)
+        _record_failure("listing_reconfirmation", db, str(e))
+        logger.error(f"listing_reconfirmation failed: {e}")
+        return _task_result("error", ms, error=str(e))
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Public entrypoint
 # ──────────────────────────────────────────────────────────────────────────────
@@ -411,6 +550,8 @@ async def run_scheduled_tasks(
             ("log_compression", _run_log_compression),
             ("recommendations", _run_recommendations),
             ("audit_retention", _run_audit_retention),  # NFR-34
+            ("database_backup", _run_database_backup),  # NFR-8
+            ("listing_reconfirmation", _run_listing_reconfirmation),  # FR-15/OR-2
         ]
         WEEKLY_TASKS = [("trust_decay", _run_trust_decay)]
 

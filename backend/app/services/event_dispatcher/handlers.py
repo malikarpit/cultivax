@@ -342,8 +342,40 @@ def handle_cluster_updated(db: Session, event: EventLog):
     )
 
 
+def handle_suggest_service(db: Session, event: EventLog):
+    """
+    MSDD 2.11: Handle CTIS→SOE suggestion when replay detects a service need.
+
+    Creates a recommendation linking the crop's need to an SOE service category.
+    Maintains SOE isolation — no CTIS state mutation occurs in this handler.
+    """
+    logger.info(f"Processing SuggestService for entity {event.entity_id}")
+    payload = event.payload or {}
+    crop_instance_id = payload.get("crop_instance_id") or event.entity_id
+    service_type = payload.get("service_type", "general_service")
+    urgency = payload.get("urgency", "medium")
+
+    if not crop_instance_id:
+        logger.error("SuggestService event missing crop_instance_id")
+        return
+
+    try:
+        RecommendationEngine(db).create_service_suggestion(
+            crop_instance_id=crop_instance_id,
+            service_type=service_type,
+            urgency=urgency,
+        )
+        logger.info(
+            f"SOE service suggestion created: crop={crop_instance_id}, "
+            f"type={service_type}, urgency={urgency}"
+        )
+    except Exception as e:
+        logger.error(f"Failed to create SOE service suggestion: {e}")
+        raise
+
+
 from app.services.event_dispatcher.event_types import (CTISEvents, MLEvents,
-                                                       NotificationEvents)
+                                                        NotificationEvents)
 
 # Event type → handler mapping
 _HANDLER_MAP: Dict[str, Callable] = {
@@ -353,6 +385,7 @@ _HANDLER_MAP: Dict[str, Callable] = {
     CTISEvents.REPLAY_TRIGGERED: handle_replay_triggered,
     CTISEvents.STAGE_CHANGED: handle_stage_changed,
     CTISEvents.STRESS_UPDATED: handle_stress_updated,
+    CTISEvents.SUGGEST_SERVICE: handle_suggest_service,  # MSDD 2.11
     MLEvents.CLUSTER_UPDATED: handle_cluster_updated,
     MLEvents.MEDIA_ANALYZED: handle_media_analyzed,
     NotificationEvents.WEATHER_UPDATED: handle_weather_updated,
@@ -371,6 +404,7 @@ _HANDLER_MAP: Dict[str, Callable] = {
     # Additional namespaced aliases for ML events published pre-taxonomy fix
     "ml.media_analyzed": handle_media_analyzed,
     "notification.weather_updated": handle_weather_updated,
+    "ctis.suggest_service": handle_suggest_service,  # MSDD 2.11 alias
 }
 
 

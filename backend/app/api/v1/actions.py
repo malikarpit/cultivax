@@ -40,8 +40,13 @@ async def log_action(
         action = service.log_action(crop_id, current_user.id, data)
         return ActionLogResponse.from_action(action)
     except ValueError as e:
+        msg = str(e)
+        if "idempotency" in msg.lower():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail=msg
+            )
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=msg
         )
     except PermissionError as e:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))

@@ -53,6 +53,7 @@ from app.api.v1.translations import router as translations_router
 from app.api.v1.weather import router as weather_router
 from app.api.v1.whatsapp import router as whatsapp_router  # API-0131
 from app.api.v1.search import router as search_router
+from app.api.v1.messages import router as messages_router  # FR-23/24/25
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -101,3 +102,4 @@ api_router.include_router(analytics_router)
 api_router.include_router(reports_router)
 api_router.include_router(config_router)
 api_router.include_router(search_router)
+api_router.include_router(messages_router)  # FR-23/24/25: In-App Messaging

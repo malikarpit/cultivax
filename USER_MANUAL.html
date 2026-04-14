@@ -1,0 +1,2180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>CultivaX — User Manual v3.0</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    mermaid.initialize({ startOnLoad: true, theme: "default", securityLevel: "loose" });
+});
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+body{font-family:"Inter",-apple-system,BlinkMacSystemFont,sans-serif;font-size:11pt;color:#1a1a2e;line-height:1.7;max-width:920px;margin:0 auto;padding:50px 40px;background:#fff}
+h1{color:#0f3460;border-bottom:3px solid #0f3460;padding-bottom:12px;margin-top:2.5em;font-size:22pt;font-weight:700}
+h2{color:#16213e;border-bottom:2px solid #cbd5e1;padding-bottom:8px;margin-top:2.5em;font-size:16pt;font-weight:600}
+h3{color:#533483;margin-top:2em;font-size:13pt;font-weight:600}
+h4{color:#e94560;font-size:11pt;font-weight:600}
+table{border-collapse:collapse;width:100%;margin:1.2em 0;font-size:10pt;border-radius:6px;overflow:hidden}
+th{background:linear-gradient(135deg,#0f3460,#16213e);color:#fff;padding:10px 14px;text-align:left;font-weight:600;border:none}
+td{border:1px solid #e2e8f0;padding:8px 14px;vertical-align:top}
+tr:nth-child(even){background:#f8fafc}
+tr:hover{background:#eef2ff}
+code{background:#f1f5f9;padding:2px 6px;border-radius:4px;font-size:10pt;font-family:"JetBrains Mono","Fira Code","Cascadia Code",monospace;color:#e94560}
+pre{background:#1e293b;color:#e2e8f0;padding:18px 22px;border-radius:10px;overflow-x:auto;font-size:9.5pt;line-height:1.55;margin:1.2em 0;border:1px solid #334155}
+pre code{background:none;color:inherit;padding:0;font-size:inherit}
+pre.mermaid{background:#ffffff;color:#333;text-align:center;padding:24px;border:2px solid #e2e8f0;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.04)}
+blockquote{border-left:4px solid #533483;margin:1.2em 0;padding:14px 22px;background:#faf5ff;border-radius:0 8px 8px 0;font-style:italic}
+blockquote strong{color:#533483;font-style:normal}
+hr{border:none;border-top:2px solid #e2e8f0;margin:3em 0}
+strong{color:#16213e}
+a{color:#533483;text-decoration:none;border-bottom:1px dotted #533483}
+a:hover{color:#e94560}
+em{color:#64748b}
+
+/* Print styles for PDF */
+@media print{
+    body{max-width:100%;padding:0 20px;font-size:10pt}
+    h1,h2,h3{page-break-after:avoid}
+    table,pre,.mermaid{page-break-inside:avoid}
+    pre.mermaid svg{max-width:100%!important}
+    a{color:#333;border:none}
+    blockquote{background:#f5f5f5;border-color:#999}
+}
+</style>
+</head>
+<body>
+<h1 id="cultivax-user-manual">CultivaX — User Manual</h1>
+<p><strong>Version</strong>: 3.0 · <strong>Date</strong>: April 2026 · <strong>B.Tech 4th Semester Project</strong></p>
+<hr />
+<h1 id="part-1-quick-reference-guide">PART 1 — QUICK REFERENCE GUIDE</h1>
+<p>This section is a condensed overview of the CultivaX platform designed for evaluators to understand the platform quickly before diving deep.</p>
+<hr />
+<h2 id="11-what-is-cultivax">1.1 What is CultivaX?</h2>
+<p>CultivaX is an event-driven, multi-tenant agricultural management platform with three core subsystems:</p>
+<table>
+<thead>
+<tr>
+<th>Abbreviation</th>
+<th>Full Name</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>CTIS</strong></td>
+<td>Crop Timeline Integration System</td>
+<td>Event-sourced crop lifecycle management with action replay, stress scoring, and biological risk assessment</td>
+</tr>
+<tr>
+<td><strong>SOE</strong></td>
+<td>Service Orchestration Engine</td>
+<td>Equipment rental marketplace connecting farmers with service providers (booking, fulfillment, reviews)</td>
+</tr>
+<tr>
+<td><strong>IAM</strong></td>
+<td>Identity &amp; Access Management</td>
+<td>RBAC with OTP login, session tracking, brute-force protection, anomaly detection</td>
+</tr>
+</tbody>
+</table>
+<p>The platform is built with <strong>FastAPI</strong> (Python 3.11), <strong>PostgreSQL 15</strong>, <strong>Next.js 14</strong>, internationalized in 5 languages (English, Hindi, Tamil, Telugu, Marathi), and shipped as a <strong>Progressive Web App (PWA)</strong> with full offline sync.</p>
+<hr />
+<h2 id="12-system-architecture-diagram">1.2 System Architecture Diagram</h2>
+<pre class="mermaid">
+graph TB
+    subgraph Frontend ["Frontend (Next.js 14 PWA)"]
+        LP[Login Page]
+        FD[Farmer Dashboard]
+        PD[Provider Dashboard]
+        AD[Admin Dashboard]
+        SW[Service Worker / Offline Queue]
+    end
+
+    subgraph API ["API Gateway (FastAPI)"]
+        AUTH["/api/v1/auth"]
+        CROPS["/api/v1/crops"]
+        ACTIONS["/api/v1/crops/{id}/actions"]
+        SIM["/api/v1/crops/{id}/simulate"]
+        YIELD["/api/v1/crops/{id}/yield"]
+        SR["/api/v1/service-requests"]
+        PROV["/api/v1/providers"]
+        ADMIN["/api/v1/admin"]
+        MSG["/api/v1/messages"]
+        SYNC["/api/v1/offline-sync"]
+        ALERTS["/api/v1/alerts"]
+        WEATHER["/api/v1/weather"]
+        SCHEMES["/api/v1/schemes"]
+        ML_API["/api/v1/ml"]
+        RULES["/api/v1/rules"]
+        REVIEWS["/api/v1/reviews"]
+        ANALYTICS["/api/v1/analytics"]
+        SEARCH["/api/v1/search"]
+    end
+
+    subgraph Services ["Core Services"]
+        CS[CropService]
+        AS[ActionService]
+        RE[ReplayEngine]
+        SE[StressEngine]
+        WIE[WhatIfEngine]
+        RS[RequestService]
+        FS[FeedbackAggregator]
+        RP[RiskPredictor]
+    end
+
+    subgraph EventBus ["Event System"]
+        ED[EventDispatcher]
+        DLQ[Dead Letter Queue]
+        EL[EventLog Table]
+    end
+
+    subgraph DB ["PostgreSQL 15"]
+        USERS[(users)]
+        CI[(crop_instances)]
+        AL[(action_logs)]
+        SRQ[(service_requests)]
+        EV[(event_log)]
+        MSGS[(messages)]
+        SNAP[(snapshots)]
+    end
+
+    LP --> AUTH
+    FD --> CROPS
+    FD --> ACTIONS
+    FD --> SIM
+    FD --> YIELD
+    FD --> SR
+    PD --> SR
+    PD --> PROV
+    AD --> ADMIN
+    SW --> SYNC
+
+    AUTH --> USERS
+    CROPS --> CS --> CI
+    ACTIONS --> AS --> AL
+    AS --> ED
+    ED --> EL
+    ED --> RE --> SE
+    RE --> SNAP
+    SIM --> WIE
+    SR --> RS --> SRQ
+    ML_API --> RP
+    ML_API --> FS
+    ED --> DLQ
+</pre>
+<hr />
+<h2 id="13-demo-credentials">1.3 Demo Credentials</h2>
+<p>All demo accounts use password: <strong><code>password123</code></strong></p>
+<table>
+<thead>
+<tr>
+<th>Role</th>
+<th>Phone Number</th>
+<th>What They Can Do</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Farmer</strong></td>
+<td><code>+919876543210</code></td>
+<td>Create crops, log actions, run simulations, submit yields, browse services, send messages</td>
+</tr>
+<tr>
+<td><strong>Service Provider</strong></td>
+<td><code>+919876543211</code></td>
+<td>View/accept/complete service requests, manage equipment, view reviews</td>
+</tr>
+<tr>
+<td><strong>Platform Admin</strong></td>
+<td><code>+919876543212</code></td>
+<td>User governance, dead-letter management, ML model oversight, abuse flags, audit logs, maintenance</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Demo Timers</strong>: JWT tokens expire after <strong>240 minutes (4 hours)</strong>. Auth rate limit is <strong>100 req/min</strong>. You will not experience any lockouts during the 1-hour evaluation.</p>
+</blockquote>
+<hr />
+<h2 id="14-how-to-start-the-application">1.4 How to Start the Application</h2>
+<h3 id="option-a-docker-recommended-for-evaluators">Option A: Docker (Recommended for Evaluators)</h3>
+<pre><code class="language-bash">git clone &lt;repo-url&gt; &amp;&amp; cd CultivaX
+cp .env.example .env
+docker compose up --build
+</code></pre>
+<ul>
+<li>Frontend: <code>http://localhost:3000</code></li>
+<li>Backend API: <code>http://localhost:8000</code></li>
+<li>Swagger Docs: <code>http://localhost:8000/docs</code></li>
+</ul>
+<h3 id="option-b-manual-setup-developer-machine">Option B: Manual Setup (Developer Machine)</h3>
+<pre><code class="language-bash"># Backend
+cd backend
+python3.11 -m venv venv &amp;&amp; source venv/bin/activate
+pip install -r requirements.txt
+alembic upgrade head
+python -m scripts.seed_demo_users
+uvicorn app.main:app --reload --port 8000
+
+# Frontend (separate terminal)
+cd frontend
+npm install &amp;&amp; npm run dev
+</code></pre>
+<hr />
+<h2 id="15-feature-map-all-35-modules">1.5 Feature Map — All 35+ Modules</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Module</th>
+<th>Role(s)</th>
+<th>API Prefix</th>
+<th>Frontend Page</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Authentication (Login / Register / OTP)</td>
+<td>All</td>
+<td><code>/auth</code></td>
+<td><code>/login</code>, <code>/register</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td>Farmer Dashboard</td>
+<td>Farmer</td>
+<td><code>/dashboard</code></td>
+<td><code>/dashboard</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td>Crop Instance CRUD</td>
+<td>Farmer</td>
+<td><code>/crops</code></td>
+<td><code>/crops</code>, <code>/crops/new</code></td>
+</tr>
+<tr>
+<td>4</td>
+<td>Action Logging (CTIS)</td>
+<td>Farmer</td>
+<td><code>/crops/{id}/actions</code></td>
+<td><code>/crops/[id]/log-action</code></td>
+</tr>
+<tr>
+<td>5</td>
+<td>CTIS Timeline &amp; History</td>
+<td>Farmer</td>
+<td><code>/crops/{id}/actions</code></td>
+<td><code>/crops/[id]/history</code></td>
+</tr>
+<tr>
+<td>6</td>
+<td>Replay Engine &amp; Snapshots</td>
+<td>Farmer</td>
+<td><code>/crops/{id}/replay/*</code></td>
+<td><code>/crops/[id]</code></td>
+</tr>
+<tr>
+<td>7</td>
+<td>What-If Simulation</td>
+<td>Farmer</td>
+<td><code>/crops/{id}/simulate</code></td>
+<td><code>/crops/[id]/simulate</code></td>
+</tr>
+<tr>
+<td>8</td>
+<td>Yield Submission</td>
+<td>Farmer</td>
+<td><code>/crops/{id}/yield</code></td>
+<td><code>/crops/[id]/yield</code></td>
+</tr>
+<tr>
+<td>9</td>
+<td>Weather &amp; Risk</td>
+<td>Farmer</td>
+<td><code>/weather</code></td>
+<td><code>/weather</code></td>
+</tr>
+<tr>
+<td>10</td>
+<td>Recommendations</td>
+<td>Farmer</td>
+<td><code>/crops/{id}/recommendations</code></td>
+<td><code>/crops/[id]</code></td>
+</tr>
+<tr>
+<td>11</td>
+<td>Alerts &amp; Notifications</td>
+<td>Farmer</td>
+<td><code>/alerts</code></td>
+<td><code>/alerts</code></td>
+</tr>
+<tr>
+<td>12</td>
+<td>Government Schemes</td>
+<td>Farmer</td>
+<td><code>/schemes</code></td>
+<td><code>/schemes</code></td>
+</tr>
+<tr>
+<td>13</td>
+<td>Service Marketplace</td>
+<td>Farmer</td>
+<td><code>/service-requests</code></td>
+<td><code>/services</code></td>
+</tr>
+<tr>
+<td>14</td>
+<td>Service Request Lifecycle</td>
+<td>Farmer/Provider</td>
+<td><code>/service-requests/{id}/*</code></td>
+<td><code>/services/my-requests</code></td>
+</tr>
+<tr>
+<td>15</td>
+<td>Service Reviews</td>
+<td>Farmer</td>
+<td><code>/reviews</code></td>
+<td><code>/services/review</code></td>
+</tr>
+<tr>
+<td>16</td>
+<td>In-App Messaging</td>
+<td>Farmer/Provider</td>
+<td><code>/messages</code></td>
+<td><code>/messages</code></td>
+</tr>
+<tr>
+<td>17</td>
+<td>Provider Dashboard</td>
+<td>Provider</td>
+<td><code>/providers</code></td>
+<td><code>/provider</code></td>
+</tr>
+<tr>
+<td>18</td>
+<td>Equipment Management</td>
+<td>Provider</td>
+<td><code>/providers/{id}/equipment</code></td>
+<td><code>/provider/equipment</code></td>
+</tr>
+<tr>
+<td>19</td>
+<td>Labor Management</td>
+<td>Provider</td>
+<td><code>/labor</code></td>
+<td><code>/labor</code></td>
+</tr>
+<tr>
+<td>20</td>
+<td>Provider Onboarding</td>
+<td>Provider</td>
+<td><code>/onboarding</code></td>
+<td><code>/provider/onboarding</code></td>
+</tr>
+<tr>
+<td>21</td>
+<td>Provider Reviews View</td>
+<td>Provider</td>
+<td><code>/reviews</code></td>
+<td><code>/provider/reviews</code></td>
+</tr>
+<tr>
+<td>22</td>
+<td>Admin Dashboard</td>
+<td>Admin</td>
+<td><code>/admin</code></td>
+<td><code>/admin</code></td>
+</tr>
+<tr>
+<td>23</td>
+<td>User Management</td>
+<td>Admin</td>
+<td><code>/admin/users</code></td>
+<td><code>/admin/users</code></td>
+</tr>
+<tr>
+<td>24</td>
+<td>Provider Governance</td>
+<td>Admin</td>
+<td><code>/admin/providers</code></td>
+<td><code>/admin/providers</code></td>
+</tr>
+<tr>
+<td>25</td>
+<td>Dead Letter Queue</td>
+<td>Admin</td>
+<td><code>/admin/dead-letters</code></td>
+<td><code>/admin/dead-letters</code></td>
+</tr>
+<tr>
+<td>26</td>
+<td>Audit Trail</td>
+<td>Admin</td>
+<td><code>/admin/audit</code></td>
+<td><code>/admin/audit</code></td>
+</tr>
+<tr>
+<td>27</td>
+<td>ML Model Management</td>
+<td>Admin</td>
+<td><code>/ml</code></td>
+<td><code>/admin/ml-models</code></td>
+</tr>
+<tr>
+<td>28</td>
+<td>Crop Rules Engine</td>
+<td>Admin</td>
+<td><code>/rules</code></td>
+<td><code>/admin/rules</code></td>
+</tr>
+<tr>
+<td>29</td>
+<td>Feature Flags</td>
+<td>Admin</td>
+<td><code>/features</code></td>
+<td><code>/admin/features</code></td>
+</tr>
+<tr>
+<td>30</td>
+<td>System Health</td>
+<td>Admin</td>
+<td><code>/admin/health</code></td>
+<td><code>/admin/health</code></td>
+</tr>
+<tr>
+<td>31</td>
+<td>Maintenance / Cron</td>
+<td>Admin</td>
+<td><code>/admin/maintenance</code></td>
+<td><code>/admin/maintenance</code></td>
+</tr>
+<tr>
+<td>32</td>
+<td>Security Events</td>
+<td>Admin</td>
+<td><code>/admin/security-events</code></td>
+<td><code>/admin/security</code></td>
+</tr>
+<tr>
+<td>33</td>
+<td>Analytics</td>
+<td>Admin</td>
+<td><code>/analytics</code></td>
+<td><code>/admin/analytics</code></td>
+</tr>
+<tr>
+<td>34</td>
+<td>Reports &amp; Disputes</td>
+<td>Admin</td>
+<td><code>/reports</code>, <code>/disputes</code></td>
+<td><code>/admin/reports</code>, <code>/disputes</code></td>
+</tr>
+<tr>
+<td>35</td>
+<td>Offline Sync</td>
+<td>Farmer</td>
+<td><code>/offline-sync</code></td>
+<td>(PWA Service Worker)</td>
+</tr>
+<tr>
+<td>36</td>
+<td>Consent Management</td>
+<td>All</td>
+<td><code>/consent</code></td>
+<td><code>/settings/consent</code></td>
+</tr>
+<tr>
+<td>37</td>
+<td>Account Settings</td>
+<td>All</td>
+<td><code>/account</code></td>
+<td><code>/settings/account</code></td>
+</tr>
+<tr>
+<td>38</td>
+<td>Land Parcels</td>
+<td>Farmer</td>
+<td><code>/land-parcels</code></td>
+<td><code>/land-parcels</code></td>
+</tr>
+<tr>
+<td>39</td>
+<td>Search</td>
+<td>All</td>
+<td><code>/search</code></td>
+<td>(Global search bar)</td>
+</tr>
+<tr>
+<td>40</td>
+<td>Translations (i18n)</td>
+<td>All</td>
+<td><code>/translations</code></td>
+<td>(Language picker)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="16-crop-state-machine-quick-reference">1.6 Crop State Machine (Quick Reference)</h2>
+<pre class="mermaid">
+stateDiagram-v2
+    [*] --> Created : POST /crops
+    Created --> Active : First action logged
+    Active --> Delayed : Stage offset > max_allowed_drift
+    Active --> AtRisk : Risk index > threshold
+    Active --> ReadyToHarvest : Final growth stage reached
+    Delayed --> Active : Corrective action logged
+    AtRisk --> Active : Risk mitigated
+    ReadyToHarvest --> Harvested : PUT /crops/{id}/harvest
+    Harvested --> Closed : PUT /crops/{id}/close
+    Closed --> Archived : PUT /crops/{id}/archive
+    Archived --> Closed : PUT /crops/{id}/unarchive
+    Active --> RecoveryRequired : Replay engine failure
+    RecoveryRequired --> Active : Admin clears recovery
+</pre>
+<hr />
+<h2 id="17-service-request-state-machine-quick-reference">1.7 Service Request State Machine (Quick Reference)</h2>
+<pre class="mermaid">
+stateDiagram-v2
+    [*] --> Pending : Farmer creates request
+    Pending --> Accepted : Provider accepts
+    Pending --> Declined : Provider declines
+    Pending --> Cancelled : Farmer cancels
+    Accepted --> InProgress : Provider starts work
+    Accepted --> Cancelled : Either party cancels
+    InProgress --> Completed : Provider completes
+    InProgress --> Failed : Provider marks failed
+    Completed --> Reviewed : Farmer submits review
+</pre>
+<hr />
+<h1 id="part-2-detailed-end-to-end-manual">PART 2 — DETAILED END-TO-END MANUAL</h1>
+<p>This section provides exhaustive, step-by-step instructions for every feature. Each feature includes: its purpose, the exact user actions, the expected API behavior, the fields involved, and an end-to-end workflow diagram.</p>
+<hr />
+<h2 id="21-authentication-system">2.1 Authentication System</h2>
+<h3 id="211-purpose">2.1.1 Purpose</h3>
+<p>CultivaX implements a multi-layered authentication system with phone-based login (India context), OTP verification, brute-force protection, session management, and HttpOnly cookie-based JWT delivery (XSS-proof).</p>
+<h3 id="212-end-to-end-authentication-flow">2.1.2 End-to-End Authentication Flow</h3>
+<pre class="mermaid">
+sequenceDiagram
+    participant U as User (Browser)
+    participant FE as Frontend
+    participant API as /api/v1/auth
+    participant DB as PostgreSQL
+    participant SMS as SMS Provider (Stub)
+
+    Note over U,SMS: === Password Login Flow ===
+    U->>FE: Enter phone + password
+    FE->>API: POST /auth/login {phone, password}
+    API->>DB: Query users WHERE phone = normalized
+    alt User not found
+        API-->>FE: 401 Invalid credentials
+    else Account locked
+        API-->>FE: 429 Retry-After: N seconds
+    else Wrong password
+        API->>DB: Increment failed_login_attempts
+        alt attempts >= 5
+            API->>DB: Set locked_until = now + 15min
+        end
+        API-->>FE: 401 Invalid credentials
+    else Correct password
+        API->>DB: Reset failed_attempts, set last_login
+        API->>DB: Create ActiveSession record
+        API->>DB: Publish UserLoggedIn event
+        API-->>FE: 200 + Set-Cookie (HttpOnly access + refresh)
+    end
+    FE-->>U: Redirect to /dashboard
+
+    Note over U,SMS: === OTP Login Flow ===
+    U->>FE: Enter phone number
+    FE->>API: POST /auth/send-otp {phone}
+    API->>DB: Check rate limit (max 5/hour)
+    API->>DB: Generate and store hashed OTP
+    API->>SMS: Send 6-digit code
+    API-->>FE: 200 {expires_in_seconds: 300}
+    Note right of API: In dev mode, OTP returned in response as debug_otp
+    U->>FE: Enter 6-digit OTP
+    FE->>API: POST /auth/verify-otp {phone, otp}
+    API->>DB: Verify OTP hash + expiry
+    API->>DB: Create session + set cookies
+    API-->>FE: 200 + Set-Cookie
+</pre>
+<h3 id="213-registration">2.1.3 Registration</h3>
+<p><strong>Endpoint</strong>: <code>POST /api/v1/auth/register</code></p>
+<p><strong>Required Fields</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Constraints</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>full_name</code></td>
+<td>string</td>
+<td>1–200 chars</td>
+<td><code>"Rajesh Kumar"</code></td>
+</tr>
+<tr>
+<td><code>phone</code></td>
+<td>string</td>
+<td>Indian format</td>
+<td><code>"+919876543210"</code></td>
+</tr>
+<tr>
+<td><code>password</code></td>
+<td>string</td>
+<td>min 8 chars</td>
+<td><code>"password123"</code></td>
+</tr>
+<tr>
+<td><code>role</code></td>
+<td>string</td>
+<td><code>farmer</code> or <code>provider</code> only</td>
+<td><code>"farmer"</code></td>
+</tr>
+<tr>
+<td><code>region</code></td>
+<td>string</td>
+<td>1–100 chars</td>
+<td><code>"Punjab"</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Optional Fields</strong>: <code>email</code>, <code>preferred_language</code> (default: <code>en</code>)</p>
+<p><strong>Security Rules</strong>:
+- Admin accounts <strong>cannot</strong> be self-registered (blocked at API level)
+- Phone numbers are normalized to E.164 format before storage
+- Duplicate phone numbers return <code>409 Conflict</code>
+- Passwords are hashed with <strong>Argon2id</strong> (not bcrypt)</p>
+<p><strong>Step-by-step (Frontend)</strong>:
+1. Navigate to <code>http://localhost:3000/register</code>
+2. Fill in Full Name, Phone Number, Password, select Role (Farmer/Provider), enter Region
+3. Click <strong>Register</strong>
+4. On success: you are automatically logged in and redirected to your dashboard</p>
+<h3 id="214-password-login">2.1.4 Password Login</h3>
+<p><strong>Endpoint</strong>: <code>POST /api/v1/auth/login</code></p>
+<p><strong>Request Body</strong>: <code>{ "phone": "+919876543210", "password": "password123" }</code></p>
+<p><strong>Step-by-step (Frontend)</strong>:
+1. Navigate to <code>http://localhost:3000/login</code>
+2. Enter phone: <code>+919876543210</code>, password: <code>password123</code>
+3. Click <strong>Login</strong>
+4. On success: JWT access token + refresh token are set as HttpOnly cookies
+5. You are redirected to <code>/dashboard</code></p>
+<p><strong>Error Scenarios</strong>:
+| Scenario | HTTP Code | Message |
+|----------|-----------|---------|
+| User not found | 401 | "Invalid phone number or password" |
+| Wrong password | 401 | "Invalid phone number or password" |
+| 5+ failed attempts | 429 | "Account locked... Try again in N seconds" |
+| Account deactivated | 403 | "Account is deactivated. Contact admin." |</p>
+<h3 id="215-otp-login">2.1.5 OTP Login</h3>
+<p><strong>Step 1</strong> — Request OTP: <code>POST /api/v1/auth/send-otp</code> with <code>{ "phone": "+919876543210" }</code>
+- Response: <code>{ "message": "OTP sent successfully", "expires_in_seconds": 300, "debug_otp": "123456" }</code>
+- In development mode, the <code>debug_otp</code> field contains the actual OTP for testing</p>
+<p><strong>Step 2</strong> — Verify OTP: <code>POST /api/v1/auth/verify-otp</code> with <code>{ "phone": "+919876543210", "otp": "123456" }</code>
+- On success: JWT cookies are set, user is logged in</p>
+<p><strong>Rate Limits</strong>: Max 5 OTP requests per phone per hour</p>
+<h3 id="216-token-refresh">2.1.6 Token Refresh</h3>
+<p><strong>Endpoint</strong>: <code>POST /api/v1/auth/refresh</code>
+- Reads the refresh token from the HttpOnly cookie
+- Issues a new access + refresh token pair (token rotation)
+- The old refresh token session is revoked
+- If a revoked token is reused, <strong>all sessions for that user are revoked</strong> (replay attack protection)</p>
+<h3 id="217-logout">2.1.7 Logout</h3>
+<p><strong>Endpoint</strong>: <code>POST /api/v1/auth/logout</code>
+- Revokes the current session
+- Clears HttpOnly cookies
+- Publishes a <code>UserLoggedOut</code> event</p>
+<h3 id="218-session-management">2.1.8 Session Management</h3>
+<p><strong>View sessions</strong>: <code>GET /api/v1/auth/sessions</code> — returns all active sessions with device fingerprint, IP, and user agent</p>
+<p><strong>Revoke all others</strong>: <code>POST /api/v1/auth/sessions/revoke-all</code> — revokes every session except the current one</p>
+<hr />
+<h2 id="22-crop-instance-lifecycle-ctis-core">2.2 Crop Instance Lifecycle (CTIS Core)</h2>
+<h3 id="221-purpose">2.2.1 Purpose</h3>
+<p>The CTIS is an event-sourced crop lifecycle manager. Every crop goes through a state machine (Created → Active → Harvested → Closed → Archived). All actions are logged as an append-only timeline, replayed via the ReplayEngine to compute stress scores, risk indices, and growth stages.</p>
+<h3 id="222-end-to-end-crop-lifecycle-flow">2.2.2 End-to-End Crop Lifecycle Flow</h3>
+<pre class="mermaid">
+sequenceDiagram
+    participant F as Farmer
+    participant FE as Frontend
+    participant API as Backend API
+    participant CS as CropService
+    participant AS as ActionService
+    participant ED as EventDispatcher
+    participant RE as ReplayEngine
+    participant SE as StressEngine
+    participant DB as PostgreSQL
+
+    Note over F,DB: === Phase 1: Create Crop ===
+    F->>FE: Click "Add New Crop"
+    FE->>API: POST /api/v1/crops
+    API->>CS: create_crop(user, data)
+    CS->>DB: INSERT crop_instances (state=Created)
+    CS->>CS: assign_seasonal_window(sowing_date, region)
+    CS->>DB: Publish CropCreated event
+    API-->>FE: 201 {id, state: "Created", stress_score: 0.0}
+
+    Note over F,DB: === Phase 2: Log Actions ===
+    F->>FE: Click "Log Action" → irrigation
+    FE->>API: POST /api/v1/crops/{id}/actions
+    API->>AS: log_action(crop_id, farmer_id, data)
+    AS->>DB: Validate chronological invariant
+    AS->>DB: INSERT action_logs
+    AS->>DB: State transition Created → Active
+    AS->>ED: Publish ActionLogged event
+    ED->>RE: Trigger replay for partition
+    RE->>SE: integrate_stress(signals)
+    RE->>DB: UPDATE crop_instances SET stress_score, risk_index
+    RE->>DB: INSERT snapshots (checkpoint)
+    API-->>FE: 201 {action_id, effective_date, applied_in_replay}
+
+    Note over F,DB: === Phase 3: Harvest & Close ===
+    F->>FE: Click "Mark Harvested"
+    FE->>API: PUT /api/v1/crops/{id}/harvest
+    API->>CS: change_state → Harvested
+    F->>FE: Submit yield data
+    FE->>API: POST /api/v1/crops/{id}/yield
+    F->>FE: Click "Close Crop"
+    FE->>API: PUT /api/v1/crops/{id}/close
+    F->>FE: Click "Archive"
+    FE->>API: PUT /api/v1/crops/{id}/archive
+</pre>
+<h3 id="223-creating-a-crop-instance">2.2.3 Creating a Crop Instance</h3>
+<p><strong>Endpoint</strong>: <code>POST /api/v1/crops/</code></p>
+<p><strong>Required Fields</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Constraints</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>crop_type</code></td>
+<td>string</td>
+<td>1–100 chars</td>
+<td><code>"wheat"</code></td>
+</tr>
+<tr>
+<td><code>sowing_date</code></td>
+<td>date</td>
+<td>ISO 8601</td>
+<td><code>"2026-03-01"</code></td>
+</tr>
+<tr>
+<td><code>region</code></td>
+<td>string</td>
+<td>1–100 chars</td>
+<td><code>"Punjab"</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Optional Fields</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>variety</code></td>
+<td>string</td>
+<td><code>"HD-3226"</code></td>
+</tr>
+<tr>
+<td><code>land_area</code></td>
+<td>float (&gt; 0)</td>
+<td><code>5.5</code> (acres)</td>
+</tr>
+<tr>
+<td><code>sub_region</code></td>
+<td>string</td>
+<td><code>"Ludhiana"</code></td>
+</tr>
+<tr>
+<td><code>land_parcel_id</code></td>
+<td>UUID</td>
+<td>Link to a previously created land parcel</td>
+</tr>
+<tr>
+<td><code>rule_template_id</code></td>
+<td>UUID</td>
+<td>Use a specific crop rule template</td>
+</tr>
+<tr>
+<td><code>metadata_extra</code></td>
+<td>JSON object</td>
+<td><code>{"soil_type": "loamy"}</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Step-by-step (Frontend)</strong>:
+1. Login as Farmer (<code>+919876543210</code>)
+2. Navigate to <code>/crops</code> → <strong>"My Crops"</strong> page
+3. Click <strong>"Add New Crop"</strong> button (redirects to <code>/crops/new</code>)
+4. Fill in:
+   - Crop Type: <code>wheat</code>
+   - Sowing Date: pick a date <strong>30+ days in the past</strong> (so you can log actions)
+   - Region: <code>Punjab</code>
+   - (Optional) Variety, Land Area, Land Parcel
+5. Click <strong>"Create Crop"</strong>
+6. You are redirected to the crop detail page at <code>/crops/[id]</code></p>
+<p><strong>Response Fields</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>UUID of the created crop</td>
+</tr>
+<tr>
+<td><code>state</code></td>
+<td><code>"Created"</code> (initial state)</td>
+</tr>
+<tr>
+<td><code>stage</code></td>
+<td><code>null</code> (determined after first action)</td>
+</tr>
+<tr>
+<td><code>current_day_number</code></td>
+<td><code>0</code></td>
+</tr>
+<tr>
+<td><code>stress_score</code></td>
+<td><code>0.0</code></td>
+</tr>
+<tr>
+<td><code>risk_index</code></td>
+<td><code>0.0</code></td>
+</tr>
+<tr>
+<td><code>seasonal_window_category</code></td>
+<td><code>"Early"</code>, <code>"Optimal"</code>, or <code>"Late"</code> — computed from sowing date and region</td>
+</tr>
+<tr>
+<td><code>stage_offset_days</code></td>
+<td><code>0</code> (no drift yet)</td>
+</tr>
+<tr>
+<td><code>max_allowed_drift</code></td>
+<td><code>7</code> (default: 7-day tolerance)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="224-listing-crops">2.2.4 Listing Crops</h3>
+<p><strong>Endpoint</strong>: <code>GET /api/v1/crops/?page=1&amp;per_page=20</code></p>
+<p><strong>Query Filters</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>state</code></td>
+<td>Filter by state</td>
+<td><code>state=Active</code></td>
+</tr>
+<tr>
+<td><code>crop_type</code></td>
+<td>Filter by type</td>
+<td><code>crop_type=wheat</code></td>
+</tr>
+<tr>
+<td><code>region</code></td>
+<td>Filter by region</td>
+<td><code>region=Punjab</code></td>
+</tr>
+<tr>
+<td><code>include_archived</code></td>
+<td>Show archived crops</td>
+<td><code>include_archived=true</code></td>
+</tr>
+<tr>
+<td><code>search</code></td>
+<td>Full-text search</td>
+<td><code>search=HD-3226</code></td>
+</tr>
+<tr>
+<td><code>seasonal_window_category</code></td>
+<td>Filter by seasonal classification</td>
+<td><code>seasonal_window_category=Optimal</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="225-updating-a-crop">2.2.5 Updating a Crop</h3>
+<p><strong>Endpoint</strong>: <code>PUT /api/v1/crops/{crop_id}</code></p>
+<p><strong>Updatable Fields</strong>: <code>variety</code>, <code>land_area</code>, <code>land_parcel_id</code>, <code>sub_region</code>, <code>metadata_extra</code></p>
+<blockquote>
+<p><strong>Note</strong>: <code>crop_type</code>, <code>sowing_date</code>, <code>state</code>, <code>stress_score</code>, <code>risk_index</code> are <strong>NOT</strong> directly updatable. State changes go through the state machine. Sowing date has its own endpoint. Stress/risk are computed by the Replay Engine.</p>
+</blockquote>
+<h3 id="226-modifying-sowing-date">2.2.6 Modifying Sowing Date</h3>
+<p><strong>Endpoint</strong>: <code>PUT /api/v1/crops/{crop_id}/sowing-date</code></p>
+<p><strong>Body</strong>: <code>{ "new_sowing_date": "2026-02-15" }</code></p>
+<p><strong>What happens</strong>: A full replay is triggered from scratch — the ReplayEngine recalculates all metrics using the new sowing date as the baseline.</p>
+<h3 id="227-crop-state-transitions">2.2.7 Crop State Transitions</h3>
+<table>
+<thead>
+<tr>
+<th>Action</th>
+<th>Endpoint</th>
+<th>From State(s)</th>
+<th>To State</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>First action logged</td>
+<td>(automatic)</td>
+<td>Created</td>
+<td>Active</td>
+</tr>
+<tr>
+<td>Mark harvested</td>
+<td><code>PUT /crops/{id}/harvest</code></td>
+<td>Active, ReadyToHarvest</td>
+<td>Harvested</td>
+</tr>
+<tr>
+<td>Close crop</td>
+<td><code>PUT /crops/{id}/close</code></td>
+<td>Harvested</td>
+<td>Closed</td>
+</tr>
+<tr>
+<td>Archive</td>
+<td><code>PUT /crops/{id}/archive</code></td>
+<td>Closed</td>
+<td>Archived</td>
+</tr>
+<tr>
+<td>Unarchive</td>
+<td><code>PUT /crops/{id}/unarchive</code></td>
+<td>Archived</td>
+<td>Closed</td>
+</tr>
+<tr>
+<td>Admin clear recovery</td>
+<td><code>PATCH /crops/{id}/_admin/recovery/clear</code></td>
+<td>RecoveryRequired</td>
+<td>Active</td>
+</tr>
+<tr>
+<td>Admin retry replay</td>
+<td><code>PATCH /crops/{id}/_admin/recovery/retry</code></td>
+<td>Any</td>
+<td>Active</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="23-action-logging-chronological-invariant">2.3 Action Logging &amp; Chronological Invariant</h2>
+<h3 id="231-purpose">2.3.1 Purpose</h3>
+<p>Every farmer action (irrigation, fertilizer, observation, pesticide, harvesting) is logged with a strict chronological invariant. Actions form the immutable timeline that the CTIS Replay Engine processes.</p>
+<h3 id="232-end-to-end-action-logging-flow">2.3.2 End-to-End Action Logging Flow</h3>
+<pre class="mermaid">
+sequenceDiagram
+    participant F as Farmer
+    participant FE as Frontend
+    participant API as POST /crops/{id}/actions
+    participant AS as ActionService
+    participant DB as PostgreSQL
+    participant ED as EventDispatcher
+
+    F->>FE: Open crop → Click "Log Action"
+    FE->>FE: Show form (action_type, effective_date, notes)
+    F->>FE: Fill form → Submit
+    FE->>API: POST /api/v1/crops/{crop_id}/actions/
+    API->>AS: log_action(crop_id, farmer_id, data)
+    
+    Note over AS: Rule 1: effective_date >= sowing_date
+    Note over AS: Rule 2: effective_date >= last_action.effective_date
+    Note over AS: Rule 3: idempotency_key must be unique
+
+    alt Validation fails
+        AS-->>API: ValueError
+        API-->>FE: 422 "Action date cannot be before..."
+    else Duplicate idempotency_key
+        AS-->>API: ValueError (idempotency)
+        API-->>FE: 409 "Action with idempotency key already exists"
+    else Crop in blocked state
+        AS-->>API: ValueError
+        API-->>FE: 422 "Cannot log actions on crop in X state"
+    else Valid action
+        AS->>DB: INSERT action_logs
+        AS->>DB: Update crop state (Created → Active if first)
+        AS->>ED: Publish ActionLogged event (with event_hash)
+        AS-->>API: ActionLog object
+        API-->>FE: 201 Created
+    end
+</pre>
+<h3 id="233-logging-an-action">2.3.3 Logging an Action</h3>
+<p><strong>Endpoint</strong>: <code>POST /api/v1/crops/{crop_id}/actions/</code></p>
+<p><strong>Required Fields</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Constraints</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>action_type</code></td>
+<td>string</td>
+<td>1–100 chars</td>
+<td><code>"irrigation"</code>, <code>"fertilizer"</code>, <code>"observation"</code>, <code>"pesticide"</code>, <code>"harvesting"</code></td>
+</tr>
+<tr>
+<td><code>effective_date</code></td>
+<td>date</td>
+<td>Must be &gt;= sowing_date AND &gt;= last action date</td>
+<td><code>"2026-03-15"</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Optional Fields</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Default</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>category</code></td>
+<td>string</td>
+<td><code>"Operational"</code></td>
+<td><code>"Timeline-Critical"</code> or <code>"Corrective"</code></td>
+</tr>
+<tr>
+<td><code>metadata_json</code></td>
+<td>JSON</td>
+<td><code>{}</code></td>
+<td><code>{"weather_risk": 0.3, "amount_liters": 500}</code></td>
+</tr>
+<tr>
+<td><code>notes</code></td>
+<td>string</td>
+<td>null</td>
+<td><code>"Applied urea 50kg/acre"</code></td>
+</tr>
+<tr>
+<td><code>local_seq_no</code></td>
+<td>int</td>
+<td>null</td>
+<td><code>1</code> (for offline ordering)</td>
+</tr>
+<tr>
+<td><code>device_timestamp</code></td>
+<td>datetime</td>
+<td>null</td>
+<td>Offline device clock</td>
+</tr>
+<tr>
+<td><code>idempotency_key</code></td>
+<td>string</td>
+<td>null</td>
+<td><code>"dedup-abc123"</code> (prevents duplicate submission)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Step-by-step (Frontend)</strong>:
+1. Navigate to <code>/crops/[id]</code> (your crop detail page)
+2. Click <strong>"Log Action"</strong> (redirects to <code>/crops/[id]/log-action</code>)
+3. Select Action Type from dropdown: <code>irrigation</code>
+4. Pick Effective Date: must be on or after sowing date and on or after any previously logged action
+5. (Optional) Add Notes: <code>"Applied 500 liters via drip system"</code>
+6. (Optional) Add metadata as JSON
+7. Click <strong>"Submit Action"</strong>
+8. On success: redirected back to crop detail with updated timeline</p>
+<p><strong>Response Format</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>UUID of the action</td>
+</tr>
+<tr>
+<td><code>crop_instance_id</code></td>
+<td>UUID of the parent crop</td>
+</tr>
+<tr>
+<td><code>action_type</code></td>
+<td>The type you submitted</td>
+</tr>
+<tr>
+<td><code>effective_date</code></td>
+<td>The date confirmed</td>
+</tr>
+<tr>
+<td><code>category</code></td>
+<td>Operational/Timeline-Critical/Corrective</td>
+</tr>
+<tr>
+<td><code>is_override</code></td>
+<td>Whether this overrides a recommended action</td>
+</tr>
+<tr>
+<td><code>applied_in_replay</code></td>
+<td>Status of replay processing</td>
+</tr>
+<tr>
+<td><code>server_timestamp</code></td>
+<td>When the server received the action</td>
+</tr>
+</tbody>
+</table>
+<h3 id="234-listing-actions">2.3.4 Listing Actions</h3>
+<p><strong>Endpoint</strong>: <code>GET /api/v1/crops/{crop_id}/actions/?page=1&amp;page_size=20&amp;sort=-effective_date</code></p>
+<p><strong>Sorting options</strong>: <code>effective_date</code> (ascending) or <code>-effective_date</code> (descending, default)</p>
+<hr />
+<h2 id="24-replay-engine-snapshots-stress-scoring">2.4 Replay Engine, Snapshots, &amp; Stress Scoring</h2>
+<h3 id="241-purpose">2.4.1 Purpose</h3>
+<p>The Replay Engine is the computational backbone of CTIS. When an action is logged, it replays the entire action history through the Stress Engine to deterministically compute stress scores, risk indices, growth stages, and drift metrics. Snapshots checkpoint the state for fast recovery.</p>
+<h3 id="242-how-replay-works-internal-flow">2.4.2 How Replay Works (Internal Flow)</h3>
+<pre class="mermaid">
+flowchart TD
+    A[ActionLogged Event Published] --> B[EventDispatcher Picks Up]
+    B --> C{Event Partition Key}
+    C -->|crop_id:abc| D[ReplayEngine.replay_crop_instance]
+    D --> E[Load all actions ORDER BY effective_date ASC]
+    E --> F[Initialize state dict: stress=0, risk=0, day=0]
+    F --> G[For each action in sequence]
+    G --> H[StressEngine.apply: state, action]
+    H --> I[Update stress_score, risk_index, stage]
+    I --> J{More actions?}
+    J -->|Yes| G
+    J -->|No| K[Write final state to crop_instances]
+    K --> L[Create Snapshot checkpoint]
+    L --> M[Done - EventLog status = Completed]
+</pre>
+<h3 id="243-viewing-replay-status">2.4.3 Viewing Replay Status</h3>
+<p><strong>Endpoint</strong>: <code>GET /api/v1/crops/{crop_id}/replay/status</code></p>
+<p><strong>Response</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>status</code></td>
+<td><code>"idle"</code> or <code>"blocked"</code> (RecoveryRequired)</td>
+</tr>
+<tr>
+<td><code>last_replay_at</code></td>
+<td>Timestamp of last successful replay</td>
+</tr>
+<tr>
+<td><code>actions_replayed_since_last_snapshot</code></td>
+<td>How many new actions since last checkpoint</td>
+</tr>
+<tr>
+<td><code>recovery_required</code></td>
+<td><code>true</code> if crop is in RecoveryRequired state</td>
+</tr>
+<tr>
+<td><code>recovery_reason</code></td>
+<td>Error message from Failed replay</td>
+</tr>
+<tr>
+<td><code>snapshot_count</code></td>
+<td>Total snapshots for this crop</td>
+</tr>
+<tr>
+<td><code>latest_snapshot_id</code></td>
+<td>UUID of the most recent snapshot</td>
+</tr>
+</tbody>
+</table>
+<h3 id="244-viewing-replay-history">2.4.4 Viewing Replay History</h3>
+<p><strong>Endpoint</strong>: <code>GET /api/v1/crops/{crop_id}/replay/history?limit=50</code></p>
+<p>Returns all <code>ReplayTriggered</code>, <code>ReplayFailed</code>, and <code>RecoveryCleared</code> events for the crop.</p>
+<h3 id="245-viewing-snapshots">2.4.5 Viewing Snapshots</h3>
+<p><strong>List</strong>: <code>GET /api/v1/crops/{crop_id}/snapshots?page=1&amp;page_size=20</code></p>
+<p><strong>Detail</strong>: <code>GET /api/v1/crops/{crop_id}/snapshots/{snapshot_id}</code></p>
+<p>Each snapshot contains: <code>stress_score</code>, <code>risk_index</code>, <code>stage</code>, <code>chain_hash</code>, <code>action_index</code>.</p>
+<hr />
+<h2 id="25-what-if-simulation-engine">2.5 What-If Simulation Engine</h2>
+<h3 id="251-purpose">2.5.1 Purpose</h3>
+<p>The What-If engine lets farmers test hypothetical future actions without modifying live crop data. It replays the current state plus hypothetical actions in an isolated context.</p>
+<h3 id="252-end-to-end-simulation-flow">2.5.2 End-to-End Simulation Flow</h3>
+<pre class="mermaid">
+sequenceDiagram
+    participant F as Farmer
+    participant FE as Frontend
+    participant API as POST /crops/{id}/simulate
+    participant WIE as WhatIfEngine
+    participant DB as PostgreSQL (read-only)
+
+    F->>FE: Navigate to /crops/[id]/simulate
+    F->>FE: Add hypothetical actions
+    FE->>API: POST /api/v1/crops/{crop_id}/simulate
+    API->>WIE: simulate(crop_id, hypothetical_actions)
+    WIE->>DB: Load current crop state (read-only)
+    WIE->>DB: Load existing action history
+    WIE->>WIE: Clone state into isolated context
+    WIE->>WIE: Replay existing + hypothetical actions
+    WIE-->>API: SimulationResponse
+    API-->>FE: 200 {projected state, stress_score, risk_index}
+    Note over FE: Display projected vs actual comparison
+</pre>
+<p><strong>Endpoint</strong>: <code>POST /api/v1/crops/{crop_id}/simulate</code></p>
+<p><strong>Request Body</strong>:</p>
+<pre><code class="language-json">{
+  &quot;hypothetical_actions&quot;: [
+    {
+      &quot;action_type&quot;: &quot;irrigation&quot;,
+      &quot;effective_date&quot;: &quot;2026-04-20&quot;,
+      &quot;category&quot;: &quot;Operational&quot;
+    },
+    {
+      &quot;action_type&quot;: &quot;fertilizer&quot;,
+      &quot;effective_date&quot;: &quot;2026-04-25&quot;,
+      &quot;category&quot;: &quot;Operational&quot;
+    }
+  ]
+}
+</code></pre>
+<p><strong>Step-by-step (Frontend)</strong>:
+1. Navigate to <code>/crops/[id]/simulate</code>
+2. Click <strong>"Add Hypothetical Action"</strong> — add 1 or more future actions
+3. Click <strong>"Run Simulation"</strong>
+4. The engine will project the crop's stress_score, risk_index, and growth stage after these actions
+5. No real data is modified</p>
+<p><strong>Constraints</strong>:
+- Only the crop owner can simulate
+- Cannot simulate a Closed or Archived crop (returns <code>409 Conflict</code>)</p>
+<hr />
+<h2 id="26-yield-submission-biological-cap">2.6 Yield Submission &amp; Biological Cap</h2>
+<h3 id="261-purpose">2.6.1 Purpose</h3>
+<p>After harvest, farmers submit their actual yield. The system computes a biological cap and yield verification score using ML heuristics.</p>
+<p><strong>Endpoint</strong>: <code>POST /api/v1/crops/{crop_id}/yield</code></p>
+<p><strong>Request Body</strong>:</p>
+<pre><code class="language-json">{
+  &quot;reported_yield&quot;: 45.5,
+  &quot;yield_unit&quot;: &quot;kg/acre&quot;,
+  &quot;harvest_date&quot;: &quot;2026-04-10&quot;
+}
+</code></pre>
+<p><strong>Response Fields</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>reported_yield</code></td>
+<td>What the farmer reported</td>
+</tr>
+<tr>
+<td><code>ml_yield_value</code></td>
+<td>ML-estimated yield for comparison</td>
+</tr>
+<tr>
+<td><code>biological_cap</code></td>
+<td>Maximum biologically plausible yield</td>
+</tr>
+<tr>
+<td><code>bio_cap_applied</code></td>
+<td>Whether the cap was enforced</td>
+</tr>
+<tr>
+<td><code>yield_verification_score</code></td>
+<td>0.0–1.0 confidence score</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Step-by-step</strong>:
+1. Navigate to <code>/crops/[id]/yield</code>
+2. Enter reported yield (e.g., <code>45.5 kg/acre</code>)
+3. Optionally set harvest date
+4. Click <strong>"Submit Yield"</strong>
+5. View the verification score and comparison with ML estimate</p>
+<hr />
+<h2 id="27-service-marketplace-soe">2.7 Service Marketplace (SOE)</h2>
+<h3 id="271-purpose">2.7.1 Purpose</h3>
+<p>The Service Orchestration Engine connects farmers with service providers for equipment rental, labor hire, and agricultural services.</p>
+<h3 id="272-full-service-request-lifecycle">2.7.2 Full Service Request Lifecycle</h3>
+<pre class="mermaid">
+sequenceDiagram
+    participant F as Farmer
+    participant API as API
+    participant P as Service Provider
+    participant DB as PostgreSQL
+
+    Note over F,DB: === Phase 1: Farmer Creates Request ===
+    F->>API: POST /service-requests {service_type, provider_id, needed_date}
+    API->>DB: INSERT service_requests (status=Pending)
+    API-->>F: 201 {request_id, status: Pending}
+
+    Note over F,DB: === Phase 2: Provider Accepts ===
+    P->>API: PUT /service-requests/{id}/accept
+    API->>DB: UPDATE status = Accepted
+    API-->>P: {status: accepted}
+
+    Note over F,DB: === Phase 3: Provider Starts Work ===
+    P->>API: PUT /service-requests/{id}/start
+    API->>DB: UPDATE status = InProgress
+    API-->>P: {status: in_progress}
+
+    Note over F,DB: === Phase 4: Provider Completes ===
+    P->>API: PUT /service-requests/{id}/complete
+    API->>DB: UPDATE status = Completed
+    API-->>P: {status: completed}
+
+    Note over F,DB: === Phase 5: Farmer Reviews ===
+    F->>API: POST /service-requests/{id}/review {rating, comment}
+    API->>DB: INSERT service_reviews
+    API-->>F: 201 {review_id}
+</pre>
+<h3 id="273-creating-a-service-request-farmer">2.7.3 Creating a Service Request (Farmer)</h3>
+<p><strong>Endpoint</strong>: <code>POST /api/v1/service-requests/</code>
+<strong>Role</strong>: Farmer only</p>
+<p><strong>Step-by-step</strong>:
+1. Login as Farmer
+2. Navigate to <code>/services</code> → <strong>"Service Marketplace"</strong>
+3. Browse available providers (GET <code>/api/v1/providers</code>)
+4. Click on a provider to view their profile, equipment, ratings
+5. Click <strong>"Request Service"</strong> (redirects to <code>/services/request</code>)
+6. Fill in: service type, preferred date, description
+7. Submit → status becomes <code>Pending</code>
+8. View your requests at <code>/services/my-requests</code></p>
+<h3 id="274-accepting-declining-a-request-provider">2.7.4 Accepting / Declining a Request (Provider)</h3>
+<p><strong>Accept</strong>: <code>PUT /api/v1/service-requests/{id}/accept</code> — moves to <code>Accepted</code>
+<strong>Decline</strong>: <code>PUT /api/v1/service-requests/{id}/decline</code> — moves to <code>Declined</code></p>
+<p><strong>Step-by-step</strong>:
+1. Login as Provider (<code>+919876543211</code>)
+2. Navigate to <code>/provider</code> → <strong>"Provider Dashboard"</strong>
+3. View incoming requests
+4. Click <strong>"Accept"</strong> or <strong>"Decline"</strong></p>
+<h3 id="275-starting-work-provider">2.7.5 Starting Work (Provider)</h3>
+<p><strong>Endpoint</strong>: <code>PUT /api/v1/service-requests/{id}/start</code></p>
+<p>Moves the request from <code>Accepted</code> to <code>InProgress</code>.</p>
+<h3 id="276-completing-work-provider">2.7.6 Completing Work (Provider)</h3>
+<p><strong>Endpoint</strong>: <code>PUT /api/v1/service-requests/{id}/complete</code></p>
+<p>Moves from <code>InProgress</code> to <code>Completed</code>.</p>
+<h3 id="277-failing-a-request-provider">2.7.7 Failing a Request (Provider)</h3>
+<p><strong>Endpoint</strong>: <code>PUT /api/v1/service-requests/{id}/fail</code></p>
+<p>Marks the request as <code>Failed</code> (equipment broke down, weather prevented work, etc.).</p>
+<h3 id="278-cancelling-a-request">2.7.8 Cancelling a Request</h3>
+<p><strong>Endpoint</strong>: <code>PUT /api/v1/service-requests/{id}/cancel</code></p>
+<p>Both farmers and providers can cancel requests in <code>Pending</code> or <code>Accepted</code> state. Admins can cancel any request.</p>
+<h3 id="279-reviewing-a-completed-service-farmer">2.7.9 Reviewing a Completed Service (Farmer)</h3>
+<p><strong>Endpoint</strong>: <code>POST /api/v1/service-requests/{id}/review</code></p>
+<p><strong>Body</strong>: <code>{ "rating": 4, "comment": "Good service, arrived on time" }</code></p>
+<p><strong>Step-by-step</strong>:
+1. Login as Farmer
+2. Go to <code>/services/my-requests</code>
+3. Find a completed request
+4. Click <strong>"Write Review"</strong>
+5. Give a rating (1-5 stars) and optional comment
+6. Submit</p>
+<hr />
+<h2 id="28-provider-equipment-labor-management">2.8 Provider Equipment &amp; Labor Management</h2>
+<h3 id="281-equipment-management">2.8.1 Equipment Management</h3>
+<p><strong>Endpoints</strong> (Provider only):
+- <code>POST /api/v1/providers/{provider_id}/equipment/</code> — Add equipment
+- <code>GET /api/v1/providers/{provider_id}/equipment/</code> — List equipment
+- <code>PATCH /api/v1/providers/{provider_id}/equipment/{id}</code> — Update
+- <code>PATCH /api/v1/providers/{provider_id}/equipment/{id}/availability</code> — Toggle availability
+- <code>DELETE /api/v1/providers/{provider_id}/equipment/{id}</code> — Remove</p>
+<p><strong>Step-by-step</strong>:
+1. Login as Provider
+2. Navigate to <code>/provider/equipment</code>
+3. Click <strong>"Add Equipment"</strong>
+4. Fill in: name, type, daily rate, description
+5. Use the availability toggle to mark equipment as available/unavailable</p>
+<h3 id="282-labor-management">2.8.2 Labor Management</h3>
+<p><strong>Endpoints</strong>:
+- <code>POST /api/v1/labor/</code> — Add labor listing
+- <code>GET /api/v1/labor/</code> — List
+- <code>PUT /api/v1/labor/{id}</code> — Update
+- <code>PATCH /api/v1/labor/{id}/availability</code> — Toggle
+- <code>DELETE /api/v1/labor/{id}</code> — Remove</p>
+<hr />
+<h2 id="29-in-app-messaging-system">2.9 In-App Messaging System</h2>
+<p><strong>Endpoints</strong>:
+- <code>GET /api/v1/messages/</code> — List conversations
+- <code>POST /api/v1/messages/</code> — Send a message
+- Various conversation management endpoints</p>
+<p><strong>Step-by-step</strong>:
+1. Navigate to <code>/messages</code>
+2. Select a existing conversation or start a new one
+3. Type message and send
+4. Messages are persisted with <code>is_read</code> tracking and <code>read_at</code> timestamps
+5. Supports message types: <code>text</code>, <code>system</code>, <code>contact_share</code></p>
+<hr />
+<h2 id="210-weather-risk-assessment">2.10 Weather &amp; Risk Assessment</h2>
+<p><strong>Endpoints</strong>:
+- <code>GET /api/v1/weather/?region=Punjab</code> — Get weather risk for region
+- <code>GET /api/v1/weather/risk?crop_id={id}</code> — Get crop-specific weather risk</p>
+<p><strong>Step-by-step</strong>:
+1. Navigate to <code>/weather</code>
+2. View weather conditions and risk levels for your region
+3. Weather data integrates with the StressEngine to affect crop risk calculations</p>
+<hr />
+<h2 id="211-government-schemes">2.11 Government Schemes</h2>
+<p><strong>Endpoints</strong>:
+- <code>GET /api/v1/schemes/</code> — List available schemes
+- <code>GET /api/v1/schemes/{id}</code> — Scheme detail
+- <code>POST /api/v1/schemes/{id}/redirect</code> — Track click-through to official portal</p>
+<p><strong>Step-by-step</strong>:
+1. Login as Farmer
+2. Navigate to <code>/schemes</code>
+3. Browse available government schemes relevant to your crop/region
+4. Click on a scheme to view eligibility criteria and benefits
+5. Click <strong>"Apply on Official Portal"</strong> — redirects to the government site, and the click-through is tracked</p>
+<hr />
+<h2 id="212-alerts-notifications">2.12 Alerts &amp; Notifications</h2>
+<p><strong>Endpoints</strong>:
+- <code>GET /api/v1/alerts/</code> — List all alerts for current user
+- <code>PUT /api/v1/alerts/{id}/acknowledge</code> — Mark alert as acknowledged
+- <code>POST /api/v1/alerts/acknowledge-bulk</code> — Bulk acknowledge</p>
+<p><strong>Alert Types</strong>: <code>WeatherWarning</code>, <code>StressAlert</code>, <code>RiskThresholdBreached</code>, <code>GovernanceAction</code>, <code>SystemNotification</code></p>
+<p><strong>Severity Levels</strong>: <code>info</code>, <code>warning</code>, <code>critical</code></p>
+<p><strong>Step-by-step</strong>:
+1. Navigate to <code>/alerts</code>
+2. View all alerts sorted by urgency
+3. Click <strong>"Acknowledge"</strong> to mark as read
+4. Use <strong>"Acknowledge All"</strong> for bulk operation</p>
+<hr />
+<h2 id="213-offline-sync-pwa">2.13 Offline Sync (PWA)</h2>
+<h3 id="2131-purpose">2.13.1 Purpose</h3>
+<p>CultivaX supports fully offline operation via a PWA Service Worker. Actions logged while offline are queued locally and synced when connectivity is restored.</p>
+<h3 id="2132-end-to-end-offline-sync-flow">2.13.2 End-to-End Offline Sync Flow</h3>
+<pre class="mermaid">
+flowchart TD
+    A[Farmer logs action while OFFLINE] --> B[Service Worker intercepts request]
+    B --> C[Queue action in IndexedDB with local_seq_no]
+    C --> D{Internet restored?}
+    D -->|No| E[Keep queued, show pending badge]
+    D -->|Yes| F[POST /api/v1/offline-sync/batch]
+    F --> G[Server processes batch]
+    G --> H{idempotency_key exists?}
+    H -->|Yes| I[Skip duplicate, return existing]
+    H -->|No| J[Insert action, trigger replay]
+    I --> K[Return sync result]
+    J --> K
+    K --> L[Clear local queue]
+</pre>
+<p><strong>Sync Endpoint</strong>: <code>POST /api/v1/offline-sync/batch</code></p>
+<p><strong>Testing Steps</strong>:
+1. While on a crop's CTIS page, open DevTools → Network → toggle "Offline"
+2. Log an action — the UI will accept it with a pending indicator
+3. Turn "Offline" off
+4. The action syncs automatically
+5. Verify via <code>GET /api/v1/crops/{id}/actions/</code> that the action appears</p>
+<hr />
+<h2 id="214-admin-user-governance">2.14 Admin — User Governance</h2>
+<h3 id="2141-user-management">2.14.1 User Management</h3>
+<p><strong>Endpoints</strong> (Admin only):
+- <code>GET /api/v1/admin/users</code> — List all users
+- <code>PUT /api/v1/admin/providers/{id}/suspend</code> — Suspend provider (requires reason)
+- <code>PUT /api/v1/admin/providers/{id}/unsuspend</code> — Unsuspend</p>
+<p><strong>Step-by-step</strong>:
+1. Login as Admin (<code>+919876543212</code>)
+2. Navigate to <code>/admin/users</code>
+3. View all registered users with their roles, regions, and status
+4. To suspend a provider: Navigate to <code>/admin/providers</code>, select a provider, click <strong>"Suspend"</strong>, enter justification
+5. The system creates an audit log entry and sends an alert to the provider</p>
+<h3 id="2142-provider-suspension-rules">2.14.2 Provider Suspension Rules</h3>
+<table>
+<thead>
+<tr>
+<th>Action</th>
+<th>Requires Reason</th>
+<th>Audit Logged</th>
+<th>Alert Sent</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Suspend</td>
+<td>✅ Yes (mandatory)</td>
+<td>✅ Yes</td>
+<td>✅ Critical alert to provider</td>
+</tr>
+<tr>
+<td>Unsuspend</td>
+<td>✅ Yes (mandatory)</td>
+<td>✅ Yes</td>
+<td>✅ Info alert to provider</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="215-admin-dead-letter-queue-dlq-management">2.15 Admin — Dead Letter Queue (DLQ) Management</h2>
+<h3 id="2151-purpose">2.15.1 Purpose</h3>
+<p>Failed events that exhaust all retry attempts are moved to the Dead Letter Queue. The admin can inspect, retry, or discard them.</p>
+<h3 id="2152-dead-letter-management-flow">2.15.2 Dead Letter Management Flow</h3>
+<pre class="mermaid">
+flowchart TD
+    A[Event fails processing] --> B{retry_count < max_retries?}
+    B -->|Yes| C[Exponential backoff retry]
+    B -->|No| D[Move to DeadLetter status]
+    D --> E[Admin views /admin/dead-letters]
+    E --> F{Admin action}
+    F -->|Retry Single| G[POST /admin/dead-letters/{id}/retry]
+    F -->|Bulk Retry| H[POST /admin/dead-letters/bulk-retry]
+    F -->|Discard| I[DELETE /admin/dead-letters/{id}]
+    G --> J[Reset to Created, retry_count = 0]
+    H --> J
+    I --> K[Soft delete event]
+</pre>
+<p><strong>Endpoints</strong>:
+- <code>GET /api/v1/admin/dead-letters?page=1&amp;per_page=50&amp;event_type=ActionLogged</code> — List with filters
+- <code>POST /api/v1/admin/dead-letters/{event_id}/retry</code> — Retry single
+- <code>POST /api/v1/admin/dead-letters/bulk-retry</code> — Bulk retry with filters
+- <code>DELETE /api/v1/admin/dead-letters/{event_id}</code> — Discard permanently</p>
+<p><strong>Bulk Retry Request</strong>:</p>
+<pre><code class="language-json">{
+  &quot;event_type&quot;: &quot;ActionLogged&quot;,
+  &quot;older_than_minutes&quot;: 60,
+  &quot;limit&quot;: 100,
+  &quot;reason&quot;: &quot;Transient database error resolved&quot;
+}
+</code></pre>
+<p><strong>Step-by-step</strong>:
+1. Navigate to <code>/admin/dead-letters</code>
+2. View failed events with their error messages, retry counts, and timestamps
+3. Click <strong>"Retry"</strong> on individual events or use <strong>"Bulk Retry"</strong> with filters
+4. All retry operations are audit-logged with the admin's identity</p>
+<hr />
+<h2 id="216-admin-audit-trail">2.16 Admin — Audit Trail</h2>
+<p><strong>Endpoint</strong>: <code>GET /api/v1/admin/audit?page=1&amp;per_page=20&amp;action=provider_suspended</code></p>
+<p><strong>Filters</strong>: <code>action</code>, <code>admin_id</code>, <code>entity_type</code>, <code>date_from</code>, <code>date_to</code></p>
+<p>Every admin action (suspend, unsuspend, retry, discard, flag review, rule change) is immutably logged in the <code>admin_audit_log</code> table with before/after values and justification reasons.</p>
+<p><strong>Step-by-step</strong>:
+1. Navigate to <code>/admin/audit</code>
+2. Browse all admin actions with timestamps and reasons
+3. Filter by action type, admin, or date range</p>
+<hr />
+<h2 id="217-admin-ml-model-management">2.17 Admin — ML Model Management</h2>
+<p><strong>Endpoints</strong>:
+- <code>GET /api/v1/ml/models</code> — List registered ML models
+- <code>GET /api/v1/ml/feedback</code> — View farmer feedback on predictions
+- <code>GET /api/v1/ml/inference-audits</code> — Audit inference decisions
+- <code>GET /api/v1/ml/training-audits</code> — Audit training runs</p>
+<p><strong>Step-by-step</strong>:
+1. Navigate to <code>/admin/ml-models</code>
+2. View all registered models with their versions and status
+3. Check feedback aggregation to see how farmers rate the ML predictions
+4. View inference audit trail to see what predictions were made and why</p>
+<hr />
+<h2 id="218-admin-crop-rules-engine">2.18 Admin — Crop Rules Engine</h2>
+<p><strong>Endpoints</strong>:
+- <code>GET /api/v1/rules/</code> — List all crop rule templates
+- <code>POST /api/v1/rules/</code> — Create new rule (Admin only)
+- Various rule management endpoints</p>
+<p><strong>Step-by-step</strong>:
+1. Navigate to <code>/admin/rules</code>
+2. View crop rule templates that define growth stages, recommended actions, and penalties
+3. Create or modify rules — changes are version-tracked</p>
+<hr />
+<h2 id="219-admin-abuse-flag-pipeline">2.19 Admin — Abuse Flag Pipeline</h2>
+<p><strong>Endpoints</strong>:
+- <code>GET /api/v1/admin/abuse-flags?status=open</code> — List flags
+- <code>GET /api/v1/admin/abuse-flags/{id}</code> — Flag detail
+- <code>PATCH /api/v1/admin/abuse-flags/{id}/review?new_status=actioned</code> — Review</p>
+<p><strong>Step-by-step</strong>:
+1. Navigate to admin dashboard
+2. View flagged accounts with severity scores and anomaly details
+3. Review and action flags: <code>reviewed</code>, <code>dismissed</code>, or <code>actioned</code></p>
+<hr />
+<h2 id="220-admin-system-health-maintenance">2.20 Admin — System Health &amp; Maintenance</h2>
+<p><strong>Health</strong>: <code>GET /api/v1/admin/health</code> — Full subsystem health with latency probes</p>
+<p><strong>Maintenance Status</strong>: <code>GET /api/v1/admin/maintenance/status</code> — Cron job status, last runs, overdue flags</p>
+<p><strong>Trigger Maintenance</strong>: <code>POST /api/v1/admin/maintenance/run?cadence=hourly&amp;force=true</code> — Manually trigger cron jobs during demo</p>
+<p><strong>Force Replay</strong>: <code>POST /api/v1/admin/crops/{crop_id}/force-replay</code> — Queue immediate replay for a specific crop</p>
+<p><strong>Step-by-step</strong>:
+1. Navigate to <code>/admin/health</code> — view all subsystem statuses
+2. Navigate to <code>/admin/maintenance</code> — view cron job schedule
+3. Click <strong>"Run Now"</strong> to manually trigger the hourly/daily/weekly maintenance</p>
+<hr />
+<h2 id="221-analytics-reporting">2.21 Analytics &amp; Reporting</h2>
+<p><strong>Endpoints</strong>:
+- <code>GET /api/v1/analytics/overview</code> — Platform overview stats
+- <code>GET /api/v1/analytics/crops/distribution</code> — Crop type distribution
+- <code>GET /api/v1/analytics/regions/demand</code> — Regional demand analysis
+- <code>GET /api/v1/analytics/admin-stats</code> — Admin-level statistics
+- <code>GET /api/v1/dashboard/stats</code> — Farmer dashboard stats
+- <code>GET /api/v1/dashboard/activity</code> — Recent activity feed</p>
+<hr />
+<h2 id="222-search">2.22 Search</h2>
+<p><strong>Endpoint</strong>: <code>GET /api/v1/search/?q=wheat&amp;page=1&amp;per_page=20</code></p>
+<p>Full-text search across crops, providers, equipment, and services. Returns ranked results with relevance scores.</p>
+<hr />
+<h2 id="223-account-management-data-privacy">2.23 Account Management &amp; Data Privacy</h2>
+<p><strong>Endpoints</strong>:
+- <code>GET /api/v1/account/me</code> — View account details
+- <code>GET /api/v1/account/me/export</code> — Export all personal data (GDPR-style)
+- <code>POST /api/v1/account/me/delete</code> — Request account deletion
+- <code>GET /api/v1/consent/purposes</code> — View consent purposes
+- <code>POST /api/v1/consent/me/{purpose}</code> — Grant consent
+- <code>DELETE /api/v1/consent/me/{purpose}</code> — Revoke consent</p>
+<p><strong>Data Export</strong>: <code>GET /api/v1/admin/farmers/{farmer_id}/export</code> (Admin) — Export all farmer data as JSON including crops, actions, media, and alerts</p>
+<hr />
+<h2 id="224-internationalization-i18n">2.24 Internationalization (i18n)</h2>
+<p><strong>Endpoint</strong>: <code>GET /api/v1/translations/{locale}</code> — Get translation strings</p>
+<p><strong>Supported Languages</strong>: <code>en</code> (English), <code>hi</code> (Hindi), <code>ta</code> (Tamil), <code>te</code> (Telugu), <code>mr</code> (Marathi)</p>
+<p><strong>Step-by-step</strong>:
+1. Navigate to Settings
+2. Change preferred language
+3. The entire UI switches to the selected language</p>
+<hr />
+<h2 id="225-complete-system-end-to-end-flow">2.25 Complete System End-to-End Flow</h2>
+<p>This diagram shows the complete lifecycle of a farmer using CultivaX from registration through crop completion.</p>
+<pre class="mermaid">
+flowchart TD
+    subgraph Registration
+        R1[Register as Farmer] --> R2[Phone verified via OTP]
+        R2 --> R3[Auto-logged in with JWT cookies]
+    end
+
+    subgraph CropSetup ["Crop Setup"]
+        C1[Create CropInstance] --> C2[Assign seasonal window]
+        C2 --> C3[State: Created]
+    end
+
+    subgraph ActionPhase ["Action Phase (30-120 days)"]
+        A1[Log irrigation action] --> A2[CTIS validates chronology]
+        A2 --> A3[EventDispatcher publishes ActionLogged]
+        A3 --> A4[ReplayEngine recalculates stress/risk]
+        A4 --> A5[State: Active]
+        A5 --> A6[Log more actions over time]
+        A6 --> A7[Run What-If Simulations]
+        A7 --> A8[View weather risk integration]
+        A8 --> A9[Receive alerts when risk threshold breached]
+    end
+
+    subgraph ServicePhase ["Service Phase"]
+        S1[Browse Marketplace] --> S2[Request equipment rental]
+        S2 --> S3[Provider accepts]
+        S3 --> S4[Provider completes work]
+        S4 --> S5[Submit review & rating]
+    end
+
+    subgraph HarvestPhase ["Harvest & Close"]
+        H1[Mark crop as Harvested] --> H2[Submit yield report]
+        H2 --> H3[ML computes verification score]
+        H3 --> H4[Close crop instance]
+        H4 --> H5[Archive for records]
+    end
+
+    subgraph OfflinePhase ["Offline Support"]
+        O1[Lose connectivity] --> O2[Actions queued in ServiceWorker]
+        O2 --> O3[Connectivity restored]
+        O3 --> O4[Batch sync with deduplication]
+    end
+
+    Registration --> CropSetup
+    CropSetup --> ActionPhase
+    ActionPhase --> ServicePhase
+    ActionPhase --> HarvestPhase
+    ActionPhase --> OfflinePhase
+    OfflinePhase --> ActionPhase
+</pre>
+<hr />
+<h1 id="appendix-a-known-limitations-demo-constraints">APPENDIX A — Known Limitations &amp; Demo Constraints</h1>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Feature</th>
+<th>Limitation</th>
+<th>Workaround</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>SMS / OTP Delivery</strong></td>
+<td>SMS gateways (Twilio) are fully mocked. OTPs are not actually sent via SMS.</td>
+<td>In development mode, the OTP is returned in the API response as <code>debug_otp</code>. Also printed to backend console logs: <code>docker compose logs backend</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>ML Inference</strong></td>
+<td>Deep learning models (CNN for stress detection, risk prediction) operate as static heuristic matrices. No live TensorFlow/PyTorch execution.</td>
+<td>Risk scores and stress values are computed deterministically from the action timeline using the StressEngine's formula-based integration</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>Weather Data</strong></td>
+<td>Weather risk values are generated from internal rule-based calculations, not from live meteorological APIs (e.g., OpenWeather).</td>
+<td>The <code>weather_risk</code> field in action metadata allows manual injection of weather signals for testing</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>Geospatial Mapping</strong></td>
+<td>Land parcels use simple lat/lng coordinates. No PostGIS polygon topology or satellite imagery overlay.</td>
+<td>Basic map views are rendered via Google Maps embeds</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>Cron Jobs</strong></td>
+<td>Background scheduled tasks (trust decay, listing reconfirmation, stale data cleanup) run on 6–24 hour intervals.</td>
+<td>Admin can manually trigger any cron cadence via <code>POST /api/v1/admin/maintenance/run?cadence=hourly&amp;force=true</code></td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>Media Analysis</strong></td>
+<td>Image upload and analysis pipeline is stubbed. No actual computer vision processing.</td>
+<td>Upload endpoints accept files and store metadata, but the analysis_status remains in the pending state</td>
+</tr>
+<tr>
+<td>7</td>
+<td><strong>WhatsApp Integration</strong></td>
+<td>WhatsApp webhook endpoint exists but is not connected to a live WhatsApp Business API.</td>
+<td>The endpoint validates webhook signatures correctly but operates in pass-through mode</td>
+</tr>
+<tr>
+<td>8</td>
+<td><strong>Payment Processing</strong></td>
+<td>No payment gateway integration. Service requests do not involve monetary transactions.</td>
+<td>Pricing is tracked as metadata but no payment flow is executed</td>
+</tr>
+<tr>
+<td>9</td>
+<td><strong>Push Notifications</strong></td>
+<td>Browser push notifications are not implemented. All notifications are in-app alerts only.</td>
+<td>Use the <code>/alerts</code> page to view all notifications</td>
+</tr>
+<tr>
+<td>10</td>
+<td><strong>Email Delivery</strong></td>
+<td>No email provider configured. Email-based features (password reset via email) are not operational.</td>
+<td>Use phone + OTP or password login instead</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h1 id="appendix-b-api-reference-summary">APPENDIX B — API Reference Summary</h1>
+<p><strong>Base URL</strong>: <code>http://localhost:8000/api/v1</code></p>
+<p><strong>Interactive Documentation</strong>: <code>http://localhost:8000/docs</code> (Swagger UI) or <code>http://localhost:8000/redoc</code> (ReDoc)</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Endpoint</th>
+<th>Auth</th>
+<th>Role</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>POST</td>
+<td><code>/auth/register</code></td>
+<td>No</td>
+<td>—</td>
+<td>Create account</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/auth/login</code></td>
+<td>No</td>
+<td>—</td>
+<td>Password login</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/auth/send-otp</code></td>
+<td>No</td>
+<td>—</td>
+<td>Request OTP</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/auth/verify-otp</code></td>
+<td>No</td>
+<td>—</td>
+<td>Verify OTP + login</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/auth/refresh</code></td>
+<td>Cookie</td>
+<td>—</td>
+<td>Rotate tokens</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/auth/logout</code></td>
+<td>Cookie</td>
+<td>—</td>
+<td>End session</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/auth/me</code></td>
+<td>Yes</td>
+<td>—</td>
+<td>Current user info</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/auth/sessions</code></td>
+<td>Yes</td>
+<td>—</td>
+<td>List active sessions</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/auth/sessions/revoke-all</code></td>
+<td>Yes</td>
+<td>—</td>
+<td>Revoke all other sessions</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/crops/</code></td>
+<td>Yes</td>
+<td>Farmer</td>
+<td>Create crop</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/crops/</code></td>
+<td>Yes</td>
+<td>Farmer</td>
+<td>List crops</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/crops/{id}</code></td>
+<td>Yes</td>
+<td>Farmer</td>
+<td>Get crop detail</td>
+</tr>
+<tr>
+<td>PUT</td>
+<td><code>/crops/{id}</code></td>
+<td>Yes</td>
+<td>Farmer</td>
+<td>Update crop</td>
+</tr>
+<tr>
+<td>PUT</td>
+<td><code>/crops/{id}/sowing-date</code></td>
+<td>Yes</td>
+<td>Farmer</td>
+<td>Modify sowing date (triggers replay)</td>
+</tr>
+<tr>
+<td>PUT</td>
+<td><code>/crops/{id}/activate</code></td>
+<td>Yes</td>
+<td>Farmer</td>
+<td>Transition to Active</td>
+</tr>
+<tr>
+<td>PUT</td>
+<td><code>/crops/{id}/harvest</code></td>
+<td>Yes</td>
+<td>Farmer</td>
+<td>Transition to Harvested</td>
+</tr>
+<tr>
+<td>PUT</td>
+<td><code>/crops/{id}/close</code></td>
+<td>Yes</td>
+<td>Farmer</td>
+<td>Transition to Closed</td>
+</tr>
+<tr>
+<td>PUT</td>
+<td><code>/crops/{id}/archive</code></td>
+<td>Yes</td>
+<td>Farmer</td>
+<td>Archive crop</td>
+</tr>
+<tr>
+<td>PUT</td>
+<td><code>/crops/{id}/unarchive</code></td>
+<td>Yes</td>
+<td>Farmer</td>
+<td>Unarchive crop</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/crops/{id}/actions/</code></td>
+<td>Yes</td>
+<td>Farmer</td>
+<td>Log action</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/crops/{id}/actions/</code></td>
+<td>Yes</td>
+<td>Farmer</td>
+<td>List actions</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/crops/{id}/simulate</code></td>
+<td>Yes</td>
+<td>Farmer</td>
+<td>What-if simulation</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/crops/{id}/yield</code></td>
+<td>Yes</td>
+<td>Farmer</td>
+<td>Submit yield</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/crops/{id}/replay/status</code></td>
+<td>Yes</td>
+<td>Farmer</td>
+<td>Replay status</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/crops/{id}/replay/history</code></td>
+<td>Yes</td>
+<td>Farmer</td>
+<td>Replay event log</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/crops/{id}/snapshots</code></td>
+<td>Yes</td>
+<td>Farmer</td>
+<td>List snapshots</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/service-requests/</code></td>
+<td>Yes</td>
+<td>Farmer</td>
+<td>Create request</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/service-requests/</code></td>
+<td>Yes</td>
+<td>All</td>
+<td>List requests</td>
+</tr>
+<tr>
+<td>PUT</td>
+<td><code>/service-requests/{id}/accept</code></td>
+<td>Yes</td>
+<td>Provider</td>
+<td>Accept</td>
+</tr>
+<tr>
+<td>PUT</td>
+<td><code>/service-requests/{id}/start</code></td>
+<td>Yes</td>
+<td>Provider</td>
+<td>Start work</td>
+</tr>
+<tr>
+<td>PUT</td>
+<td><code>/service-requests/{id}/complete</code></td>
+<td>Yes</td>
+<td>Provider</td>
+<td>Complete</td>
+</tr>
+<tr>
+<td>PUT</td>
+<td><code>/service-requests/{id}/decline</code></td>
+<td>Yes</td>
+<td>Provider</td>
+<td>Decline</td>
+</tr>
+<tr>
+<td>PUT</td>
+<td><code>/service-requests/{id}/cancel</code></td>
+<td>Yes</td>
+<td>All</td>
+<td>Cancel</td>
+</tr>
+<tr>
+<td>PUT</td>
+<td><code>/service-requests/{id}/fail</code></td>
+<td>Yes</td>
+<td>Provider</td>
+<td>Mark failed</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/service-requests/{id}/review</code></td>
+<td>Yes</td>
+<td>Farmer</td>
+<td>Submit review</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/providers/</code></td>
+<td>Yes</td>
+<td>All</td>
+<td>List providers</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/providers/{id}</code></td>
+<td>Yes</td>
+<td>All</td>
+<td>Provider detail</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/admin/dead-letters</code></td>
+<td>Yes</td>
+<td>Admin</td>
+<td>List dead letters</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/admin/dead-letters/{id}/retry</code></td>
+<td>Yes</td>
+<td>Admin</td>
+<td>Retry single</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/admin/dead-letters/bulk-retry</code></td>
+<td>Yes</td>
+<td>Admin</td>
+<td>Bulk retry</td>
+</tr>
+<tr>
+<td>DELETE</td>
+<td><code>/admin/dead-letters/{id}</code></td>
+<td>Yes</td>
+<td>Admin</td>
+<td>Discard</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/admin/audit</code></td>
+<td>Yes</td>
+<td>Admin</td>
+<td>Audit trail</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/admin/health</code></td>
+<td>Yes</td>
+<td>Admin</td>
+<td>System health</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/admin/maintenance/run</code></td>
+<td>Yes</td>
+<td>Admin</td>
+<td>Trigger cron</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/admin/abuse-flags</code></td>
+<td>Yes</td>
+<td>Admin</td>
+<td>Abuse flags</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/alerts/</code></td>
+<td>Yes</td>
+<td>All</td>
+<td>My alerts</td>
+</tr>
+<tr>
+<td>PUT</td>
+<td><code>/alerts/{id}/acknowledge</code></td>
+<td>Yes</td>
+<td>All</td>
+<td>Acknowledge</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/weather/</code></td>
+<td>Yes</td>
+<td>Farmer</td>
+<td>Weather data</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/schemes/</code></td>
+<td>Yes</td>
+<td>Farmer</td>
+<td>Gov schemes</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/ml/models</code></td>
+<td>Yes</td>
+<td>Admin</td>
+<td>ML models</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/search/?q=...</code></td>
+<td>Yes</td>
+<td>All</td>
+<td>Full-text search</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/translations/{locale}</code></td>
+<td>No</td>
+<td>—</td>
+<td>i18n strings</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h1 id="appendix-c-test-execution">APPENDIX C — Test Execution</h1>
+<p>To verify the system passes all automated tests:</p>
+<pre><code class="language-bash">cd backend
+source venv/bin/activate
+pytest -q --tb=short
+</code></pre>
+<p><strong>Expected Result</strong>: <code>458 passed, 20 skipped, 0 failed</code></p>
+<p>The 20 skipped tests are async coroutine tests that require <code>pytest-asyncio</code> and are intentionally skipped in the synchronous test runner.</p>
+</body>
+</html>

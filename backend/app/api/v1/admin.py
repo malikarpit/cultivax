@@ -969,7 +969,7 @@ async def bulk_retry_dead_letters(
             admin_id=current_user.id,
             action="bulk_retry_dead_letters",
             entity_type="system",
-            entity_id="batch",
+            entity_id=current_user.id,
             reason=req.reason,
             after_value={
                 "event_type_filter": req.event_type,

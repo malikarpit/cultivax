@@ -30,6 +30,7 @@ class CTISEvents:
     CROP_CREATED = "ctis.crop_created"
     CROP_ARCHIVED = "ctis.crop_archived"
     RECOVERY_REQUIRED = "ctis.recovery_required"
+    SUGGEST_SERVICE = "ctis.suggest_service"  # MSDD 2.11: CTIS→SOE suggestion
 
 
 class SOEEvents:

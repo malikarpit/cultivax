@@ -16,9 +16,25 @@ interface QueuedAction {
   attempts: number;
 }
 
+/**
+ * FR-24: Offline message queuing interface.
+ */
+interface QueuedMessage {
+  id: string;
+  conversation_id: string;
+  content: string;
+  message_type: string;
+  client_message_id: string;
+  status: 'pending' | 'syncing' | 'synced' | 'failed';
+  error?: string;
+  created_at: string;
+  attempts: number;
+}
+
 const DB_NAME = 'cultivax-offline';
 const STORE_NAME = 'queued-actions';
-const DB_VERSION = 1;
+const MESSAGE_STORE_NAME = 'queued-messages';  // FR-24
+const DB_VERSION = 2;  // Bumped for message store
 
 export class OfflineQueueService {
   private db: IDBDatabase | null = null;
@@ -52,6 +68,14 @@ export class OfflineQueueService {
           store.createIndex('status', 'status', { unique: false });
           store.createIndex('crop_id', 'crop_id', { unique: false });
           store.createIndex('local_seq_no', 'local_seq_no', { unique: false });
+        }
+
+        // FR-24: Create message queue store
+        if (!db.objectStoreNames.contains(MESSAGE_STORE_NAME)) {
+          const msgStore = db.createObjectStore(MESSAGE_STORE_NAME, { keyPath: 'id' });
+          msgStore.createIndex('status', 'status', { unique: false });
+          msgStore.createIndex('conversation_id', 'conversation_id', { unique: false });
+          msgStore.createIndex('client_message_id', 'client_message_id', { unique: true });
         }
       };
     });
@@ -349,6 +373,135 @@ export class OfflineQueueService {
         }
       };
 
+      request.onerror = () => reject(request.error);
+    });
+  }
+  /**
+   * FR-24: Queue a message for offline sync.
+   */
+  async queueMessage(
+    conversationId: string,
+    content: string,
+    messageType: string = 'text'
+  ): Promise<string> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    const clientMsgId = `msg_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+    const msg: QueuedMessage = {
+      id: clientMsgId,
+      conversation_id: conversationId,
+      content,
+      message_type: messageType,
+      client_message_id: clientMsgId,
+      status: 'pending',
+      created_at: new Date().toISOString(),
+      attempts: 0,
+    };
+
+    return new Promise((resolve, reject) => {
+      const tx = this.db!.transaction([MESSAGE_STORE_NAME], 'readwrite');
+      const store = tx.objectStore(MESSAGE_STORE_NAME);
+      const request = store.add(msg);
+
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        this.registerBackgroundSync().catch(e => console.debug('Msg sync register skipped:', e));
+        resolve(clientMsgId);
+      };
+    });
+  }
+
+  /**
+   * FR-24: Get all pending messages for a conversation.
+   */
+  async getPendingMessages(conversationId?: string): Promise<QueuedMessage[]> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    return new Promise((resolve, reject) => {
+      const tx = this.db!.transaction([MESSAGE_STORE_NAME], 'readonly');
+      const store = tx.objectStore(MESSAGE_STORE_NAME);
+      const index = store.index('status');
+      const request = index.getAll(IDBKeyRange.only('pending'));
+
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        let results = request.result as QueuedMessage[];
+        if (conversationId) {
+          results = results.filter(m => m.conversation_id === conversationId);
+        }
+        resolve(results);
+      };
+    });
+  }
+
+  /**
+   * FR-24: Sync pending messages when back online.
+   */
+  async syncMessages(token: string): Promise<{ synced: number; failed: number }> {
+    const pending = await this.getPendingMessages();
+    let synced = 0;
+    let failed = 0;
+
+    for (const msg of pending) {
+      try {
+        const res = await fetch(
+          `/api/v1/messages/conversations/${msg.conversation_id}/messages`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              content: msg.content,
+              message_type: msg.message_type,
+              client_message_id: msg.client_message_id,
+            }),
+          }
+        );
+
+        if (res.ok || res.status === 200 || res.status === 201) {
+          await this.updateMessageStatus(msg.id, 'synced');
+          synced++;
+        } else {
+          await this.updateMessageStatus(msg.id, 'failed', `HTTP ${res.status}`);
+          failed++;
+        }
+      } catch (err: any) {
+        await this.updateMessageStatus(msg.id, 'failed', err.message);
+        failed++;
+      }
+    }
+
+    return { synced, failed };
+  }
+
+  /**
+   * FR-24: Update queued message status.
+   */
+  private async updateMessageStatus(
+    id: string,
+    status: QueuedMessage['status'],
+    error?: string
+  ): Promise<void> {
+    if (!this.db) return;
+
+    return new Promise((resolve, reject) => {
+      const tx = this.db!.transaction([MESSAGE_STORE_NAME], 'readwrite');
+      const store = tx.objectStore(MESSAGE_STORE_NAME);
+      const request = store.get(id);
+
+      request.onsuccess = () => {
+        const msg = request.result;
+        if (msg) {
+          msg.status = status;
+          msg.attempts = (msg.attempts || 0) + 1;
+          if (error) msg.error = error;
+          store.put(msg);
+        }
+        resolve();
+      };
       request.onerror = () => reject(request.error);
     });
   }

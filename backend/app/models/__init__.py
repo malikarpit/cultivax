@@ -53,6 +53,9 @@ from app.models.official_scheme import OfficialScheme
 from app.models.scheme_redirect_log import SchemeRedirectLog
 from app.models.user_consent import UserConsent
 from app.models.sms_delivery_log import SmsDeliveryLog
+from app.models.conversation import Conversation  # FR-23
+from app.models.message import Message  # FR-23/24
+from app.models.recommendation_override import RecommendationOverride  # FR-7/8
 
 __all__ = [
     "Base",
@@ -104,4 +107,7 @@ __all__ = [
     "SchemeRedirectLog",
     "UserConsent",
     "SmsDeliveryLog",
+    "Conversation",
+    "Message",
+    "RecommendationOverride",
 ]

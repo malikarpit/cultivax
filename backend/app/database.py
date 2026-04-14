@@ -89,3 +89,41 @@ def get_db() -> Generator[Session, None, None]:
         yield db
     finally:
         db.close()
+
+
+# ── Read Replica Support (TDD 11-12) ────────────────────────────────────────
+# When DATABASE_READ_URL is configured, read-heavy queries are routed to
+# the replica to reduce load on the primary. Falls back to primary if
+# no replica URL is set.
+
+_read_url = getattr(settings, "DATABASE_READ_URL", None) or settings.effective_database_url
+
+read_engine = create_engine(
+    _read_url,
+    pool_size=5,
+    max_overflow=10,
+    pool_pre_ping=True,
+    echo=settings.DEBUG,
+)
+
+ReadSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=read_engine)
+
+
+def get_read_db() -> Generator[Session, None, None]:
+    """
+    Read-only DB session dependency — routes to replica when configured.
+
+    Use for listing queries, analytics, search, and other read-heavy
+    endpoints where strong consistency is not critical.
+
+    Usage:
+        @router.get("/search")
+        async def search(db: Session = Depends(get_read_db)):
+            ...
+    """
+    db = ReadSessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+

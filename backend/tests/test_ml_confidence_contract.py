@@ -92,12 +92,13 @@ class TestMLConfidenceContract:
         crop.crop_type = "wheat"
         crop.seasonal_window_category = "Optimal"
         crop.id = uuid4()
+        crop.metadata_extra = {}
 
         db = MagicMock()
         db.query.return_value.filter.return_value.filter.return_value.order_by.return_value.first.return_value = None
 
-        predictor = RiskPredictor(db)
-        result = predictor.predict(crop, action_count=5)
+        predictor = RiskPredictor()
+        result = predictor.predict(crop, action_count=5, db=db)
 
         assert hasattr(result, "confidence_score") or "confidence_score" in (result if isinstance(result, dict) else {}), (
             f"RiskPredictor output missing confidence_score: {result}"

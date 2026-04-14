@@ -147,3 +147,59 @@ class StressEngine:
         """
         risk = weather_weight * weather_risk + farmer_weight * stress_score
         return max(0.0, min(1.0, float(round(risk, 4))))  # type: ignore
+
+    def apply(self, state: dict, action) -> None:
+        """
+        Apply a single action to the stress state dict (0–100 scale).
+
+        This is the convenience entry point used by the ReplayEngine. It
+        converts action metadata into the multi-signal inputs expected by
+        integrate_stress(), runs the integration, and writes the result
+        back into ``state["stress_score"]`` on the 0–100 scale.
+
+        Args:
+            state: Mutable dict with at least "stress_score" (0–100),
+                   "consecutive_deviations", "deviation_streak".
+            action: Object with action_type, category, metadata_json,
+                    is_override attributes.
+        """
+        metadata = getattr(action, "metadata_json", {}) or {}
+        weather_risk = float(metadata.get("weather_risk", 0.0))
+        edge_signal = float(metadata.get("edge_signal", 0.0))
+
+        consecutive_devs = state.get("consecutive_deviations", 0)
+        deviation_penalty = min(consecutive_devs / 5.0, 1.0)
+
+        # Category-based ML proxy signal
+        category = getattr(action, "category", "Operational")
+        if category == "Timeline-Critical":
+            backend_ml = 0.6
+        elif category == "Corrective":
+            backend_ml = 0.3
+        else:
+            backend_ml = 0.1
+
+        # Healing actions (irrigation, fertilizer) reduce the ML signal
+        action_type = getattr(action, "action_type", "")
+        if action_type in ("irrigation", "fertilizer"):
+            backend_ml = max(0.0, backend_ml - 0.15)
+
+        # Override actions carry lower confidence
+        is_override = getattr(action, "is_override", False)
+        confidence = 0.5 if is_override else 1.0
+
+        previous_stress_norm = max(0.0, min(1.0, state.get("stress_score", 0.0) / 100.0))
+
+        result = self.integrate_stress(
+            backend_ml=backend_ml,
+            weather_risk=weather_risk,
+            deviation_penalty=deviation_penalty,
+            edge_signal=edge_signal,
+            previous_stress=previous_stress_norm,
+            confidence=confidence,
+        )
+
+        # Write back to state on 0–100 scale, clamped to biological bounds
+        new_score = result["new_stress"] * 100.0
+        state["stress_score"] = max(0.0, min(100.0, round(new_score, 4)))
+

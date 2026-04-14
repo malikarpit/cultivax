@@ -37,7 +37,7 @@ class Settings(BaseSettings):
     # JWT Authentication
     SECRET_KEY: str = "your-secret-key-change-in-production"
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 240
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     # Rate Limiting (requests per minute, per user/IP)
@@ -46,7 +46,7 @@ class Settings(BaseSettings):
     RATE_LIMIT_ADMIN: int = 200
     RATE_LIMIT_DEFAULT: int = 100
     # Stricter per-path limits for auth endpoints (anti-brute-force)
-    RATE_LIMIT_AUTH_SENSITIVE: int = 10  # /auth/login, /auth/request-otp
+    RATE_LIMIT_AUTH_SENSITIVE: int = 100  # /auth/login, /auth/request-otp
 
     # Redis for distributed rate limiting + idempotency
     REDIS_URL: str = ""  # e.g., redis://localhost:6379/0

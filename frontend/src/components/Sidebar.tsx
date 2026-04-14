@@ -35,6 +35,7 @@ import {
   Leaf,
   CloudSun,
   ArrowRight,
+  MessageSquare,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useAuth } from '@/context/AuthContext';
@@ -56,6 +57,7 @@ const FARMER_NAV: NavItem[] = [
   { label: 'nav.services', href: '/services', icon: ShoppingBag },
   { label: 'nav.labor', href: '/labor', icon: Users },
   { label: 'nav.alerts', href: '/alerts', icon: Bell },
+  { label: 'nav.messages', href: '/messages', icon: MessageSquare },
   { label: 'nav.marketplace', href: '/marketplace', icon: ShoppingBag },
   { label: 'nav.schemes', href: '/schemes', icon: Landmark },
 ];
