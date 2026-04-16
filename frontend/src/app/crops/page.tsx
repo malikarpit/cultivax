@@ -93,6 +93,8 @@ export default function CropsPage() {
           <div className="flex bg-cultivax-elevated rounded-lg p-0.5 gap-0.5">
             <button
               onClick={() => setViewMode('grid')}
+              title={t('crops.view_grid', 'Grid view')}
+              aria-label={t('crops.view_grid', 'Grid view')}
               className={clsx(
                 'p-2 rounded-md transition-colors',
                 viewMode === 'grid' ? 'bg-cultivax-primary/15 text-cultivax-primary' : 'text-cultivax-text-muted'
@@ -102,6 +104,8 @@ export default function CropsPage() {
             </button>
             <button
               onClick={() => setViewMode('list')}
+              title={t('crops.view_list', 'List view')}
+              aria-label={t('crops.view_list', 'List view')}
               className={clsx(
                 'p-2 rounded-md transition-colors',
                 viewMode === 'list' ? 'bg-cultivax-primary/15 text-cultivax-primary' : 'text-cultivax-text-muted'
