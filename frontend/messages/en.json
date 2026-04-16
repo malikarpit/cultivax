@@ -99,8 +99,14 @@
       "step3": { "title": "Get Alerts", "desc": "Receive smart notifications and recommendations" },
       "step4": { "title": "Book Services", "desc": "Find and hire trusted agricultural services" }
     },
+    "providers": {
+      "title": "Grow Your Agricultural Service Business",
+      "desc": "Join CultivaX to connect directly with farmers in your region. Manage bookings, equipment, and build your trust score.",
+      "cta": "Register as Provider"
+    },
     "cta": {
       "title": "Start your first crop — it takes 2 minutes",
+      "desc": "Join thousands of farmers using CultivaX to grow smarter and manage better.",
       "button": "Get Started Free"
     }
   },

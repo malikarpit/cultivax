@@ -94,6 +94,7 @@ class RequestService:
             status="Pending",
         )
         self.db.add(request)
+        self.db.flush()
 
         # Emit creation event
         self._emit_event(request, None, "Pending", farmer_id, "farmer")
@@ -231,5 +232,6 @@ class RequestService:
             new_state=new_state,
             actor_id=actor_id,
             actor_role=actor_role,
+            transitioned_at=datetime.now(timezone.utc),
         )
         self.db.add(event)

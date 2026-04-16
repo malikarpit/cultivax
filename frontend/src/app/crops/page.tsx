@@ -73,7 +73,7 @@ export default function CropsPage() {
           </p>
         </div>
         <Link href="/crops/new" className="btn-primary flex items-center gap-2 w-fit">
-          <Plus className="w-4 h-4" /> {t('crops.create_crop', '+ Create Crop')}
+          <Plus className="w-4 h-4" /> {t('crops.create_crop', 'Create Crop')}
         </Link>
       </div>
 
@@ -135,7 +135,7 @@ export default function CropsPage() {
           <h3 className="text-lg font-semibold mb-2">{t('crops.no_crops')}</h3>
           <p className="text-sm text-cultivax-text-muted mb-6">Create your first crop to get started</p>
           <Link href="/crops/new" className="btn-primary inline-flex items-center gap-2">
-            <Plus className="w-4 h-4" /> {t('crops.create_crop', '+ Create Crop')}
+            <Plus className="w-4 h-4" /> {t('crops.create_crop', 'Create Crop')}
           </Link>
         </div>
       ) : (

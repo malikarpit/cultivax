@@ -11,6 +11,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import ConversationList from '../../components/ConversationList';
 import ChatView from '../../components/ChatView';
+import { apiGet } from '@/lib/api';
 
 interface Conversation {
   id: string;
@@ -32,11 +33,7 @@ export default function MessagesPage() {
   const fetchConversations = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/v1/messages/conversations', {
-        credentials: 'include',
-      });
-      if (!res.ok) throw new Error('Failed to fetch conversations');
-      const data = await res.json();
+      const data = await apiGet('/api/v1/messages/conversations');
       setConversations(data);
       setError(null);
     } catch (err: unknown) {

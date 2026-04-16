@@ -58,7 +58,6 @@ const FARMER_NAV: NavItem[] = [
   { label: 'nav.labor', href: '/labor', icon: Users },
   { label: 'nav.alerts', href: '/alerts', icon: Bell },
   { label: 'nav.messages', href: '/messages', icon: MessageSquare },
-  { label: 'nav.marketplace', href: '/marketplace', icon: ShoppingBag },
   { label: 'nav.schemes', href: '/schemes', icon: Landmark },
 ];
 
